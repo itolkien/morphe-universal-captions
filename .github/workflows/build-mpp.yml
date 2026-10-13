@@ -79,3 +79,32 @@ jobs:
               --title "Universal Captions v1.2.0 - YouTube" \
               --notes "Experimental YouTube-native auto-translation unlock. Verified by a user on YouTube 21.20.405. Supports additional languages through native caption-track cloning. Compatibility metadata targets YouTube, not universal apps. Always retain a working APK backup; other YouTube versions are unverified."
           fi
+
+      - name: Publish remote source metadata
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python3 - <<'PY'
+          import json, datetime
+          from pathlib import Path
+          version = "1.2.0"
+          repo = "itolkien/morphe-universal-captions"
+          data = {
+              "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+              "description": "Native auto-translated caption languages for YouTube 21.20.405. Experimental.",
+              "download_url": f"https://github.com/{repo}/releases/download/v{version}/universal-captions-{version}.mpp",
+              "signature_download_url": "",
+              "version": version,
+          }
+          Path("addon/patches-bundle.json").write_text(json.dumps(data, indent=2) + "\\n")
+          patch_list = Path("template/patches-list.json")
+          if patch_list.is_file():
+              Path("addon/patches-list.json").write_bytes(patch_list.read_bytes())
+          PY
+          cd addon
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add patches-bundle.json patches-list.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: publish v1.2.0 remote patch metadata"
+            git push origin HEAD:main
+          fi
