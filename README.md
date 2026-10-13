@@ -1,5 +1,20 @@
 # Morphe Universal Captions
 
+**YouTube-only Morphe add-on.** [Download latest release](https://github.com/itolkien/morphe-universal-captions/releases/latest) | [Report an issue](https://github.com/itolkien/morphe-universal-captions/issues)
+
+## Install in Morphe Manager
+
+1. Open [Releases](https://github.com/itolkien/morphe-universal-captions/releases) and download **`universal-captions-1.2.0.mpp`** (not sources or javadoc).
+2. In Morphe Manager open **Settings → Patch sources → Add local source** and select the downloaded `.mpp`.
+3. Select **YouTube** and patch a clean YouTube **21.20.405** APK (the version tested by the author). The patch is marked compatible with YouTube, not every app.
+4. Enable **Universal Captions - unlock translation languages (experimental)** during patch selection.
+5. Install and open the patched YouTube, then check **Captions → Auto-translate** on a video that has caption source tracks.
+
+The YouTube target version and menu labels may vary by Manager build. Existing Morphe customizations may require a clean repatch. Keep a known-good APK for rollback.
+
+**Compatibility:** Tested by the project user on YouTube 21.20.405. Other versions, Shorts, and every possible translation target have **not** been systematically validated. This modifies the native caption picker only; YouTube must serve a translated track for the chosen video. No Google Translate, AI service or API key is used.
+
+
 Experimental, open-source research project to make **YouTube's native auto-translated subtitles** available in all languages supported by YouTube, including languages that may be missing from the Android caption selector.
 
 > **Status: Research / prototype.** This repository contains an **experimental Morphe resource-patch probe** and a GitHub Actions workflow that builds an `.mpp`; it does **not** unlock missing translation languages. Do not confuse YouTube's advertised translation languages with tracks actually obtainable for a video.
