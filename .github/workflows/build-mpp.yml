@@ -95,7 +95,7 @@ jobs:
               "signature_download_url": "",
               "version": version,
           }
-          Path("addon/patches-bundle.json").write_text(json.dumps(data, indent=2) + "\\n")
+          Path("addon/patches-bundle.json").write_text(json.dumps(data, indent=2) + chr(10))
           patch_list = Path("template/patches-list.json")
           if patch_list.is_file():
               Path("addon/patches-list.json").write_bytes(patch_list.read_bytes())
