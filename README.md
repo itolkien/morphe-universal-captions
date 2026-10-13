@@ -24,7 +24,7 @@ The actual missing piece is determining whether Android can request a YouTube-su
 
 ## Repository status
 
-The language resolver and executable CI tests now live in `src/`; see [architecture](docs/ARCHITECTURE.md). This is **not yet an installable Morphe patch**: native Android/YouTube caption request injection still requires reverse engineering and device verification. A build workflow for an experimental `.mpp` exists at [Actions → Build experimental Morphe MPP](../../actions/workflows/build-mpp.yml). The resulting artifact is **only an opt-in integration probe**, not a caption unlocker. Do not install it as a working subtitle unlocker.
+The language resolver, native caption-list probe and executable CI tests now live in `src/` and `patches/`; see [architecture](docs/ARCHITECTURE.md). This is **not yet an installable Morphe patch**: native Android/YouTube caption request injection still requires reverse engineering and device verification. A build workflow for an experimental `.mpp` exists at [Actions → Build experimental Morphe MPP](../../actions/workflows/build-mpp.yml). The resulting artifact is **only an opt-in integration probe**, not a caption unlocker. Do not install it as a working subtitle unlocker.
 
 ## Development milestones
 
@@ -44,6 +44,6 @@ Independent community project, **not affiliated with YouTube or Morphe**. The Mo
 1. Open [Build experimental Morphe MPP](../../actions/workflows/build-mpp.yml), select **Run workflow**, and check that it succeeds.
 2. Download the `universal-captions-integration-probe-mpp` Actions artifact, unzip, and obtain the `.mpp` file.
 3. In Morphe Manager, add it as a **local patch source**. It exposes the optional **Universal Captions - integration probe (no language unlock)** patch.
-4. The probe writes a marker into the resource tree and **does not** change the subtitle picker or create any translation target.
+4. The updated probe hooks YouTube's native auto-translate list and reports its candidate count in Android logcat under `MorpheUniversalCaptions`. **It does not yet change subtitle selection or create missing translation targets.**
 
 Do not install this expecting translated captions. A real native-language unlock requires validated YouTube caption-manager bytecode integration and physical device tests.
