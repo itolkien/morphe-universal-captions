@@ -27,7 +27,7 @@ Use the same policy for every supported language (normalize BCP-47 tags and avoi
 
 ## Current branch state
 
-The current experiment only improves how newly inserted auto-translate entries choose a source and tries to avoid duplicate manual language entries. **It does not yet implement preference persistence, automatic per-video selection, or explicit Off restoration.** A separate selection lifecycle hook and device testing are required.
+The branch now contains a **pure Java selection policy** in `src/main/java/dev/itolkien/captions/CaptionResolver.java`, with deterministic policy tests. It prioritizes target-language manual and ASR tracks, then original-language manual and ASR tracks, then other manual and ASR tracks. Explicit Off yields no selection. The code is **not yet integrated with the YouTube player**; preference persistence, automatic per-video application, and explicit Off restoration need a version-validated selection lifecycle hook and device testing. The current installed experimental `.mpp` does not automatically remember and apply a preferred language.
 
 ## Acceptance tests
 
