@@ -98,8 +98,22 @@ public final class NativeTranslationBridge {
                     bestSourceRank = rank;
                 }
             }
+            if (prototype == null) {
+                // The auto-translate list may already contain derived tracks rather
+                // than original tracks. Keep the known-working selection behavior
+                // instead of hiding every additional language.
+                for (Object track : original) {
+                    String u = url(track);
+                    if (u != null && u.startsWith("https://") && u.contains("/api/timedtext")) {
+                        prototype = track;
+                        break;
+                    }
+                }
+                Log.e(TAG, "Source selection: using legacy fallback");
+            } else {
+                Log.e(TAG, "Selected original caption source rank=" + bestSourceRank);
+            }
             if (prototype == null) return original;
-            Log.e(TAG, "Selected original caption source rank=" + bestSourceRank);
             List<Object> result = new ArrayList<>(original);
             int added = 0;
             for (String code : TARGETS) {
