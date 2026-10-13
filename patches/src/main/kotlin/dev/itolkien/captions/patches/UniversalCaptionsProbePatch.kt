@@ -65,6 +65,11 @@ val universalCaptionsPatch = bytecodePatch(
             .flatMap { classDefBy(it.type).methods.toList() }
             .filter { it.hasText("&tlang=") && it.parameterTypes.isEmpty() &&
                 it.returnType == "Ljava/util/List;" }.unique("translated track list")
+        val directListMethod = getAllClassesWithString("AUTO_TRANSLATE_CAPTIONS_OPTION")
+            .flatMap { classDefBy(it.type).methods.toList() }
+            .filter { it.hasText("AUTO_TRANSLATE_CAPTIONS_OPTION") &&
+                it.parameterTypes.isEmpty() && it.returnType == "Ljava/util/List;" }
+            .unique("direct caption track list")
         val listCode = listMethod.code()
         val url = listCode.mapIndexedNotNull { i, ins ->
             if (ins.text() == "&tlang=") listCode.getOrNull(i - 2)?.field() else null
@@ -152,6 +157,22 @@ val universalCaptionsPatch = bytecodePatch(
             .filter { it.name == listMethod.name &&
                 it.parameterTypes.toList() == listMethod.parameterTypes.toList() &&
                 it.returnType == listMethod.returnType }.unique("mutable translated list")
+        val directMethod = mutableClassDefBy(directListMethod.definingClass).methods
+            .filter { it.name == directListMethod.name &&
+                it.parameterTypes.toList() == directListMethod.parameterTypes.toList() &&
+                it.returnType == directListMethod.returnType }.unique("mutable direct track list")
+        val directReturns = directMethod.implementation!!.instructions.mapIndexedNotNull { i, ins ->
+            if (ins.opcode == Opcode.RETURN_OBJECT) i to (ins as OneRegisterInstruction).registerA
+            else null
+        }
+        if (directReturns.isEmpty()) throw PatchException("Universal Captions: no direct track list returns")
+        for ((index, register) in directReturns.reversed()) {
+            directMethod.replaceInstruction(index,
+                "invoke-static/range {v$register .. v$register}, $BRIDGE->observeDirect(Ljava/util/List;)Ljava/util/List;")
+            directMethod.addInstructionsWithLabels(index + 1,
+                "move-result-object v$register\nreturn-object v$register")
+        }
+
         val returns = method.implementation!!.instructions.mapIndexedNotNull { i, ins ->
             if (ins.opcode == Opcode.RETURN_OBJECT) i to (ins as OneRegisterInstruction).registerA
             else null
