@@ -9,32 +9,37 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 /**
- * Actual YouTube caption-manager interception, not a resource marker.
- * Does not add missing translation targets; observes the native auto-translate list.
+ * Observe both caption track sources. The previous build only hooked auto-translate
+ * track generation, which is lazy and might never run if Android filters the menu.
  */
 @Suppress("unused")
 val universalCaptionsProbePatch = bytecodePatch(
-    name = "Universal Captions - native track probe (experimental)",
-    description = "Hooks YouTube's native auto-translation track list without altering it. Diagnostic only.",
+    name = "Universal Captions - dual native track probe (experimental)",
+    description = "Observes both native caption and translation lists. Diagnostic only; does not unlock languages.",
     default = false,
 ) {
     extendWith("extensions/extension.mpe")
     execute {
-        val method = Fingerprint(
-            accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
-            returnType = "Ljava/util/List;",
-            parameters = listOf(),
-            filters = listOf(string("&tlang=")),
-        ).method
-        val returns = method.implementation!!.instructions.withIndex()
-            .filter { it.value.opcode == Opcode.RETURN_OBJECT }
-        require(returns.isNotEmpty()) { "No native auto-translation list return found" }
-        for ((index, instruction) in returns.asReversed()) {
-            val register = (instruction as OneRegisterInstruction).registerA
-            method.addInstructions(index, """
-                invoke-static { v$register }, Ldev/itolkien/captions/extension/NativeTrackProbe;->observe(Ljava/util/List;)Ljava/util/List;
-                move-result-object v$register
-            """)
+        fun install(needle: String, methodName: String) {
+            val method = Fingerprint(
+                accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+                returnType = "Ljava/util/List;",
+                parameters = listOf(),
+                filters = listOf(string(needle)),
+            ).method
+            val returns = method.implementation!!.instructions.withIndex()
+                .filter { it.value.opcode == Opcode.RETURN_OBJECT }
+            require(returns.isNotEmpty()) { "No return for native caption list ($needle)" }
+            for ((index, instruction) in returns.asReversed()) {
+                val register = (instruction as OneRegisterInstruction).registerA
+                method.addInstructions(index, """
+                    invoke-static { v$register }, Ldev/itolkien/captions/extension/NativeTrackProbe;->$methodName(Ljava/util/List;)Ljava/util/List;
+                    move-result-object v$register
+                """)
+            }
         }
+
+        install("AUTO_TRANSLATE_CAPTIONS_OPTION", "observeDirect")
+        install("&tlang=", "observeTranslated")
     }
 }
