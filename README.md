@@ -36,6 +36,6 @@ If you encounter a problem, [open an issue](https://github.com/itolkien/morphe-u
 
 ## License
 
-[GPL-3.0-or-later](LICENSE). Based on native caption-track work from [morphe-ai-caption-translator](https://github.com/itolkien/morphe-ai-caption-translator).
+[GPL-3.0-or-later](LICENSE).
 
 This is an independent community project and is not affiliated with YouTube or Morphe. No modified YouTube APKs are distributed.
