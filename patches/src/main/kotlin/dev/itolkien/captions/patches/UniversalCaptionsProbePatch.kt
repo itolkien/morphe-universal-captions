@@ -4,6 +4,10 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.util.smali.ExternalLabel
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
@@ -152,6 +156,86 @@ val universalCaptionsPatch = bytecodePatch(
             move-result-object v0
             return-object v0
         """)
+
+        // Match the same native manager selection entry point used by the predecessor.
+        val selectorCandidates = mutableListOf<Method>()
+        classDefForEach { candidate ->
+            if (candidate.methods.none { it.parameterTypes.isEmpty() &&
+                    it.returnType == track.type }) return@classDefForEach
+            for (m in candidate.methods) {
+                val types = m.parameterTypes.map { it.toString() }
+                if (AccessFlags.STATIC.isSet(m.accessFlags) || m.returnType != "V" ||
+                    types.size != 3 || types[0] != track.type || types[2] != "I" ||
+                    !types[1].startsWith("L")) continue
+                if (m.code().any { ins ->
+                    val call = (ins as? ReferenceInstruction)?.reference as? MethodReference
+                    ins.opcode == Opcode.INVOKE_DIRECT && call?.name == "<init>" &&
+                        call.parameterTypes.map { it.toString() } ==
+                            listOf(track.type, types[1], "I", STRING)
+                }) selectorCandidates.add(m)
+            }
+        }
+        val selector = selectorCandidates.unique("native explicit caption selector")
+        val owner = classDefBy(selector.definingClass)
+        val defaultTrack = owner.methods.filter {
+            it.parameterTypes.isEmpty() && it.returnType == track.type
+        }.unique("native default caption selector")
+        val modelField = defaultTrack.code().mapNotNull { it.field() }
+            .filter { it.definingClass == owner.type &&
+                it.type == listMethod.definingClass }.distinctBy { it.id() }
+            .unique("native caption model field")
+
+        val nativeDirect = classDefBy(listMethod.definingClass).methods.filter {
+            it.parameterTypes.isEmpty() && it.returnType == "Ljava/util/List;" &&
+                it.name != listMethod.name
+        }.unique("native source caption getter")
+
+        fun bindList(name: String, target: Method) {
+            val stub = runtime.methods.filter { it.name == name &&
+                it.parameterTypes.toList() == listOf(OBJECT) }.unique(name)
+            val replacement = ImmutableMethod(BRIDGE, stub.name, stub.parameters,
+                stub.returnType, stub.accessFlags, stub.annotations, null,
+                MutableMethodImplementation(3)).toMutable()
+            replacement.addInstructionsWithLabels(0, """
+                check-cast p0, ${owner.type}
+                iget-object v0, p0, ${modelField.id()}
+                if-nez v0, :ready
+                const/4 v0, 0x0
+                return-object v0
+                :ready
+                invoke-virtual {v0}, ${target.id()}
+                move-result-object v0
+                return-object v0
+            """.trimIndent())
+            runtime.methods.remove(stub)
+            runtime.methods.add(replacement)
+        }
+        bindList("nativeDirectTracks", nativeDirect)
+        bindList("nativeTranslatedTracks", listMethod)
+
+        // Only explicit user selections are persisted; automated model choices are ignored.
+        val mutableSelector = mutableClassDefBy(selector.definingClass).methods
+            .filter { it.name == selector.name &&
+                it.parameterTypes.toList() == selector.parameterTypes.toList() &&
+                it.returnType == "V" }.unique("mutable selector")
+        mutableSelector.addInstructions(0, """
+            invoke-static {p1, p2}, $BRIDGE->recordExplicitSelection($OBJECT$OBJECT)V
+        """.trimIndent())
+
+        // Reuse the YouTube model-ready default-track decision rather than a playback loop.
+        val mutableDefault = mutableClassDefBy(defaultTrack.definingClass).methods
+            .filter { it.name == defaultTrack.name && it.parameterTypes.isEmpty() &&
+                it.returnType == track.type }.unique("mutable default selector")
+        if (mutableDefault.implementation!!.registerCount < 2)
+            throw PatchException("Universal Captions: no scratch register in default selector")
+        mutableDefault.addInstructionsWithLabels(0, """
+            invoke-static {p0}, $BRIDGE->preferredTrack($OBJECT)$OBJECT
+            move-result-object v0
+            if-eqz v0, :original_default
+            check-cast v0, ${track.type}
+            return-object v0
+        """.trimIndent(), ExternalLabel("original_default",
+            mutableDefault.implementation!!.instructions.first()))
 
         val method = mutableClassDefBy(listMethod.definingClass).methods
             .filter { it.name == listMethod.name &&
