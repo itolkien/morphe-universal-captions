@@ -23,6 +23,20 @@ public final class CaptionResolverTest {
         expect(Action.NONE, null, choose(Collections.emptyList(), "tr", false));
         expect(Action.DIRECT, "de", choose(Arrays.asList(manual("ja", true), manual("de", false)), "de", false));
         expect(Action.DIRECT, "he", choose(Collections.singletonList(manual("he", true)), "iw", false));
+        // Pairwise rank competition: each higher-priority class must defeat lower classes.
+        expect(Action.DIRECT, "tr", choose(Arrays.asList(
+            asr("tr", false), manual("tr", false), manual("ja", true)), "tr", false));
+        expect(Action.DIRECT, "tr", choose(Arrays.asList(
+            manual("en", true), asr("tr", false), manual("ko", false)), "tr", false));
+        expect(Action.TRANSLATE, "ja", choose(Arrays.asList(
+            asr("ja", true), manual("de", false), asr("en", false), manual("ja", true)), "tr", false));
+        expect(Action.TRANSLATE, "ja", choose(Arrays.asList(
+            manual("de", false), asr("ja", true), asr("en", false)), "tr", false));
+        expect(Action.TRANSLATE, "de", choose(Arrays.asList(
+            asr("en", false), manual("de", false)), "tr", false));
+        expect(Action.TRANSLATE, "ko", choose(Arrays.asList(
+            asr("ko", false)), "tr", false));
+        expect(Action.NONE, null, choose(Collections.<Track>emptyList(), "tr", false));
         System.out.println("CaptionResolverTest passed");
     }
 }
