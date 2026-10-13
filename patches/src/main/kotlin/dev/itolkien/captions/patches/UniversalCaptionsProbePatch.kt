@@ -20,7 +20,7 @@ val universalCaptionsProbePatch = bytecodePatch(
 ) {
     extendWith("extensions/extension.mpe")
     execute {
-        fun install(needle: String, methodName: String) {
+        fun install(needle: String) {
             val method = Fingerprint(
                 accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
                 returnType = "Ljava/util/List;",
@@ -33,13 +33,13 @@ val universalCaptionsProbePatch = bytecodePatch(
             for ((index, instruction) in returns.asReversed()) {
                 val register = (instruction as OneRegisterInstruction).registerA
                 method.addInstructions(index, """
-                    invoke-static { v$register }, Ldev/itolkien/captions/extension/NativeTrackProbe;->$methodName(Ljava/util/List;)Ljava/util/List;
+                    invoke-static { v$register }, Ldev/itolkien/captions/extension/NativeTrackProbe;->observe(Ljava/util/List;)Ljava/util/List;
                     move-result-object v$register
                 """)
             }
         }
 
-        install("AUTO_TRANSLATE_CAPTIONS_OPTION", "observeDirect")
-        install("&tlang=", "observeTranslated")
+        install("AUTO_TRANSLATE_CAPTIONS_OPTION")
+        install("&tlang=")
     }
 }
