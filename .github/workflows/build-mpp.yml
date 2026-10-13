@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'patches/**'
+      - 'extensions/**'
       - '.github/workflows/build-mpp.yml'
 permissions:
   contents: read
@@ -30,6 +31,8 @@ jobs:
           cp addon/patches/src/main/kotlin/dev/itolkien/captions/patches/*.kt template/patches/src/main/kotlin/dev/itolkien/captions/patches/
           mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
           cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
+          # Use an updated bundle version so Manager can distinguish old incompatible artifacts.
+          sed -i 's/^version = .*/version = 1.0.1/' template/gradle.properties
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
@@ -54,10 +57,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :patches:buildAndroid :patches:generatePatchesList --no-daemon
+          find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
       - name: Upload Morphe Manager MPP (experimental)
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-integration-probe-mpp
+          name: universal-captions-1.0.1-native-probe-mpp
           path: template/patches/build/libs/*.mpp
           if-no-files-found: error
           retention-days: 14
