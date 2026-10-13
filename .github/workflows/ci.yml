@@ -21,3 +21,6 @@ jobs:
           java -cp build/classes dev.itolkien.captions.LanguageResolverTest
           javac -d build/classes src/main/java/dev/itolkien/captions/CaptionResolver.java src/test/java/dev/itolkien/captions/CaptionResolverTest.java
           java -cp build/classes dev.itolkien.captions.CaptionResolverTest
+          # Guard against testing one policy while shipping another to Android.
+          sed 's/^package dev\.itolkien\.captions\.extension;/package dev.itolkien.captions;/' extensions/extension/src/main/java/dev/itolkien/captions/extension/CaptionResolver.java > build/shipped-CaptionResolver.java
+          diff -u src/main/java/dev/itolkien/captions/CaptionResolver.java build/shipped-CaptionResolver.java
