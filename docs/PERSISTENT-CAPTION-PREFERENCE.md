@@ -41,3 +41,7 @@ The branch now contains a **pure Java selection policy** in `src/main/java/dev/i
 8. Rapidly switch between two videos; no stale track URL, flickering or selection loops.
 9. Verify automatic YouTube player selections do not overwrite explicit saved target.
 10. Compare regression cases with the published main branch before merge.
+
+## Integration safety gate
+
+`CaptionPreferenceStore` now implements durable Android preference storage, but **it has no native selection callback wired yet**. The resolver is a pure-Java module, and neither class is enough to provide video-to-video persistence in an MPP. A correct build must hook the actual YouTube 21.20.405 explicit selection dispatcher, distinguish explicit Off from automatic selection, hook the model-ready/default selection path, and bind selection against the current video's model. Until this is implemented and device-tested, do not label any generated MPP as containing persistent automatic selection.
