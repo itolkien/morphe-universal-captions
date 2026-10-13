@@ -1,0 +1,31 @@
+{
+  "version": "1.2.0",
+  "patches": [
+    {
+      "name": "Universal Captions - unlock translation languages (experimental)",
+      "description": "Adds YouTube-native auto-translation targets to Android captions menu. No AI or external translation API.",
+      "default": false,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.google.android.youtube",
+          "name": "YouTube",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "21.20.405",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    }
+  ]
+}
