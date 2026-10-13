@@ -1,22 +1,40 @@
 package dev.itolkien.captions.patches
 
-import app.morphe.patcher.patch.resourcePatch
-import java.io.File
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.string
+import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 /**
- * Integration probe: proves this add-on can apply a resource patch to YouTube.
- * Does NOT unlock missing languages. Deliberately opt-in.
+ * Actual YouTube caption-manager interception, not a resource marker.
+ * Does not add missing translation targets; observes the native auto-translate list.
  */
 @Suppress("unused")
-val universalCaptionsProbePatch = resourcePatch(
-    name = "Universal Captions - integration probe (no language unlock)",
-    description = "Experimental add-on packaging and resource injection test. Does not modify caption selection.",
+val universalCaptionsProbePatch = bytecodePatch(
+    name = "Universal Captions - native track probe (experimental)",
+    description = "Hooks YouTube's native auto-translation track list without altering it. Diagnostic only.",
     default = false,
 ) {
+    extendWith("extensions/extension.mpe")
     execute {
-        val directory = get("res/raw").apply { mkdirs() }
-        File(directory, "universal_captions_probe.txt").writeText(
-            "Morphe Universal Captions probe; no translation behavior changed.\n"
-        )
+        val method = Fingerprint(
+            accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+            returnType = "Ljava/util/List;",
+            parameters = listOf(),
+            filters = listOf(string("&tlang=")),
+        ).method
+        val returns = method.implementation!!.instructions.withIndex()
+            .filter { it.value.opcode == Opcode.RETURN_OBJECT }
+        require(returns.isNotEmpty()) { "No native auto-translation list return found" }
+        for ((index, instruction) in returns.asReversed()) {
+            val register = (instruction as OneRegisterInstruction).registerA
+            method.addInstructions(index, """
+                invoke-static { v$register }, Ldev/itolkien/captions/extension/NativeTrackProbe;->observe(Ljava/util/List;)Ljava/util/List;
+                move-result-object v$register
+            """)
+        }
     }
 }
