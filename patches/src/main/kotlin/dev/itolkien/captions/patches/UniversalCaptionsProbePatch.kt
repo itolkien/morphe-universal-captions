@@ -229,6 +229,12 @@ val universalCaptionsPatch = bytecodePatch(
         if (mutableDefault.implementation!!.registerCount < 2)
             throw PatchException("Universal Captions: no scratch register in default selector")
         mutableDefault.addInstructionsWithLabels(0, """
+            invoke-static {}, $BRIDGE->captionsOff()Z
+            move-result v0
+            if-eqz v0, :check_preference
+            const/4 v0, 0x0
+            return-object v0
+            :check_preference
             invoke-static {p0}, $BRIDGE->preferredTrack($OBJECT)$OBJECT
             move-result-object v0
             if-eqz v0, :original_default
