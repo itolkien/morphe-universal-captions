@@ -123,6 +123,79 @@ public final class NativeTranslationBridge {
         return tracks;
     }
 
+
+    /** Obtains process application context without depending on Morphe UI classes. */
+    private static android.content.Context appContext() {
+        try {
+            Class<?> thread = Class.forName("android.app.ActivityThread");
+            Object context = thread.getMethod("currentApplication").invoke(null);
+            return context instanceof android.content.Context ? (android.content.Context) context : null;
+        } catch (Throwable ignored) { return null; }
+    }
+
+    /** Called only by the native user-selection entry point, never by model defaults. */
+    public static void recordExplicitSelection(Object selected, Object origin) {
+        try {
+            if (!(origin instanceof Enum) ||
+                    !"PREFERRED_TRACK".equals(((Enum<?>) origin).name())) return;
+            android.content.Context c = appContext();
+            if (c == null) return;
+            if (selected == null || "DISABLE_CAPTIONS_OPTION".equals(language(selected))) {
+                CaptionPreferenceStore.onExplicitOff(c);
+                return;
+            }
+            String code = language(selected);
+            if (code == null || code.endsWith("_OPTION")) return;
+            CaptionPreferenceStore.onExplicitLanguageSelection(c, code);
+            Log.e(TAG, "Saved explicit caption language=" + code);
+        } catch (Throwable error) {
+            Log.e(TAG, "Could not remember explicit caption selection", error);
+        }
+    }
+
+    /** Bound by the patch to current native caption model tracks; null means original default. */
+    public static Object preferredTrack(Object manager) {
+        try {
+            android.content.Context c = appContext();
+            if (c == null) return null;
+            if (CaptionPreferenceStore.explicitlyDisabled(c)) return null;
+            String preferred = CaptionPreferenceStore.preferredLanguage(c);
+            if (preferred.isEmpty()) return null;
+            List<?> direct = nativeDirectTracks(manager);
+            if (direct == null || direct.isEmpty()) return null;
+            Object best = null;
+            int priority = Integer.MAX_VALUE;
+            for (Object candidate : direct) {
+                if (sourceRank(candidate) == Integer.MAX_VALUE) continue;
+                String code = language(candidate);
+                if (!sameLanguage(code, preferred)) continue;
+                boolean asr = vss(candidate) != null && vss(candidate).startsWith("a.");
+                int rank = asr ? 1 : 0;
+                if (rank < priority) { best = candidate; priority = rank; }
+            }
+            if (best != null) return best;
+            // Other target languages require a native translated track bound to this video.
+            List<?> translated = nativeTranslatedTracks(manager);
+            if (translated == null) return null;
+            for (Object candidate : translated) {
+                if (sameLanguage(language(candidate), preferred)) return candidate;
+            }
+        } catch (Throwable error) {
+            Log.e(TAG, "Unable to resolve preference", error);
+        }
+        return null;
+    }
+
+    private static boolean sameLanguage(String a, String b) {
+        if (a == null || b == null || a.isEmpty() || b.isEmpty()) return false;
+        java.util.Locale x = java.util.Locale.forLanguageTag(a);
+        java.util.Locale y = java.util.Locale.forLanguageTag(b);
+        return !x.getLanguage().isEmpty() && x.getLanguage().equalsIgnoreCase(y.getLanguage());
+    }
+
+    public static List<?> nativeDirectTracks(Object manager) { return null; }
+    public static List<?> nativeTranslatedTracks(Object manager) { return null; }
+
     public static List<?> augment(List<?> original) {
         if (original == null || original.isEmpty()) return original;
         try {
