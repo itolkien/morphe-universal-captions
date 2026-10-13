@@ -1,0 +1,21 @@
+name: Core language tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and test language matching
+        run: |
+          mkdir -p build/classes
+          javac -d build/classes src/main/java/dev/itolkien/captions/LanguageResolver.java src/test/java/dev/itolkien/captions/LanguageResolverTest.java
+          java -cp build/classes dev.itolkien.captions.LanguageResolverTest
