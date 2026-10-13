@@ -153,6 +153,10 @@ public final class NativeTranslationBridge {
         }
     }
 
+    public static boolean captionsOff() {
+        return CaptionPreferenceStore.explicitlyDisabled(appContext());
+    }
+
     /** Bound by the patch to current native caption model tracks; null means original default. */
     public static Object preferredTrack(Object manager) {
         try {
