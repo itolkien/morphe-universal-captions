@@ -1,6 +1,8 @@
 package dev.itolkien.captions.patches
 
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.patch.Compatibility
+import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -39,6 +41,11 @@ val universalCaptionsPatch = bytecodePatch(
     description = "Adds YouTube-native auto-translation targets to Android captions menu. No AI or external translation API.",
     default = false,
 ) {
+    compatibleWith(Compatibility(
+        name = "YouTube",
+        packageName = "com.google.android.youtube",
+        targets = listOf(AppTarget(version = "21.20.405"))
+    ))
     extendWith("extensions/extension.mpe")
     execute {
         val track = getAllClassesWithString("AUTO_TRANSLATE_CAPTIONS_OPTION").map { classDefBy(it.type) }
