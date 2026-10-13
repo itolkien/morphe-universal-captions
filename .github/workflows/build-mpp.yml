@@ -73,9 +73,9 @@ jobs:
         run: |
           cp template/patches/build/libs/patches-1.2.0.mpp universal-captions-1.2.0.mpp
           if ! gh release view v1.2.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.2.0 universal-captions-1.2.0.mpp \\
-              --repo "$GITHUB_REPOSITORY" \\
-              --target "$GITHUB_SHA" \\
-              --title "Universal Captions v1.2.0 - YouTube" \\
+            gh release create v1.2.0 universal-captions-1.2.0.mpp \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Universal Captions v1.2.0 - YouTube" \
               --notes "Experimental YouTube-native auto-translation unlock. Verified by a user on YouTube 21.20.405. Supports additional languages through native caption-track cloning. Compatibility metadata targets YouTube, not universal apps. Always retain a working APK backup; other YouTube versions are unverified."
           fi
