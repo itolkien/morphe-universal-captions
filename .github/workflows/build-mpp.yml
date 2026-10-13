@@ -1,4 +1,4 @@
-name: Build experimental Morphe MPP
+name: Build Universal Captions MPP
 on:
   workflow_dispatch:
   push:
@@ -32,14 +32,14 @@ jobs:
           mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
           cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
           # Use an updated bundle version so Manager can distinguish old incompatible artifacts.
-          sed -i 's/^version = .*/version = 1.2.0/' template/gradle.properties
+          sed -i 's/^version = .*/version = 1.3.0/' template/gradle.properties
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
           s=p.read_text()
           s=s.replace('group = "app.template"', 'group = "dev.itolkien.captions"')
-          s=s.replace('name = "UserXYZ Patches"', 'name = "Morphe Universal Captions (Experimental)"')
-          s=s.replace('description = "Patches for apps I like"', 'description = "Experimental YouTube-native caption integration probes"')
+          s=s.replace('name = "UserXYZ Patches"', 'name = "Morphe Universal Captions"')
+          s=s.replace('description = "Patches for apps I like"', 'description = "Native YouTube captions and remembered subtitle language"')
           s=s.replace('source = "git@github.com:UserXYZ/morphe-patches.git"', 'source = "https://github.com/itolkien/morphe-universal-captions"')
           s=s.replace('author = "Awesome dev"', 'author = "itolkien"')
           s=s.replace('contact = "na"', 'contact = "https://github.com/itolkien/morphe-universal-captions/issues"')
@@ -58,11 +58,11 @@ jobs:
           chmod +x gradlew
           ./gradlew :patches:buildAndroid :patches:generatePatchesList --no-daemon
           find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
-      - name: Upload Morphe Manager MPP (experimental)
+      - name: Upload Morphe Manager MPP
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-source-selection-experiment-mpp
-          path: template/patches/build/libs/patches-1.2.0.mpp
+          name: universal-captions-1.3.0-youtube-mpp
+          path: template/patches/build/libs/patches-1.3.0.mpp
           if-no-files-found: error
           retention-days: 14
 
@@ -71,13 +71,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp template/patches/build/libs/patches-1.2.0.mpp universal-captions-1.2.0.mpp
-          if ! gh release view v1.2.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.2.0 universal-captions-1.2.0.mpp \
+          cp template/patches/build/libs/patches-1.3.0.mpp universal-captions-1.3.0.mpp
+          if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v1.3.0 universal-captions-1.3.0.mpp \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Universal Captions v1.2.0 - YouTube" \
-              --notes "Experimental YouTube-native auto-translation unlock. Verified by a user on YouTube 21.20.405. Supports additional languages through native caption-track cloning. Compatibility metadata targets YouTube, not universal apps. Always retain a working APK backup; other YouTube versions are unverified."
+              --title "Universal Captions v1.3.0 - YouTube" \
+              --notes "Adds native auto-translation language options and remembers subtitle language or Off across videos. Prefers target-language manual captions, then ASR; otherwise selects a suitable native track for YouTube translation. Tested on YouTube 21.20.405 with Waydroid; other versions and edge cases unverified. No external translation API."
           fi
 
       - name: Publish remote source metadata
@@ -86,11 +86,11 @@ jobs:
           python3 - <<'PY'
           import json, datetime
           from pathlib import Path
-          version = "1.2.0"
+          version = "1.3.0"
           repo = "itolkien/morphe-universal-captions"
           data = {
               "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
-              "description": "Native auto-translated caption languages for YouTube 21.20.405. Experimental.",
+              "description": "Native auto-translated caption languages for YouTube 21.20.405. Remembered language and native selection.",
               "download_url": f"https://github.com/{repo}/releases/download/v{version}/universal-captions-{version}.mpp",
               "signature_download_url": "",
               "version": version,
@@ -105,6 +105,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add patches-bundle.json patches-list.json
           if ! git diff --cached --quiet; then
-            git commit -m "chore: publish v1.2.0 remote patch metadata"
+            git commit -m "chore: publish v1.3.0 remote patch metadata"
             git push origin HEAD:main
           fi
