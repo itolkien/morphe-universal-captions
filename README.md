@@ -1,8 +1,14 @@
 # Morphe Universal Captions
 
+**[➕ Add directly to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions)** · No manual MPP download, with remote updates once the release and source metadata are published.
+
 **YouTube-only Morphe add-on.** [Download latest release](https://github.com/itolkien/morphe-universal-captions/releases/latest) | [Report an issue](https://github.com/itolkien/morphe-universal-captions/issues)
 
-## Install in Morphe Manager
+## One-tap installation
+
+On Android with Morphe Manager installed, tap **[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions)**, confirm the source, and select its YouTube patch when patching. Morphe remote patch sources can update automatically. If Morphe reports missing metadata, the GitHub Release and `patches-bundle.json` publication have not finished; check [Actions](https://github.com/itolkien/morphe-universal-captions/actions).
+
+## Manual installation (fallback)
 
 1. Open [Releases](https://github.com/itolkien/morphe-universal-captions/releases) and download **`universal-captions-1.2.0.mpp`** (not sources or javadoc).
 2. In Morphe Manager open **Settings → Patch sources → Add local source** and select the downloaded `.mpp`.
