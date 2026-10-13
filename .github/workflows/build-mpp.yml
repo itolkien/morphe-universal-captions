@@ -2,7 +2,7 @@ name: Build experimental Morphe MPP
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, experiment/source-track-selection]
     paths:
       - 'patches/**'
       - 'extensions/**'
@@ -61,7 +61,7 @@ jobs:
       - name: Upload Morphe Manager MPP (experimental)
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-1.2.0-youtube-mpp
+          name: universal-captions-source-selection-experiment-mpp
           path: template/patches/build/libs/patches-1.2.0.mpp
           if-no-files-found: error
           retention-days: 14
