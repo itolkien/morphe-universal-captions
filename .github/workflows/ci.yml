@@ -19,3 +19,5 @@ jobs:
           mkdir -p build/classes
           javac -d build/classes src/main/java/dev/itolkien/captions/LanguageResolver.java src/test/java/dev/itolkien/captions/LanguageResolverTest.java
           java -cp build/classes dev.itolkien.captions.LanguageResolverTest
+          javac -d build/classes src/main/java/dev/itolkien/captions/CaptionResolver.java src/test/java/dev/itolkien/captions/CaptionResolverTest.java
+          java -cp build/classes dev.itolkien.captions.CaptionResolverTest
