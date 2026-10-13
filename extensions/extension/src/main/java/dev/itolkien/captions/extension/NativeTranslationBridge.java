@@ -57,19 +57,49 @@ public final class NativeTranslationBridge {
         return label.isEmpty() ? code : label;
     }
 
+    /** Returns MAX_VALUE for virtual/menu entries and previously translated tracks. */
+    static int sourceRank(Object track) {
+        try {
+            String source = url(track);
+            if (source == null) return Integer.MAX_VALUE;
+            Uri uri = Uri.parse(source);
+            String host = uri.getHost();
+            if (!"https".equalsIgnoreCase(uri.getScheme()) ||
+                    !("youtube.com".equalsIgnoreCase(host) || "www.youtube.com".equalsIgnoreCase(host)) ||
+                    !"/api/timedtext".equals(uri.getPath())) return Integer.MAX_VALUE;
+            String target = uri.getQueryParameter("tlang");
+            if (target != null && !target.isEmpty()) return Integer.MAX_VALUE;
+            String code = language(track);
+            if (code == null || code.isEmpty() || code.endsWith("_OPTION"))
+                return Integer.MAX_VALUE;
+            // Manual source tracks usually have a plain VSS ID; ASR uses "a.".
+            String trackId = vss(track);
+            return trackId != null && trackId.startsWith("a.") ? 1 : 0;
+        } catch (Throwable ignored) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
     public static List<?> augment(List<?> original) {
         if (original == null || original.isEmpty()) return original;
         try {
             Object prototype = null;
+            int bestSourceRank = Integer.MAX_VALUE;
             Set<String> present = new HashSet<>();
             for (Object track : original) {
                 String lc = language(track);
                 if (lc != null) present.add(lc.toLowerCase(Locale.ROOT));
-                String u = url(track);
-                if (prototype == null && u != null && u.contains("/api/timedtext")
-                        && u.startsWith("https://")) prototype = track;
+                // Do not translate an already translated track again.
+                // Rank valid originals by YouTube track type, preserving the
+                // original menu order when candidates have equal priority.
+                int rank = sourceRank(track);
+                if (rank < bestSourceRank) {
+                    prototype = track;
+                    bestSourceRank = rank;
+                }
             }
             if (prototype == null) return original;
+            Log.e(TAG, "Selected original caption source rank=" + bestSourceRank);
             List<Object> result = new ArrayList<>(original);
             int added = 0;
             for (String code : TARGETS) {
