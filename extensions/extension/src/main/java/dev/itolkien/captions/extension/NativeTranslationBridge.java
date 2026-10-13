@@ -5,6 +5,9 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Set;
 
@@ -80,6 +83,46 @@ public final class NativeTranslationBridge {
         }
     }
 
+    // Keep direct caption languages separate by video, so tracks do not leak across videos.
+    private static final Map<String, Set<String>> MANUAL_LANGUAGES =
+            Collections.synchronizedMap(new java.util.LinkedHashMap<String, Set<String>>() {
+                @Override protected boolean removeEldestEntry(Map.Entry<String, Set<String>> eldest) {
+                    return size() > 8;
+                }
+            });
+
+    private static String videoId(String source) {
+        if (source == null) return "";
+        try {
+            String id = Uri.parse(source).getQueryParameter("v");
+            return id == null ? "" : id;
+        } catch (Throwable ignored) { return ""; }
+    }
+
+    /** Receives YouTube's original tracks before the auto-translate list is built. */
+    public static List<?> observeDirect(List<?> tracks) {
+        if (tracks == null || tracks.isEmpty()) return tracks;
+        try {
+            Map<String, Set<String>> perVideo = new HashMap<>();
+            for (Object track : tracks) {
+                String id = videoId(url(track));
+                String code = language(track);
+                String trackId = vss(track);
+                if (id.isEmpty()) continue;
+                Set<String> langs = perVideo.get(id);
+                if (langs == null) { langs = new HashSet<>(); perVideo.put(id, langs); }
+                if (code != null && !code.isEmpty() && !code.endsWith("_OPTION") &&
+                        trackId != null && !trackId.startsWith("a.") &&
+                        sourceRank(track) != Integer.MAX_VALUE)
+                    langs.add(code.toLowerCase(Locale.ROOT));
+            }
+            synchronized (MANUAL_LANGUAGES) { MANUAL_LANGUAGES.putAll(perVideo); }
+        } catch (Throwable e) {
+            Log.e(TAG, "Direct track observation failed: " + e.getClass().getSimpleName());
+        }
+        return tracks;
+    }
+
     public static List<?> augment(List<?> original) {
         if (original == null || original.isEmpty()) return original;
         try {
@@ -114,9 +157,18 @@ public final class NativeTranslationBridge {
                 Log.e(TAG, "Selected original caption source rank=" + bestSourceRank);
             }
             if (prototype == null) return original;
+            Set<String> manual = Collections.emptySet();
+            String id = videoId(url(prototype));
+            if (!id.isEmpty()) {
+                synchronized (MANUAL_LANGUAGES) {
+                    Set<String> known = MANUAL_LANGUAGES.get(id);
+                    if (known != null) manual = new HashSet<>(known);
+                }
+            }
             List<Object> result = new ArrayList<>(original);
             int added = 0;
             for (String code : TARGETS) {
+                if (manual.contains(code.toLowerCase(Locale.ROOT))) continue;
                 if (!present.add(code.toLowerCase(Locale.ROOT))) continue;
                 Object newTrack = cloneTranslation(prototype, code);
                 if (newTrack != null) { result.add(newTrack); added++; }
