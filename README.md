@@ -22,6 +22,21 @@ Our starting reference is [Morphe PR #3566](https://github.com/MorpheApp/morphe-
 
 The actual missing piece is determining whether Android can request a YouTube-supported target that is not present in `patch_getAutoTranslateCaptionTracks()`. See [docs/EXPERIMENT.md](docs/EXPERIMENT.md) for the test matrix and decision criteria.
 
+## Native translation prototype 1.1.0 (experimental)
+
+The source now implements an **opt-in** real YouTube translation-track augmentation patch:
+`Universal Captions - unlock translation languages (experimental)`.
+It clones a real caption track through YouTube's own builder, changes the target language,
+native display label, `tlang` URL parameter and track ID, and returns the augmented list
+to the native caption menu. No AI translation engine is involved.
+
+**Device behavior has not been verified.** Compilation alone does not prove that YouTube
+serves these translated subtitles. The broad target catalogue may contain languages
+unsupported by individual videos. Expect possible patch incompatibilities or runtime
+crashes; back up your working Morphe setup and test only if you accept the risk.
+See [the MPP build workflow](../../actions/workflows/build-mpp.yml); use **1.1.0**,
+not earlier probe packages. We have not published a stable release.
+
 ## Repository status
 
 The language resolver, native caption-list probe and executable CI tests now live in `src/` and `patches/`; see [architecture](docs/ARCHITECTURE.md). This is **not yet an installable Morphe patch**: native Android/YouTube caption request injection still requires reverse engineering and device verification. A build workflow for an experimental `.mpp` exists at [Actions → Build experimental Morphe MPP](../../actions/workflows/build-mpp.yml). The resulting artifact is **only an opt-in integration probe**, not a caption unlocker. Do not install it as a working subtitle unlocker.
