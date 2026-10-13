@@ -84,6 +84,12 @@ public final class NativeTranslationBridge {
     }
 
     // Keep direct caption languages separate by video, so tracks do not leak across videos.
+    private static final Map<String, List<Object>> DIRECT_TRACKS =
+            Collections.synchronizedMap(new java.util.LinkedHashMap<String, List<Object>>() {
+                @Override protected boolean removeEldestEntry(Map.Entry<String, List<Object>> eldest) {
+                    return size() > 8;
+                }
+            });
     private static final Map<String, Set<String>> MANUAL_LANGUAGES =
             Collections.synchronizedMap(new java.util.LinkedHashMap<String, Set<String>>() {
                 @Override protected boolean removeEldestEntry(Map.Entry<String, Set<String>> eldest) {
@@ -104,11 +110,15 @@ public final class NativeTranslationBridge {
         if (tracks == null || tracks.isEmpty()) return tracks;
         try {
             Map<String, Set<String>> perVideo = new HashMap<>();
+            Map<String, List<Object>> directByVideo = new HashMap<>();
             for (Object track : tracks) {
                 String id = videoId(url(track));
                 String code = language(track);
                 String trackId = vss(track);
                 if (id.isEmpty()) continue;
+                List<Object> videoTracks = directByVideo.get(id);
+                if (videoTracks == null) { videoTracks = new ArrayList<>(); directByVideo.put(id, videoTracks); }
+                videoTracks.add(track);
                 Set<String> langs = perVideo.get(id);
                 if (langs == null) { langs = new HashSet<>(); perVideo.put(id, langs); }
                 if (code != null && !code.isEmpty() && !code.endsWith("_OPTION") &&
@@ -117,6 +127,8 @@ public final class NativeTranslationBridge {
                     langs.add(code.toLowerCase(Locale.ROOT));
             }
             synchronized (MANUAL_LANGUAGES) { MANUAL_LANGUAGES.putAll(perVideo); }
+            synchronized (DIRECT_TRACKS) { DIRECT_TRACKS.putAll(directByVideo); }
+            Log.e(TAG, "Direct tracks observed count=" + tracks.size() + " videos=" + directByVideo.size());
         } catch (Throwable e) {
             Log.e(TAG, "Direct track observation failed: " + e.getClass().getSimpleName());
         }
@@ -136,12 +148,15 @@ public final class NativeTranslationBridge {
     /** Called only by the native user-selection entry point, never by model defaults. */
     public static void recordExplicitSelection(Object selected, Object origin) {
         try {
-            if (!(origin instanceof Enum) ||
-                    !"PREFERRED_TRACK".equals(((Enum<?>) origin).name())) return;
+            String originName = origin instanceof Enum ? ((Enum<?>) origin).name() : String.valueOf(origin);
+            String selectedCode = selected == null ? "null" : language(selected);
+            Log.e(TAG, "Selection callback origin=" + originName + " code=" + selectedCode);
+            if (!"PREFERRED_TRACK".equals(originName)) return;
             android.content.Context c = appContext();
-            if (c == null) return;
+            if (c == null) { Log.e(TAG, "Selection context unavailable"); return; }
             if (selected == null || "DISABLE_CAPTIONS_OPTION".equals(language(selected))) {
                 CaptionPreferenceStore.onExplicitOff(c);
+                Log.e(TAG, "Saved explicit captions Off");
                 return;
             }
             String code = language(selected);
@@ -161,12 +176,13 @@ public final class NativeTranslationBridge {
     public static Object preferredTrack(Object manager) {
         try {
             android.content.Context c = appContext();
-            if (c == null) return null;
-            if (CaptionPreferenceStore.explicitlyDisabled(c)) return null;
+            if (c == null) { Log.e(TAG, "Default selection context unavailable"); return null; }
+            if (CaptionPreferenceStore.explicitlyDisabled(c)) { Log.e(TAG, "Default: explicit Off"); return null; }
             String preferred = CaptionPreferenceStore.preferredLanguage(c);
-            if (preferred.isEmpty()) return null;
+            if (preferred.isEmpty()) { Log.e(TAG, "Default: no remembered target language"); return null; }
+            Log.e(TAG, "Default: resolving preferred=" + preferred);
             List<?> direct = nativeDirectTracks(manager);
-            if (direct == null || direct.isEmpty()) return null;
+            if (direct == null || direct.isEmpty()) { Log.e(TAG, "Default: no native direct tracks"); return null; }
             Object best = null;
             int priority = Integer.MAX_VALUE;
             for (Object candidate : direct) {
@@ -177,12 +193,14 @@ public final class NativeTranslationBridge {
                 int rank = asr ? 1 : 0;
                 if (rank < priority) { best = candidate; priority = rank; }
             }
-            if (best != null) return best;
+            if (best != null) { Log.e(TAG, "Default: exact direct match " + language(best)); return best; }
             // Other target languages require a native translated track bound to this video.
             List<?> translated = nativeTranslatedTracks(manager);
             if (translated == null) return null;
             for (Object candidate : translated) {
-                if (sameLanguage(language(candidate), preferred)) return candidate;
+                if (sameLanguage(language(candidate), preferred)) {
+                    Log.e(TAG, "Default: translated match " + preferred); return candidate;
+                }
             }
         } catch (Throwable error) {
             Log.e(TAG, "Unable to resolve preference", error);
@@ -218,6 +236,26 @@ public final class NativeTranslationBridge {
                     bestSourceRank = rank;
                 }
             }
+            // Translation candidates do not necessarily include the original signed
+            // tracks. Use original tracks from the direct getter, matched by video ID.
+            String activeVideo = "";
+            for (Object candidate : original) {
+                activeVideo = videoId(url(candidate));
+                if (!activeVideo.isEmpty()) break;
+            }
+            List<Object> originals = null;
+            synchronized (DIRECT_TRACKS) {
+                if (!activeVideo.isEmpty()) originals = DIRECT_TRACKS.get(activeVideo);
+            }
+            if (originals != null) {
+                for (Object candidate : originals) {
+                    int rank = sourceRank(candidate);
+                    if (rank < bestSourceRank) {
+                        prototype = candidate;
+                        bestSourceRank = rank;
+                    }
+                }
+            }
             if (prototype == null) {
                 // The auto-translate list may already contain derived tracks rather
                 // than original tracks. Keep the known-working selection behavior
@@ -229,9 +267,9 @@ public final class NativeTranslationBridge {
                         break;
                     }
                 }
-                Log.e(TAG, "Source selection: using legacy fallback");
+                Log.e(TAG, "Source selection: using legacy fallback; direct=" + (originals == null ? 0 : originals.size()) + " videoKnown=" + !activeVideo.isEmpty());
             } else {
-                Log.e(TAG, "Selected original caption source rank=" + bestSourceRank);
+                Log.e(TAG, "Selected original caption source rank=" + bestSourceRank + " direct=" + (originals == null ? 0 : originals.size()));
             }
             if (prototype == null) return original;
             Set<String> manual = Collections.emptySet();
