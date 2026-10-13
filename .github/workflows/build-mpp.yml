@@ -1,0 +1,61 @@
+name: Build experimental Morphe MPP
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'patches/**'
+      - '.github/workflows/build-mpp.yml'
+permissions:
+  contents: read
+  packages: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          path: addon
+      - name: Checkout Morphe official template
+        uses: actions/checkout@v4
+        with:
+          repository: MorpheApp/morphe-patches-template
+          ref: main
+          path: template
+      - name: Inject the independent patch
+        run: |
+          rm -rf template/patches/src/main/kotlin/app/template/patches/example
+          mkdir -p template/patches/src/main/kotlin/dev/itolkien/captions/patches
+          cp addon/patches/src/main/kotlin/dev/itolkien/captions/patches/*.kt template/patches/src/main/kotlin/dev/itolkien/captions/patches/
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("template/patches/build.gradle.kts")
+          s=p.read_text()
+          s=s.replace('group = "app.template"', 'group = "dev.itolkien.captions"')
+          s=s.replace('name = "UserXYZ Patches"', 'name = "Morphe Universal Captions (Experimental)"')
+          s=s.replace('description = "Patches for apps I like"', 'description = "Experimental YouTube-native caption integration probes"')
+          s=s.replace('source = "git@github.com:UserXYZ/morphe-patches.git"', 'source = "https://github.com/itolkien/morphe-universal-captions"')
+          s=s.replace('author = "Awesome dev"', 'author = "itolkien"')
+          s=s.replace('contact = "na"', 'contact = "https://github.com/itolkien/morphe-universal-captions/issues"')
+          s=s.replace('website = "na"', 'website = "https://github.com/itolkien/morphe-universal-captions"')
+          p.write_text(s)
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build installable patch bundle
+        working-directory: template
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :patches:buildAndroid :patches:generatePatchesList --no-daemon
+      - name: Upload Morphe Manager MPP (experimental)
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-captions-integration-probe-mpp
+          path: template/patches/build/libs/*.mpp
+          if-no-files-found: error
+          retention-days: 14
