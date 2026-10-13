@@ -45,3 +45,7 @@ The branch now contains a **pure Java selection policy** in `src/main/java/dev/i
 ## Integration safety gate
 
 `CaptionPreferenceStore` now implements durable Android preference storage, but **it has no native selection callback wired yet**. The resolver is a pure-Java module, and neither class is enough to provide video-to-video persistence in an MPP. A correct build must hook the actual YouTube 21.20.405 explicit selection dispatcher, distinguish explicit Off from automatic selection, hook the model-ready/default selection path, and bind selection against the current video's model. Until this is implemented and device-tested, do not label any generated MPP as containing persistent automatic selection.
+
+## Native-hook prototype (October 2026)
+
+The experiment now attempts to hook the YouTube 21.20.405 native manual selection entry point and native default caption selector. Explicit target language and Off are persisted by `CaptionPreferenceStore`; a model-ready default attempts a matching manual/ASR track first, then a generated translated target. This is a **device-test prototype**, not a proven complete implementation of the seven-stage policy. It does not yet feed the pure `CaptionResolver` with a reliably verified original spoken language, and the callback's classification of explicit intent must be confirmed on-device. If the exact bytecode signatures cannot be matched, patching must fail rather than silently delivering a partial feature. Keep the public main release unchanged.
