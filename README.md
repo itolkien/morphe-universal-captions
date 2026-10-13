@@ -22,6 +22,10 @@ Our starting reference is [Morphe PR #3566](https://github.com/MorpheApp/morphe-
 
 The actual missing piece is determining whether Android can request a YouTube-supported target that is not present in `patch_getAutoTranslateCaptionTracks()`. See [docs/EXPERIMENT.md](docs/EXPERIMENT.md) for the test matrix and decision criteria.
 
+## Repository status
+
+The language resolver and executable CI tests now live in `src/`; see [architecture](docs/ARCHITECTURE.md). This is **not yet an installable Morphe patch**: native Android/YouTube caption request injection still requires reverse engineering and device verification. No downloadable `.mpp` exists. Do not install it as a working subtitle unlocker.
+
 ## Development milestones
 
 1. Collect reproducible examples (video ID, YouTube APK version, available mobile languages, desktop language, result).
