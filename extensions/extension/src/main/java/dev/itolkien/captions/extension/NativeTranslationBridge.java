@@ -183,25 +183,50 @@ public final class NativeTranslationBridge {
             Log.e(TAG, "Default: resolving preferred=" + preferred);
             List<?> direct = nativeDirectTracks(manager);
             if (direct == null || direct.isEmpty()) { Log.e(TAG, "Default: no native direct tracks"); return null; }
-            Object best = null;
-            int priority = Integer.MAX_VALUE;
+            // Resolve against *original video tracks*, not the generated translation menu.
+            // The first valid track is a heuristic for the original spoken language;
+            // YouTube does not expose an authoritative spoken-language field here.
+            String video = "";
+            List<CaptionResolver.Track> candidates = new ArrayList<>();
+            List<Object> corresponding = new ArrayList<>();
+            String inferredOriginal = "";
             for (Object candidate : direct) {
                 if (sourceRank(candidate) == Integer.MAX_VALUE) continue;
+                String id = videoId(url(candidate));
+                if (id.isEmpty()) continue;
+                if (video.isEmpty()) video = id;
+                if (!video.equals(id)) continue;
                 String code = language(candidate);
-                if (!sameLanguage(code, preferred)) continue;
-                boolean asr = vss(candidate) != null && vss(candidate).startsWith("a.");
-                int rank = asr ? 1 : 0;
-                if (rank < priority) { best = candidate; priority = rank; }
+                if (code == null || code.isEmpty()) continue;
+                if (inferredOriginal.isEmpty()) inferredOriginal = code;
+                String trackId = vss(candidate);
+                CaptionResolver.Kind kind = trackId != null && trackId.startsWith("a.")
+                        ? CaptionResolver.Kind.ASR : CaptionResolver.Kind.MANUAL;
+                corresponding.add(candidate);
+                candidates.add(new CaptionResolver.Track(code, kind,
+                        CaptionResolver.matches(code, inferredOriginal)));
             }
-            if (best != null) { Log.e(TAG, "Default: exact direct match " + language(best)); return best; }
-            // Other target languages require a native translated track bound to this video.
-            List<?> translated = nativeTranslatedTracks(manager);
-            if (translated == null) return null;
-            for (Object candidate : translated) {
-                if (sameLanguage(language(candidate), preferred)) {
-                    Log.e(TAG, "Default: translated match " + preferred); return candidate;
-                }
+            CaptionResolver.Choice choice = CaptionResolver.choose(candidates, preferred, false);
+            if (choice.source == null) {
+                Log.e(TAG, "Decision: no valid native source for target=" + preferred);
+                return null;
             }
+            int index = candidates.indexOf(choice.source);
+            Object source = corresponding.get(index);
+            if (choice.action == CaptionResolver.Action.DIRECT) {
+                Log.e(TAG, "Decision: direct target=" + preferred + " source=" +
+                        choice.source.language + " kind=" + choice.source.kind);
+                return source;
+            }
+            Object translated = cloneTranslation(source, preferred);
+            if (translated != null) {
+                Log.e(TAG, "Decision: translate target=" + preferred + " source=" +
+                        choice.source.language + " kind=" + choice.source.kind +
+                        " inferredOriginal=" + inferredOriginal);
+                return translated;
+            }
+            Log.e(TAG, "Decision: native translation cloning failed target=" + preferred);
+            return null;
         } catch (Throwable error) {
             Log.e(TAG, "Unable to resolve preference", error);
         }
