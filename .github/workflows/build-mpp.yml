@@ -28,6 +28,8 @@ jobs:
           rm -rf template/patches/src/main/kotlin/app/template/patches/example
           mkdir -p template/patches/src/main/kotlin/dev/itolkien/captions/patches
           cp addon/patches/src/main/kotlin/dev/itolkien/captions/patches/*.kt template/patches/src/main/kotlin/dev/itolkien/captions/patches/
+          mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
+          cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
