@@ -12,6 +12,12 @@ public final class NativeTrackProbe {
     private static final AtomicInteger TRANSLATED = new AtomicInteger();
     private NativeTrackProbe() {}
 
+    /** Stable entry point shared by all hooks. */
+    public static <T> List<T> observe(List<T> tracks) {
+        report("ANY", DIRECT.incrementAndGet(), tracks);
+        return tracks;
+    }
+
     public static <T> List<T> observeDirect(List<T> tracks) {
         report("DIRECT", DIRECT.incrementAndGet(), tracks);
         return tracks;
