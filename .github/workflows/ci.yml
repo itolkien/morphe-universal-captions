@@ -1,4 +1,4 @@
-name: Core language tests
+name: Caption regression tests
 on:
   push:
   pull_request:
@@ -13,14 +13,17 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
-      - name: Compile and test language matching
-        run: |
-          mkdir -p build/classes
-          javac -d build/classes src/main/java/dev/itolkien/captions/LanguageResolver.java src/test/java/dev/itolkien/captions/LanguageResolverTest.java
-          java -cp build/classes dev.itolkien.captions.LanguageResolverTest
-          javac -d build/classes src/main/java/dev/itolkien/captions/CaptionResolver.java src/test/java/dev/itolkien/captions/CaptionResolverTest.java
-          java -cp build/classes dev.itolkien.captions.CaptionResolverTest
-          # Guard against testing one policy while shipping another to Android.
-          sed 's/^package dev\.itolkien\.captions\.extension;/package dev.itolkien.captions;/' extensions/extension/src/main/java/dev/itolkien/captions/extension/CaptionResolver.java > build/shipped-CaptionResolver.java
-          diff -u src/main/java/dev/itolkien/captions/CaptionResolver.java build/shipped-CaptionResolver.java
+          java-version: '17'
+      - name: Test language and caption policies
+        run: scripts/test-core.sh
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.0.0'
+      - name: Test structural bytecode fingerprints
+        run: gradle -p tests/fingerprints test --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fingerprint-test-results
+          path: tests/fingerprints/build/reports/tests/test
+          if-no-files-found: ignore

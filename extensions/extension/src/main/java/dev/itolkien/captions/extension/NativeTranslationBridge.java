@@ -15,12 +15,6 @@ import java.util.Set;
 @SuppressWarnings({"unused","unchecked"})
 public final class NativeTranslationBridge {
     private static final String TAG = "MorpheUniversalCaptions";
-    // Initial broad target catalogue; YouTube support varies by video and account.
-    private static final String[] TARGETS = ("af am ar as az be bg bho bn bs ca ceb co cs cy da de " +
-        "dv el en eo es et eu fa fi fil fr fy ga gd gl gu ha haw he hi hmn hr ht hu hy " +
-        "id ig is it iw ja jv ka kk km kn ko ku ky la lb lo lt lv mg mi mk ml mn mr ms " +
-        "mt my ne nl no ny or pa pl ps pt ro ru rw sd si sk sl sm sn so sq sr st su " +
-        "sv sw ta te tg th tk tl tr tt ug uk ur uz vi xh yi yo zh-Hans zh-Hant zu").split(" ");
     private NativeTranslationBridge() {}
 
     public static String language(Object track) { return ""; } // bound in APK bytecode
@@ -307,9 +301,7 @@ public final class NativeTranslationBridge {
             }
             List<Object> result = new ArrayList<>(original);
             int added = 0;
-            for (String code : TARGETS) {
-                if (manual.contains(code.toLowerCase(Locale.ROOT))) continue;
-                if (!present.add(code.toLowerCase(Locale.ROOT))) continue;
+            for (String code : TranslationTargets.missing(present, manual)) {
                 Object newTrack = cloneTranslation(prototype, code);
                 if (newTrack != null) { result.add(newTrack); added++; }
             }

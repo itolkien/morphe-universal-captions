@@ -12,7 +12,7 @@ Unlock additional **Auto-translate** languages, remember your caption language a
 - **Prefer original caption tracks.** Use existing manual captions in the selected language first, then automatic speech-recognition captions.
 - **Translate when needed.** If the selected language has no direct captions, choose an available source and use YouTube's native auto-translation.
 - **Respect Off.** An explicit subtitle-off choice persists until you turn captions back on.
-- **Unlock more languages.** Extend YouTube's built-in Auto-translate menu with additional target languages.
+- **Unlock more languages.** Extend YouTube's built-in Auto-translate menu with a curated target catalogue, including Greek (`el`, displayed as Greek / Ελληνικά depending on your interface language). Available interface languages and working caption translation targets are different lists.
 - **No separate translator.** No AI models, external API keys, subtitle overlays, or background caption services.
 
 ## Installation
@@ -38,6 +38,14 @@ For each new video, the patch attempts to choose:
 
 The original spoken language is **inferred from available caption tracks**, not reliably detected from audio. Therefore source ranking in multilingual videos is best-effort; manual vs. ASR and your selected target language are prioritized explicitly.
 
+## Development changes (unreleased)
+
+The next development bundle tests Greek coverage and avoids duplicate regional/legacy language entries. Greek was already included in v1.3.0; if it is missing, first check the localized label, installed patch version and whether the video exposes usable captions.
+
+Default-selector discovery now uses caption-model field reads instead of assuming only one track-returning method exists. YouTube **21.41.525 is experimental and unverified**: the reported duplicate-selector shape has synthetic regression coverage, but an exact APK and runtime test are still needed. Ambiguous fingerprints stop patching with diagnostic candidate descriptors. No promise is made that every YouTube version works.
+
+PR checks test the shipped target policy and structural fingerprints, then build a development `.mpp`. [Compatibility evidence and release checks](docs/COMPATIBILITY.md) distinguish automated tests, APK patching and device validation. Published release links and metadata below continue to describe v1.3.0.
+
 ## Compatibility
 
 | | |
@@ -59,7 +67,7 @@ To inspect diagnostic messages on a Waydroid installation:
 sudo waydroid shell -- logcat -d -s MorpheUniversalCaptions:V
 ```
 
-For bugs, [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with the YouTube version, Android version, patch version, reproduction steps, and relevant logs. Please remove personal information and signed caption URLs before posting logs.
+For bugs, [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with the YouTube version/variant, Android version, patch version (or development commit), reproduction steps, and relevant logs. For `expected once` / ambiguous fingerprint errors, include the role and candidate descriptors; do not work around them by selecting the first match. For a missing language, include your interface language and whether direct captions or Auto-translate were being used. Please remove personal information and signed caption URLs before posting logs.
 
 ## License
 
