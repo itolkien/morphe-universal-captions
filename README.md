@@ -2,64 +2,63 @@
 
 YouTube-native subtitles in your preferred language, automatically.
 
-Unlock additional **Auto-translate** languages, remember your caption language across videos and app restarts, and prefer existing captions over machine translation — all inside YouTube's native caption player.
+Extend the **Auto-translate** language menu, remember your caption language across videos and app restarts, and prefer available captions over machine translation — all inside YouTube's native caption player.
 
-[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download v1.3.0](https://github.com/itolkien/morphe-universal-captions/releases/tag/v1.3.0) · [Report an issue](https://github.com/itolkien/morphe-universal-captions/issues)
+[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download v1.4.0](https://github.com/itolkien/morphe-universal-captions/releases/tag/v1.4.0) · [Report an issue](https://github.com/itolkien/morphe-universal-captions/issues)
 
 ## Features
 
-- **Remember your language.** Choose a subtitle language once. New videos automatically use it when a suitable source is available.
-- **Prefer original caption tracks.** Use existing manual captions in the selected language first, then automatic speech-recognition captions.
-- **Translate when needed.** If the selected language has no direct captions, choose an available source and use YouTube's native auto-translation.
-- **Respect Off.** An explicit subtitle-off choice persists until you turn captions back on.
-- **Unlock more languages.** Extend YouTube's built-in Auto-translate menu with additional target languages.
+- **Remember your language.** Choose a subtitle language once. New videos use it when suitable captions or a translation source are available.
+- **Prefer available captions.** Use manual captions in your selected language first, then automatically generated captions (ASR), before translating another source.
+- **Translate with YouTube.** Use YouTube's native caption translation and player.
+- **Respect Off.** Your explicit subtitle-off preference is remembered until you enable captions again.
+- **More language choices.** A curated translation-target catalogue includes Greek and many other languages. Native entries are retained without redundant regional or legacy-code alternatives.
+- **Alphabetical language menu.** Existing and additional Auto-translate languages are sorted by their displayed names using the app's language settings. Special menu options keep their positions.
 - **No separate translator.** No AI models, external API keys, subtitle overlays, or background caption services.
 
 ## Installation
 
 1. Install [Morphe Manager](https://morphe.software/) and [add Universal Captions as a patch source](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions).
-2. Patch **YouTube 21.20.405**, selecting **Universal Captions**.
-3. Install the patched YouTube app and play a video with captions.
-4. Open **Captions → Auto-translate**, choose your preferred language, and continue watching. The selection is remembered.
+2. Select a clean **YouTube 21.41.525** or **21.20.405** APK.
+3. Select **Universal Captions - unlock translation languages (experimental)** and apply your patches.
+4. Install the patched app and play a video with captions.
+5. Open **Captions → Auto-translate** and choose your language. The choice is remembered.
 
-You can also install the `.mpp` patch source from [Releases](https://github.com/itolkien/morphe-universal-captions/releases).
+You can also import the `.mpp` file from [Releases](https://github.com/itolkien/morphe-universal-captions/releases) as a local patch source. When replacing a development build, use the current release source to avoid selecting an older copy of the patch.
 
 ## Caption selection
 
-For each new video, the patch attempts to choose:
+The patch prefers manual captions in your selected language, then ASR captions in that language. When translation is needed, it ranks available source tracks by their inferred original language and manual/ASR type. If no usable source exists, YouTube retains its normal fallback behavior.
 
-1. Manual captions in your preferred language.
-2. Automatically generated captions (ASR) in your preferred language.
-3. Manual captions in the inferred original language, translated to your language.
-4. Original-language ASR, translated.
-5. Other available manual captions, translated.
-6. Other available ASR captions, translated.
-7. No usable captions: leave YouTube's normal fallback behavior.
-
-The original spoken language is **inferred from available caption tracks**, not reliably detected from audio. Therefore source ranking in multilingual videos is best-effort; manual vs. ASR and your selected target language are prioritized explicitly.
+The original spoken language is inferred from caption tracks rather than detected from audio, so source ranking in multilingual videos is best-effort. Translation availability depends on the video, language and YouTube account; a language appearing in the menu does not guarantee that YouTube will serve its translation.
 
 ## Compatibility
 
 | | |
 | --- | --- |
 | App | YouTube for Android |
-| Supported/tested APK | **21.20.405** |
-| Patch version | **1.3.0** |
+| Supported APK versions | **21.41.525**, **21.20.405** |
+| Patch version | **1.4.0** |
 | Installation | Morphe Manager (`.mpp`) |
-| Tested environment | Waydroid (Android 13, x86_64); earlier features also tested on a Samsung Android phone |
-| Other YouTube releases | Not verified |
+| Current device validation | Waydroid, Android 13, x86_64 |
+| Earlier testing | 21.20.405 baseline; earlier features also tested on a Samsung Android phone |
+| Other YouTube versions | Not verified |
 
-The patch changes version-specific YouTube internals. YouTube may change or remove caption tracks, and native translation availability varies by video. A successful patch build does not guarantee compatibility with future versions.
+YouTube's internal caption code can change between releases. The patch discovers methods through their structure and relationships, and stops with a diagnostic error when the required integration cannot be identified safely. Compatibility with every previous or future YouTube version is not guaranteed.
+
+See [compatibility evidence and developer checks](docs/COMPATIBILITY.md) for technical validation details.
 
 ## Troubleshooting
 
-To inspect diagnostic messages on a Waydroid installation:
+If a language seems missing, check its localized name, the installed patch version and whether the video provides usable captions.
+
+For bugs, [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with your YouTube version/variant, Android and Morphe Manager versions, patch version, reproduction steps and relevant logs. Include candidate descriptors when reporting an ambiguous fingerprint error. Remove personal information and signed caption URLs before posting logs.
+
+For Waydroid diagnostics:
 
 ```bash
 sudo waydroid shell -- logcat -d -s MorpheUniversalCaptions:V
 ```
-
-For bugs, [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with the YouTube version, Android version, patch version, reproduction steps, and relevant logs. Please remove personal information and signed caption URLs before posting logs.
 
 ## License
 

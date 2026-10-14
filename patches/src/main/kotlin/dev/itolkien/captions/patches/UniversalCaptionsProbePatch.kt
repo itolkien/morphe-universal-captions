@@ -6,8 +6,6 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.util.smali.ExternalLabel
-import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
@@ -48,7 +46,10 @@ val universalCaptionsPatch = bytecodePatch(
     compatibleWith(Compatibility(
         name = "YouTube",
         packageName = "com.google.android.youtube",
-        targets = listOf(AppTarget(version = "21.20.405"))
+        targets = listOf(
+            AppTarget(version = "21.41.525"),
+            AppTarget(version = "21.20.405")
+        )
     ))
     extendWith("extensions/extension.mpe")
     execute {
@@ -65,6 +66,9 @@ val universalCaptionsPatch = bytecodePatch(
         val display = track.methods.filter { it.name == "toString" }
             .flatMap { it.code().mapNotNull { ins -> ins.field() } }
             .filter { it.type == "Ljava/lang/CharSequence;" }.unique("display field")
+        if (track.fields.none { it.name == display.name && it.type == display.type &&
+                AccessFlags.PUBLIC.isSet(it.accessFlags) && !AccessFlags.STATIC.isSet(it.accessFlags) })
+            throw PatchException("Universal Captions: caption display field is not a public instance field")
         val listMethod = getAllClassesWithString("&tlang=")
             .flatMap { classDefBy(it.type).methods.toList() }
             .filter { it.hasText("&tlang=") && it.parameterTypes.isEmpty() &&
@@ -110,6 +114,41 @@ val universalCaptionsPatch = bytecodePatch(
         if (!AccessFlags.PUBLIC.isSet(builder.fields.first { it.name == builderDisplay.name }.accessFlags))
             throw PatchException("Universal Captions: builder display field not public")
 
+        // Match the same native manager selection entry point used by the predecessor.
+        val selectorCandidates = mutableListOf<Method>()
+        classDefForEach { candidate ->
+            if (candidate.methods.none { it.parameterTypes.isEmpty() &&
+                    it.returnType == track.type }) return@classDefForEach
+            for (m in candidate.methods) {
+                val types = m.parameterTypes.map { it.toString() }
+                if (AccessFlags.STATIC.isSet(m.accessFlags) || m.returnType != "V" ||
+                    types.size != 3 || types[0] != track.type || types[2] != "I" ||
+                    !types[1].startsWith("L")) continue
+                if (m.code().any { ins ->
+                    val call = (ins as? ReferenceInstruction)?.reference as? MethodReference
+                    ins.opcode == Opcode.INVOKE_DIRECT && call?.name == "<init>" &&
+                        call.parameterTypes.map { it.toString() } ==
+                            listOf(track.type, types[1], "I", STRING)
+                }) selectorCandidates.add(m)
+            }
+        }
+        val selector = selectorCandidates.unique("native explicit caption selector")
+        val owner = classDefBy(selector.definingClass)
+        // Resolve all selection identities before changing extension bytecode.
+        val resolvedDefault = try {
+            resolveDefaultCaptionSelector(owner.methods, owner.type, track.type, listMethod.definingClass)
+        } catch (error: IllegalStateException) {
+            throw PatchException(error.message ?: "Universal Captions: default selector resolution failed")
+        }
+        val defaultTrack = resolvedDefault.method
+        val modelField = resolvedDefault.modelField
+        val nativeDirect = try {
+            resolveSourceCaptionGetter(classDefBy(listMethod.definingClass).methods,
+                listMethod.definingClass, directListMethod, listMethod)
+        } catch (error: IllegalStateException) {
+            throw PatchException(error.message ?: "Universal Captions: source getter resolution failed")
+        }
+
         val runtime = mutableClassDefBy(BRIDGE)
         fun bind(name: String, body: String) {
             val args = if (name == "cloneTranslation") listOf(OBJECT, STRING) else listOf(OBJECT)
@@ -124,6 +163,11 @@ val universalCaptionsPatch = bytecodePatch(
         bind("language", """
             check-cast p0, ${track.type}
             iget-object v0, p0, ${language.id()}
+            return-object v0
+        """)
+        bind("display", """
+            check-cast p0, ${track.type}
+            iget-object v0, p0, ${display.id()}
             return-object v0
         """)
         bind("vss", """
@@ -156,39 +200,6 @@ val universalCaptionsPatch = bytecodePatch(
             move-result-object v0
             return-object v0
         """)
-
-        // Match the same native manager selection entry point used by the predecessor.
-        val selectorCandidates = mutableListOf<Method>()
-        classDefForEach { candidate ->
-            if (candidate.methods.none { it.parameterTypes.isEmpty() &&
-                    it.returnType == track.type }) return@classDefForEach
-            for (m in candidate.methods) {
-                val types = m.parameterTypes.map { it.toString() }
-                if (AccessFlags.STATIC.isSet(m.accessFlags) || m.returnType != "V" ||
-                    types.size != 3 || types[0] != track.type || types[2] != "I" ||
-                    !types[1].startsWith("L")) continue
-                if (m.code().any { ins ->
-                    val call = (ins as? ReferenceInstruction)?.reference as? MethodReference
-                    ins.opcode == Opcode.INVOKE_DIRECT && call?.name == "<init>" &&
-                        call.parameterTypes.map { it.toString() } ==
-                            listOf(track.type, types[1], "I", STRING)
-                }) selectorCandidates.add(m)
-            }
-        }
-        val selector = selectorCandidates.unique("native explicit caption selector")
-        val owner = classDefBy(selector.definingClass)
-        val defaultTrack = owner.methods.filter {
-            it.parameterTypes.isEmpty() && it.returnType == track.type
-        }.unique("native default caption selector")
-        val modelField = defaultTrack.code().mapNotNull { it.field() }
-            .filter { it.definingClass == owner.type &&
-                it.type == listMethod.definingClass }.distinctBy { it.id() }
-            .unique("native caption model field")
-
-        val nativeDirect = classDefBy(listMethod.definingClass).methods.filter {
-            it.parameterTypes.isEmpty() && it.returnType == "Ljava/util/List;" &&
-                it.name != listMethod.name
-        }.unique("native source caption getter")
 
         fun bindList(name: String, target: Method) {
             val stub = runtime.methods.filter { it.name == name &&
