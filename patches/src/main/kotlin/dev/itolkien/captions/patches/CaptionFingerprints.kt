@@ -3,6 +3,9 @@ package dev.itolkien.captions.patches
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -16,7 +19,8 @@ internal data class DefaultCaptionSelector(val method: Method, val modelField: F
 /** Resolve by model ownership, never by method count, obfuscated name or iteration order. */
 internal fun resolveDefaultCaptionSelector(methods: Iterable<Method>, owner: String,
                                           track: String, model: String): DefaultCaptionSelector {
-    val candidates = methods.filter { it.definingClass == owner &&
+    val allMethods = methods.toList()
+    val candidates = allMethods.filter { it.definingClass == owner &&
         it.parameterTypes.isEmpty() && it.returnType == track }
     val evidence = candidates.map { method ->
         val implementation = method.implementation
@@ -35,16 +39,74 @@ internal fun resolveDefaultCaptionSelector(methods: Iterable<Method>, owner: Str
             (method.implementation?.registerCount ?: 0) >= 2 &&
             method.implementation?.instructions?.any { it.opcode == Opcode.RETURN_OBJECT } == true
     }
-    check(matches.size == 1) {
+    // Newer hosts split default calculation from a model-reading commit wrapper.
+    // Require independent lifecycle + Android caption-preference evidence to distinguish them.
+    val resolved = if (matches.size <= 1) matches else matches.filter { (helper, fields) ->
+        helper.usesNativeCaptionPreferences() &&
+            matches.filter { it.first != helper }.all { (wrapper, wrapperFields) ->
+                wrapperFields.single() == fields.single() && wrapper.callsOnThis(helper) &&
+                    !helper.callsOnThis(wrapper)
+            } && allMethods.any { caller ->
+                caller !in matches.map { it.first } && caller.initializesModelThenCalls(fields.single(), helper)
+            }
+    }
+    check(resolved.size == 1) {
         "Universal Captions: native default caption selector expected one model reader, found ${matches.size}; " +
             "candidates=" + evidence.joinToString { (method, fields) ->
                 "${method.descriptor()} [instance=${!AccessFlags.STATIC.isSet(method.accessFlags)}, " +
                     "registers=${method.implementation?.registerCount}, modelFields=" +
-                    fields.joinToString(prefix = "[", postfix = "]") { "${it.name}:${it.type}" } + "]"
+                    fields.joinToString(prefix = "[", postfix = "]") { "${it.name}:${it.type}" } +
+                    ", nativePreferences=${method.usesNativeCaptionPreferences()}]"
             } + ". Unsupported or ambiguous bytecode; report the YouTube version and these descriptors."
     }
-    val (method, fields) = matches.single()
+    val (method, fields) = resolved.single()
     return DefaultCaptionSelector(method, fields.single())
+}
+
+private fun Method.thisRegister(): Int? {
+    if (AccessFlags.STATIC.isSet(accessFlags)) return null
+    val registers = implementation?.registerCount ?: return null
+    val argumentWords = parameterTypes.sumOf { if (it.toString() in listOf("J", "D")) 2 else 1 }
+    return registers - argumentWords - 1
+}
+
+private fun Instruction.callsOnReceiver(target: Method, receiver: Int): Boolean {
+    if (opcode !in setOf(Opcode.INVOKE_DIRECT, Opcode.INVOKE_VIRTUAL,
+            Opcode.INVOKE_DIRECT_RANGE, Opcode.INVOKE_VIRTUAL_RANGE)) return false
+    val reference = (this as? ReferenceInstruction)?.reference as? MethodReference ?: return false
+    if (reference.descriptor() != target.descriptor()) return false
+    return when (this) {
+        is FiveRegisterInstruction -> registerCount == 1 && registerC == receiver
+        is RegisterRangeInstruction -> registerCount == 1 && startRegister == receiver
+        else -> false
+    }
+}
+
+private fun Method.callsOnThis(target: Method): Boolean {
+    val receiver = thisRegister() ?: return false
+    return implementation!!.instructions.any { it.callsOnReceiver(target, receiver) }
+}
+
+private fun Method.initializesModelThenCalls(field: FieldReference, target: Method): Boolean {
+    val receiver = thisRegister() ?: return false
+    val instructions = implementation!!.instructions.toList()
+    val write = instructions.indexOfFirst {
+        it.opcode == Opcode.IPUT_OBJECT && (it as? TwoRegisterInstruction)?.registerB == receiver &&
+            (it as? ReferenceInstruction)?.reference == field
+    }
+    return write >= 0 && instructions.drop(write + 1).any { it.callsOnReceiver(target, receiver) }
+}
+
+private fun Method.usesNativeCaptionPreferences(): Boolean {
+    val calls = implementation?.instructions?.mapNotNull {
+        if (it.opcode == Opcode.INVOKE_VIRTUAL || it.opcode == Opcode.INVOKE_VIRTUAL_RANGE)
+            (it as? ReferenceInstruction)?.reference as? MethodReference else null
+    }.orEmpty()
+    val captioningManager = "Landroid/view/accessibility/CaptioningManager;"
+    return calls.any { it.definingClass == captioningManager && it.name == "getLocale" &&
+        it.parameterTypes.isEmpty() && it.returnType == "Ljava/util/Locale;" } &&
+        calls.any { it.definingClass == captioningManager && it.name == "isEnabled" &&
+            it.parameterTypes.isEmpty() && it.returnType == "Z" }
 }
 
 /** The direct-list string anchor identifies the source getter even if new list getters appear. */

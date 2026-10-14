@@ -48,7 +48,7 @@ val universalCaptionsPatch = bytecodePatch(
         packageName = "com.google.android.youtube",
         targets = listOf(
             AppTarget(version = "21.41.525", isExperimental = true,
-                description = "Adaptive fingerprints under test; APK and device validation pending."),
+                description = "Exact APK patch-tested; playback and preference validation pending."),
             AppTarget(version = "21.20.405")
         )
     ))

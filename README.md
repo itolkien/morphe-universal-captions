@@ -42,7 +42,7 @@ The original spoken language is **inferred from available caption tracks**, not 
 
 The next development bundle tests Greek coverage and avoids duplicate regional/legacy language entries. Greek was already included in v1.3.0; if it is missing, first check the localized label, installed patch version and whether the video exposes usable captions.
 
-Default-selector discovery now uses caption-model field reads instead of assuming only one track-returning method exists. YouTube **21.41.525 is experimental and unverified**: the reported duplicate-selector shape has synthetic regression coverage, but an exact APK and runtime test are still needed. Ambiguous fingerprints stop patching with diagnostic candidate descriptors. No promise is made that every YouTube version works.
+Default-selector discovery now uses caption-model field reads and, when needed, verified helper/wrapper/model-initialization relationships. YouTube **21.41.525 remains experimental**: the reported exact APK now passes selector regression and standalone patch/dex rebuilding; device playback and the combined Manager patch set still need testing. The `1.3.2-dev` build fixes the ambiguity that remained in `1.3.1-dev`. Ambiguous fingerprints stop patching with diagnostic candidate descriptors. No promise is made that every YouTube version works.
 
 PR checks test the shipped target policy and structural fingerprints, then build a development `.mpp`. [Compatibility evidence and release checks](docs/COMPATIBILITY.md) distinguish automated tests, APK patching and device validation. Published release links and metadata below continue to describe v1.3.0.
 
