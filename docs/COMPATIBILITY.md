@@ -1,16 +1,16 @@
 # Compatibility and validation
 
-## Evidence, not an all-version promise
+## Release evidence
 
-| YouTube version | Evidence | Development target |
+| YouTube version | Evidence | Support status |
 | --- | --- | --- |
-| 21.20.405 | Previously device-tested with v1.3.0; this development change needs APK/device revalidation | Recommended baseline |
-| 21.41.525 | Inspected the reported clean APK; exact-APK selector regression and standalone CLI patch/dex rebuild passed. User reports 1.3.2-dev working; individual playback/persistence edge cases still need device testing | Experimental, not confirmed working |
+| 21.20.405 | Previously device-tested baseline; legacy selector regression retained | Supported |
+| 21.41.525 | Exact-APK selector regression and standalone CLI patch/dex rebuild passed; user confirmed 1.3.2-dev and the final 1.3.3-dev alphabetical menu working on Waydroid / Android 13 | Supported |
 | Other releases | No APK/device evidence | Not advertised |
 
-The development bundle declares 21.41.525 as experimental so it can be attempted without advertising blanket compatibility. Structural discovery runs for both declared versions. It never selects the first of multiple matching methods, never uses obfuscated names as cross-version identities, and never silently disables persistence if a required hook cannot be resolved.
+Release 1.4.0 declares these two versions. The user approved release after confirming the final development bundle works. This is a user-confirmed device result, not an exhaustive certification of every video, account, language or patch combination. Structural discovery remains strict on both versions; unresolved ambiguity stops patching.
 
-The published v1.3.0 `.mpp`, `patches-list.json`, and `patches-bundle.json` still describe the published release. They are not rewritten to advertise an unpublished development build.
+The release asset, generated `patches-list.json` and Manager `patches-bundle.json` use the same version. CI only uploads build artifacts; publication is performed deliberately after validation.
 
 ## Structural resolution
 
@@ -37,13 +37,13 @@ YOUTUBE_2141525_APK=/path/to/clean.apk gradle -p tests/fingerprints test --rerun
 
 Without this environment variable, the exact-APK test is explicitly skipped. It runs locally; CI must not download or upload the APK. Selector identity, complete patch/dex rebuild, and device behavior are three separate checks. Core tests exercise the shipped translation-target policy, including Greek, native regional Greek, legacy aliases and distinct Chinese scripts. Menu-order tests reproduce the reported English screenshot order, Turkish I/İ collation, mixed native/generated labels, stable ties, unchanged input/track identity, and fixed positions for sentinel/unknown/unlabelled entries.
 
-Pull requests also build the complete Kotlin patch and Android extension against the pinned Morphe template (JDK 21). CI uploads a `1.3.3-dev` bundle; it does not publish a release or update the Manager feed. Template upgrades should be explicit commits and pass the same checks.
+Pull requests also build the complete Kotlin patch and Android extension against the pinned Morphe template (JDK 21). CI uploads the versioned MPP and generated patch-list metadata; it does not publish a release or update the Manager feed. Template upgrades should be explicit commits and pass the same checks.
 
 ## Auto-translate menu ordering
 
-The 1.3.3-dev change sorts all language rows in the augmented translation menu by their actual `CharSequence` display label, using the application's configured locale and `java.text.Collator` (case-insensitive, canonical decomposition). It sorts existing and generated rows together, preserving track objects and stable order for equal labels. Off, Auto-translate and other `_OPTION` sentinel rows, null/unknown rows and rows without labels keep their original slots. The source track is selected before sorting; the direct-track list and preference ranking are unchanged. Lists are sorted even when no new target can be added. If ordering fails, return the unsorted list.
+The menu sorts all language rows in the augmented translation menu by their actual `CharSequence` display label, using the application's configured locale and `java.text.Collator` (case-insensitive, canonical decomposition). It sorts existing and generated rows together, preserving track objects and stable order for equal labels. Off, Auto-translate and other `_OPTION` sentinel rows, null/unknown rows and rows without labels keep their original slots. The source track is selected before sorting; the direct-track list and preference ranking are unchanged. Lists are sorted even when no new target can be added. If ordering fails, return the unsorted list.
 
-Confirm alphabetical order under English and Turkish app interfaces, selecting a row after reordering, and switching videos while retaining the chosen language. Public CI tests the shipped ordering helper and compiles the new bytecode display getter; device menu rendering remains a separate check.
+Confirm alphabetical order under English and Turkish app interfaces, selecting a row after reordering, and switching videos while retaining the chosen language. Public CI tests the shipped ordering helper and compiles the bytecode display getter. The user confirmed the alphabetical menu on-device with 1.3.3-dev; release 1.4.0 keeps that runtime behavior.
 
 ## APK and device checks before release
 
@@ -54,6 +54,6 @@ For each version considered for support:
 3. Install the patched app and check videos with manual captions, ASR, only translated tracks, and no captions. Test Greek under both English and Greek app interfaces. Labels are localized, so look for **Greek / Ελληνικά**.
 4. Verify that an absent Greek target appears once when a usable source exists, an existing native/direct Greek track is retained, selecting Greek yields native captions when YouTube serves them, and changing videos/restarting preserves the selection.
 5. Verify explicit Off across video changes and opening the captions menu, explicit turn-on after Off, choosing another language, seeking, rapid video changes, and manual versus ASR preference. The committing wrapper can perform its own fallback after a null default, so its callers require this device check. Test both Chinese scripts and at least one legacy alias language to catch menu deduplication regressions.
-6. Record patch success separately from runtime behavior. Only then promote a version from experimental and publish a new versioned bundle/feed together. Do not overwrite an existing release asset with different code.
+6. Record patch success separately from runtime behavior. Use the recorded evidence and maintainer release approval to decide which versions to advertise, then publish a new versioned bundle/feed together. Do not overwrite an existing release asset with different code.
 
 The target catalogue is curated, not an authoritative list of every YouTube interface or translation language. Interface availability does not prove timed-text backend support for a video/account. Greek (`el`) was already present in v1.3.0; the reported follow-up says it was found. No universal missing-Greek defect or server support is inferred from that exchange.
