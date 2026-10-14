@@ -18,6 +18,7 @@ public final class NativeTranslationBridge {
     private NativeTranslationBridge() {}
 
     public static String language(Object track) { return ""; } // bound in APK bytecode
+    public static CharSequence display(Object track) { return ""; }
     public static String vss(Object track) { return ""; }
     public static String url(Object track) { return ""; }
     public static Object cloneTranslation(Object track, String code) { return null; }
@@ -237,6 +238,29 @@ public final class NativeTranslationBridge {
     public static List<?> nativeDirectTracks(Object manager) { return null; }
     public static List<?> nativeTranslatedTracks(Object manager) { return null; }
 
+    private static Locale menuLocale() {
+        try {
+            android.content.Context context = appContext();
+            if (context != null) {
+                android.os.LocaleList locales = context.getResources().getConfiguration().getLocales();
+                if (!locales.isEmpty()) return locales.get(0);
+            }
+        } catch (Throwable ignored) { }
+        return Locale.getDefault();
+    }
+
+    private static List<?> sortedTranslations(List<?> tracks) {
+        try {
+            return CaptionMenuOrder.sorted(tracks, menuLocale(), new CaptionMenuOrder.Labels<Object>() {
+                @Override public String language(Object track) { return NativeTranslationBridge.language(track); }
+                @Override public CharSequence label(Object track) { return NativeTranslationBridge.display(track); }
+            });
+        } catch (Throwable error) {
+            Log.e(TAG, "Translation menu ordering failed: " + error.getClass().getSimpleName());
+            return tracks;
+        }
+    }
+
     public static List<?> augment(List<?> original) {
         if (original == null || original.isEmpty()) return original;
         try {
@@ -290,7 +314,7 @@ public final class NativeTranslationBridge {
             } else {
                 Log.e(TAG, "Selected original caption source rank=" + bestSourceRank + " direct=" + (originals == null ? 0 : originals.size()));
             }
-            if (prototype == null) return original;
+            if (prototype == null) return sortedTranslations(original);
             Set<String> manual = Collections.emptySet();
             String id = videoId(url(prototype));
             if (!id.isEmpty()) {
@@ -306,10 +330,10 @@ public final class NativeTranslationBridge {
                 if (newTrack != null) { result.add(newTrack); added++; }
             }
             Log.e(TAG, "Native augmentation original=" + original.size() + " added=" + added);
-            return added == 0 ? original : result;
+            return sortedTranslations(added == 0 ? original : result);
         } catch (Throwable e) {
             Log.e(TAG, "Native augmentation failed: " + e.getClass().getSimpleName());
-            return original;
+            return sortedTranslations(original);
         }
     }
 }

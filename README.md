@@ -40,7 +40,7 @@ The original spoken language is **inferred from available caption tracks**, not 
 
 ## Development changes (unreleased)
 
-The next development bundle tests Greek coverage and avoids duplicate regional/legacy language entries. Greek was already included in v1.3.0; if it is missing, first check the localized label, installed patch version and whether the video exposes usable captions.
+The development bundle tests Greek coverage and avoids duplicate regional/legacy language entries. Version `1.3.3-dev` also sorts the complete Auto-translate language menu alphabetically by its displayed labels using the app locale, while keeping special options in place. Greek was already included in v1.3.0; if it is missing, first check the localized label, installed patch version and whether the video exposes usable captions.
 
 Default-selector discovery now uses caption-model field reads and, when needed, verified helper/wrapper/model-initialization relationships. YouTube **21.41.525 remains experimental**: the reported exact APK now passes selector regression and standalone patch/dex rebuilding; device playback and the combined Manager patch set still need testing. The `1.3.2-dev` build fixes the ambiguity that remained in `1.3.1-dev`. Ambiguous fingerprints stop patching with diagnostic candidate descriptors. No promise is made that every YouTube version works.
 

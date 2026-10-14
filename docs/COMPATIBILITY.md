@@ -5,7 +5,7 @@
 | YouTube version | Evidence | Development target |
 | --- | --- | --- |
 | 21.20.405 | Previously device-tested with v1.3.0; this development change needs APK/device revalidation | Recommended baseline |
-| 21.41.525 | Inspected the reported clean APK; exact-APK selector regression and standalone CLI patch/dex rebuild passed. Playback and 97-patch Manager integration still need device testing | Experimental, not confirmed working |
+| 21.41.525 | Inspected the reported clean APK; exact-APK selector regression and standalone CLI patch/dex rebuild passed. User reports 1.3.2-dev working; individual playback/persistence edge cases still need device testing | Experimental, not confirmed working |
 | Other releases | No APK/device evidence | Not advertised |
 
 The development bundle declares 21.41.525 as experimental so it can be attempted without advertising blanket compatibility. Structural discovery runs for both declared versions. It never selects the first of multiple matching methods, never uses obfuscated names as cross-version identities, and never silently disables persistence if a required hook cannot be resolved.
@@ -35,9 +35,15 @@ Use JDK 17 and Gradle 9.0.0 for the regression suite. The fingerprint tests use 
 YOUTUBE_2141525_APK=/path/to/clean.apk gradle -p tests/fingerprints test --rerun-tasks --no-daemon
 ```
 
-Without this environment variable, the exact-APK test is explicitly skipped. It runs locally; CI must not download or upload the APK. Selector identity, complete patch/dex rebuild, and device behavior are three separate checks. Core tests exercise the shipped translation-target policy, including Greek, native regional Greek, legacy aliases and distinct Chinese scripts.
+Without this environment variable, the exact-APK test is explicitly skipped. It runs locally; CI must not download or upload the APK. Selector identity, complete patch/dex rebuild, and device behavior are three separate checks. Core tests exercise the shipped translation-target policy, including Greek, native regional Greek, legacy aliases and distinct Chinese scripts. Menu-order tests reproduce the reported English screenshot order, Turkish I/İ collation, mixed native/generated labels, stable ties, unchanged input/track identity, and fixed positions for sentinel/unknown/unlabelled entries.
 
-Pull requests also build the complete Kotlin patch and Android extension against the pinned Morphe template (JDK 21). CI uploads a `1.3.2-dev` bundle; it does not publish a release or update the Manager feed. Template upgrades should be explicit commits and pass the same checks.
+Pull requests also build the complete Kotlin patch and Android extension against the pinned Morphe template (JDK 21). CI uploads a `1.3.3-dev` bundle; it does not publish a release or update the Manager feed. Template upgrades should be explicit commits and pass the same checks.
+
+## Auto-translate menu ordering
+
+The 1.3.3-dev change sorts all language rows in the augmented translation menu by their actual `CharSequence` display label, using the application's configured locale and `java.text.Collator` (case-insensitive, canonical decomposition). It sorts existing and generated rows together, preserving track objects and stable order for equal labels. Off, Auto-translate and other `_OPTION` sentinel rows, null/unknown rows and rows without labels keep their original slots. The source track is selected before sorting; the direct-track list and preference ranking are unchanged. Lists are sorted even when no new target can be added. If ordering fails, return the unsorted list.
+
+Confirm alphabetical order under English and Turkish app interfaces, selecting a row after reordering, and switching videos while retaining the chosen language. Public CI tests the shipped ordering helper and compiles the new bytecode display getter; device menu rendering remains a separate check.
 
 ## APK and device checks before release
 

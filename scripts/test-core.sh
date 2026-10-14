@@ -8,5 +8,7 @@ java -cp build/classes dev.itolkien.captions.CaptionResolverTest
 # Test the actual Android-shipped target policy, not a second copy.
 javac -d build/classes extensions/extension/src/main/java/dev/itolkien/captions/extension/TranslationTargets.java tests/java/dev/itolkien/captions/extension/TranslationTargetsTest.java
 java -cp build/classes dev.itolkien.captions.extension.TranslationTargetsTest
+javac -d build/classes extensions/extension/src/main/java/dev/itolkien/captions/extension/CaptionMenuOrder.java tests/java/dev/itolkien/captions/extension/CaptionMenuOrderTest.java
+java -cp build/classes dev.itolkien.captions.extension.CaptionMenuOrderTest
 sed 's/^package dev\.itolkien\.captions\.extension;/package dev.itolkien.captions;/' extensions/extension/src/main/java/dev/itolkien/captions/extension/CaptionResolver.java > build/shipped-CaptionResolver.java
 diff -u src/main/java/dev/itolkien/captions/CaptionResolver.java build/shipped-CaptionResolver.java

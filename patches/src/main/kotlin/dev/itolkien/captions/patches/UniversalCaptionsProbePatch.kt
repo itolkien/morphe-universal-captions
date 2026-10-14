@@ -67,6 +67,9 @@ val universalCaptionsPatch = bytecodePatch(
         val display = track.methods.filter { it.name == "toString" }
             .flatMap { it.code().mapNotNull { ins -> ins.field() } }
             .filter { it.type == "Ljava/lang/CharSequence;" }.unique("display field")
+        if (track.fields.none { it.name == display.name && it.type == display.type &&
+                AccessFlags.PUBLIC.isSet(it.accessFlags) && !AccessFlags.STATIC.isSet(it.accessFlags) })
+            throw PatchException("Universal Captions: caption display field is not a public instance field")
         val listMethod = getAllClassesWithString("&tlang=")
             .flatMap { classDefBy(it.type).methods.toList() }
             .filter { it.hasText("&tlang=") && it.parameterTypes.isEmpty() &&
@@ -161,6 +164,11 @@ val universalCaptionsPatch = bytecodePatch(
         bind("language", """
             check-cast p0, ${track.type}
             iget-object v0, p0, ${language.id()}
+            return-object v0
+        """)
+        bind("display", """
+            check-cast p0, ${track.type}
+            iget-object v0, p0, ${display.id()}
             return-object v0
         """)
         bind("vss", """
