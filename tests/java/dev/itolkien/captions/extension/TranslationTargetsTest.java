@@ -21,6 +21,10 @@ public final class TranslationTargetsTest {
                 "simplified Chinese must not hide traditional Chinese");
         check(TranslationTargets.missing(Arrays.asList("zh-Hant"), Collections.emptySet()).contains("zh-Hans"),
                 "traditional Chinese must not hide simplified Chinese");
+        check(TranslationTargets.missing(Arrays.asList("zh-Hans-HK"), Collections.emptySet()).contains("zh-Hant"),
+                "explicit Simplified script takes priority over Hong Kong region");
+        check(TranslationTargets.missing(Arrays.asList("zh-Hant-CN"), Collections.emptySet()).contains("zh-Hans"),
+                "explicit Traditional script takes priority over China region");
         check(added.contains("he") && added.contains("fil") && !added.contains("iw") && !added.contains("tl"),
                 "catalogue must not generate legacy alias duplicates");
         check(new HashSet<>(added).size() == added.size(), "no duplicate generated codes");

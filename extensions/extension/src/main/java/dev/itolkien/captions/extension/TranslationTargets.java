@@ -39,8 +39,10 @@ public final class TranslationTargets {
         if (primary.equals("tl")) return "fil";
         // Keep Chinese script choices distinct, including common region aliases.
         if (primary.equals("zh")) {
-            if (code.contains("-hant") || code.endsWith("-tw") || code.endsWith("-hk")) return "zh-hant";
-            if (code.contains("-hans") || code.endsWith("-cn") || code.endsWith("-sg")) return "zh-hans";
+            if (code.contains("-hant")) return "zh-hant";
+            if (code.contains("-hans")) return "zh-hans";
+            if (code.endsWith("-tw") || code.endsWith("-hk")) return "zh-hant";
+            if (code.endsWith("-cn") || code.endsWith("-sg")) return "zh-hans";
             return code;
         }
         return primary;
