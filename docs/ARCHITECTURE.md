@@ -1,13 +1,11 @@
-# Native YouTube integration boundary
+# Menu-only architecture
 
-The Java language resolver is unit-testable and independent of Android. It **does not unlock missing translation targets**.
+The independent patch discovers the native caption track and translated-track list using semantic string anchors, then resolves the builder through copy-constructor data flow. Resolution completes before modifying host bytecode. Both direct-field and abstract-getter layouts are supported, with ambiguous identities rejected.
 
-To deliver a working Morphe add-on, we must validate one of these host-specific integration routes:
+Generated accessors live in the owning native class so private field access remains valid. Every helper uses the `universalCaptions_` prefix to avoid colliding with Morphe’s `patch_` helpers.
 
-1. A YouTube caption target is present in the internal auto-translation track list but hidden in the UI. Then selecting that **existing** track is safe.
-2. The Android YouTube caption endpoint accepts a target absent from its list. Then inject the verified target through the same authenticated, native caption pipeline while preserving all caption state, and test against an actual APK.
-3. Neither holds. In that case native unlock is unsupported for the video; fall back without fabricating a track.
+Only translated-list returns are intercepted. `CaptionTranslationList` retains native entries, clones a valid native translated prototype for additional targets, preserves its source and signed URL parameters, and sorts ordinary language entries using a locale collator. Special entries retain their slots. The runtime never reads or writes caption preferences, source-selection decisions or visibility policies.
 
-Reference: https://github.com/MorpheApp/morphe-patches/pull/3566
+The bridge reads Morphe’s app locale when the Requester API is available and otherwise uses the system locale. No app context or persistent state is required. Runtime augmentation failures return the original list.
 
-Do **not** reuse arbitrary obfuscated class names across versions, fabricate vssId values, claim that desktop availability proves Android availability, or release an untested MPP. YouTube account tokens and private requests must never be collected.
+The original v1.4 implementation and its selection-policy documentation remain available in the v1.4.0 Git tag.

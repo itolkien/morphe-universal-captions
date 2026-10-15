@@ -14,12 +14,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Test language and caption policies
-        run: scripts/test-core.sh
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.0.0'
-      - name: Test structural bytecode fingerprints
+      - name: Test menu runtime and structural bytecode resolution
         run: gradle -p tests/fingerprints test --no-daemon
       - uses: actions/upload-artifact@v4
         if: always()

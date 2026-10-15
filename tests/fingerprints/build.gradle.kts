@@ -8,6 +8,21 @@ dependencies {
 kotlin { jvmToolchain(17) }
 sourceSets.main {
     kotlin.srcDir("../../patches/src/main/kotlin")
-    kotlin.include("**/CaptionFingerprints.kt")
+    kotlin.include("**/CaptionFingerprints.kt", "**/CaptionTranslationAbi.kt")
 }
-tasks.test { useJUnitPlatform() }
+sourceSets.main {
+    java.srcDir("../../extensions/extension/src/main/java")
+    java.include("**/CaptionTranslationList.java")
+}
+sourceSets.test {
+    java.srcDir("../java")
+    java.include("**/CaptionTranslationListTest.java")
+}
+tasks.test {
+    useJUnitPlatform()
+    for (name in listOf("YOUTUBE_CAPTIONS_APK", "CAPTIONS_BASELINE_APK", "CAPTIONS_PATCHED_APK")) {
+        val path = providers.environmentVariable(name)
+        inputs.property(name, path.orElse(""))
+        path.orNull?.let { inputs.file(it).withPropertyName("${name}_file") }
+    }
+}
