@@ -21,7 +21,7 @@ public final class NativeTranslationBridge {
 
     public static List<CaptionTrack> augment(List<CaptionTrack> tracks) {
         try {
-            return CaptionTranslationList.augment(tracks, menuLocale());
+            return CaptionIntegration.augment(tracks, menuLocale());
         } catch (Exception ex) {
             Log.w("MorpheUniversalCaptions", "Could not extend translation language menu", ex);
             return tracks;
