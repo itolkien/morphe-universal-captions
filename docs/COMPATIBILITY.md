@@ -1,6 +1,6 @@
 # Compatibility and validation
 
-Development version: **2.0.0-dev.1**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.
+Development version: **2.0.0-dev.2**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.
 
 ## Automated checks
 
@@ -21,3 +21,11 @@ The corresponding native Morphe integration passed device testing on **21.20.405
 - The menu runtime and resolver suite passed on both clean APK targets (15 tests plus the APK isolation check).
 - Both standalone patched APKs passed SDK DEX verification, cross-DEX hierarchy checks, alignment, signing and APK verification.
 - On 21.20.405, combined patching with Captions succeeded using both official 1.48.0-dev.7 and the native integration in PR #3754. The user subsequently confirmed successful independent addon device testing of 2.0.0-dev.1, without specifying the APK version.
+
+## Native coexistence update
+
+The dev.2 update detects the native track interface introduced by the maintainer changes in PR #3754 and defers menu ownership to Morphe. Regression tests cover delegation, independent fallback when only extension classes are bundled, missing classes and empty lists. Device testing reported above covers dev.1; dev.2 needs a fresh device check. The upstream fix for 20.21.37 does not add that APK to this independent addon’s supported targets.
+
+For the combined APK wiring regression, set `CAPTIONS_COMBINED_APK` to an APK patched with both this addon and the native integration. It verifies that the actual native caption class implements both interfaces and its translation-list method invokes both hooks. A test-only exact-name interface fixture also checks reflective discovery without shipping Morphe extension code in this addon.
+
+Dev.2 local validation passed: all 20 tests with supplied APKs; standalone and combined-native patching, SDK DEX/hierarchy verification, alignment, signing and APK verification on both 21.20.405 and 21.41.525. Combined wiring was checked on both versions. Native off/on ownership is covered by JVM regression checks; dev.2 device playback remains pending.

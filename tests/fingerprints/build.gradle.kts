@@ -12,15 +12,16 @@ sourceSets.main {
 }
 sourceSets.main {
     java.srcDir("../../extensions/extension/src/main/java")
-    java.include("**/CaptionTranslationList.java")
+    java.include("**/CaptionTranslationList.java", "**/CaptionIntegration.java")
 }
 sourceSets.test {
     java.srcDir("../java")
-    java.include("**/CaptionTranslationListTest.java")
+    java.include("**/CaptionTranslationListTest.java", "**/CaptionIntegrationTest.java",
+        "app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java")
 }
 tasks.test {
     useJUnitPlatform()
-    for (name in listOf("YOUTUBE_CAPTIONS_APK", "CAPTIONS_BASELINE_APK", "CAPTIONS_PATCHED_APK")) {
+    for (name in listOf("YOUTUBE_CAPTIONS_APK", "CAPTIONS_BASELINE_APK", "CAPTIONS_PATCHED_APK", "CAPTIONS_COMBINED_APK")) {
         val path = providers.environmentVariable(name)
         inputs.property(name, path.orElse(""))
         path.orNull?.let { inputs.file(it).withPropertyName("${name}_file") }
