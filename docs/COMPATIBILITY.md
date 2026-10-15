@@ -1,6 +1,6 @@
 # Compatibility and validation
 
-Development version: **2.0.0-dev.2**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.
+Release version: **2.0.0**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.
 
 ## Automated checks
 
@@ -14,7 +14,7 @@ Build through the pinned official template in `.github/workflows/build-mpp.yml`.
 
 ## Scope of evidence
 
-The corresponding native Morphe integration passed device testing on **21.20.405** and APK/SDK validation on both targets. That evidence does not replace independent addon testing. The user confirmed successful device testing of **2.0.0-dev.1**. The APK version for that independent addon device test was not specified; this does not establish device coverage for both targets. The v1.4.0 release and stable Manager feed remain unchanged.
+The corresponding native Morphe integration passed device testing on **21.20.405** and APK/SDK validation on both targets. That evidence does not replace independent addon testing. The user confirmed successful device testing of **2.0.0-dev.1**. The APK version for that independent addon device test was not specified; this does not establish device coverage for both targets. The v1.4.0 release remains available in release history; the 2.0.0 Manager feed is published with its verified release asset.
 
 ## Local development validation
 
@@ -24,8 +24,12 @@ The corresponding native Morphe integration passed device testing on **21.20.405
 
 ## Native coexistence update
 
-The dev.2 update detects the native track interface introduced by the maintainer changes in PR #3754 and defers menu ownership to Morphe. Regression tests cover delegation, independent fallback when only extension classes are bundled, missing classes and empty lists. Device testing reported above covers dev.1; dev.2 needs a fresh device check. The upstream fix for 20.21.37 does not add that APK to this independent addon’s supported targets.
+The dev.2 update detects the native track interface introduced by the maintainer changes in PR #3754 and defers menu ownership to Morphe. Regression tests cover delegation, independent fallback when only extension classes are bundled, missing classes and empty lists. Device testing reported above covers dev.1; the user subsequently confirmed dev.2 working on-device. The upstream fix for 20.21.37 does not add that APK to this independent addon’s supported targets.
 
 For the combined APK wiring regression, set `CAPTIONS_COMBINED_APK` to an APK patched with both this addon and the native integration. It verifies that the actual native caption class implements both interfaces and its translation-list method invokes both hooks. A test-only exact-name interface fixture also checks reflective discovery without shipping Morphe extension code in this addon.
 
-Dev.2 local validation passed: all 20 tests with supplied APKs; standalone and combined-native patching, SDK DEX/hierarchy verification, alignment, signing and APK verification on both 21.20.405 and 21.41.525. Combined wiring was checked on both versions. Native off/on ownership is covered by JVM regression checks; dev.2 device playback remains pending.
+Dev.2 local validation passed: all 20 tests with supplied APKs; standalone and combined-native patching, SDK DEX/hierarchy verification, alignment, signing and APK verification on both 21.20.405 and 21.41.525. Combined wiring was checked on both versions. Native off/on ownership is covered by JVM regression checks; the user subsequently confirmed dev.2 working on-device.
+
+## Stable 2.0.0
+
+The user confirmed device operation of dev.2 and authorized stable publication. The stable release uses the same runtime and patch implementation; only version/metadata and release documentation change. The APK version of that independent addon device confirmation was not specified, so device coverage of both declared targets is not claimed. Publication verifies the final Android archive and keeps generated compatibility metadata and the Manager download URL aligned with the actual release asset.
