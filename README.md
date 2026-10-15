@@ -29,7 +29,7 @@ Use one Universal Captions version per patching session. Development builds do n
 
 The development build targets **21.20.405** and **21.41.525**. Structural discovery validates the caption model and builder before adding the menu hook; unsupported or ambiguous layouts stop with a diagnostic error. Other APK versions are unverified, and support for every past or future YouTube release is not promised.
 
-The corresponding native Morphe integration is under review in [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754). It was device-tested on **21.20.405**; both versions passed APK patching and SDK verification. The independent development build also passed APK/SDK checks on both targets and combined patching with Morphe Captions on 21.20.405. Its device playback test is pending.
+The corresponding native Morphe integration is under review in [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754). It was device-tested on **21.20.405**; both versions passed APK patching and SDK verification. The independent development build also passed APK/SDK checks on both targets and combined patching with Morphe Captions on 21.20.405. The user also confirmed successful device testing of **2.0.0-dev.1**. The APK version used for that independent addon device test was not specified.
 
 See [developer checks](docs/COMPATIBILITY.md) and [architecture](docs/ARCHITECTURE.md).
 

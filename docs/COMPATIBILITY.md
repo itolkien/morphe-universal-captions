@@ -14,10 +14,10 @@ Build through the pinned official template in `.github/workflows/build-mpp.yml`.
 
 ## Scope of evidence
 
-The corresponding native Morphe integration passed device testing on **21.20.405** and APK/SDK validation on both targets. That evidence does not replace independent addon testing. Development artifacts need Manager import and device playback validation before stable publication. The v1.4.0 release and stable Manager feed remain unchanged.
+The corresponding native Morphe integration passed device testing on **21.20.405** and APK/SDK validation on both targets. That evidence does not replace independent addon testing. The user confirmed successful device testing of **2.0.0-dev.1**. The APK version for that independent addon device test was not specified; this does not establish device coverage for both targets. The v1.4.0 release and stable Manager feed remain unchanged.
 
 ## Local development validation
 
 - The menu runtime and resolver suite passed on both clean APK targets (15 tests plus the APK isolation check).
 - Both standalone patched APKs passed SDK DEX verification, cross-DEX hierarchy checks, alignment, signing and APK verification.
-- On 21.20.405, combined patching with Captions succeeded using both official 1.48.0-dev.7 and the native integration in PR #3754. These are build checks; independent addon device playback remains pending.
+- On 21.20.405, combined patching with Captions succeeded using both official 1.48.0-dev.7 and the native integration in PR #3754. The user subsequently confirmed successful independent addon device testing of 2.0.0-dev.1, without specifying the APK version.
