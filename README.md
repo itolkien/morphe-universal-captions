@@ -6,7 +6,7 @@ More languages in YouTube’s native **Auto-translate** menu, sorted alphabetica
 
 ## Features
 
-- Additional native translation targets, including Greek.
+- Adds all languages supported by the patch to YouTube’s native Auto-translate menu.
 - Alphabetical ordering by localized display name, using Morphe’s app locale when available.
 - Existing language entries and special menu options are retained.
 - Preserves YouTube’s selected translation source and native caption playback.
@@ -42,7 +42,7 @@ You can also import the `.mpp` from [Releases](https://github.com/itolkien/morph
 
 Automated checks cover independent operation and coexistence with the native Morphe integration. The release implementation was also confirmed working in user device testing. Other APK versions are unverified; compatibility with every past or future YouTube version is not guaranteed.
 
-The native integration is tracked in [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754). See [compatibility evidence](docs/COMPATIBILITY.md) and [architecture](docs/ARCHITECTURE.md) for developer details.
+The native integration has been merged into Morphe’s official patches: [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754). See [compatibility evidence](docs/COMPATIBILITY.md) and [architecture](docs/ARCHITECTURE.md) for developer details.
 
 ## Feedback
 
