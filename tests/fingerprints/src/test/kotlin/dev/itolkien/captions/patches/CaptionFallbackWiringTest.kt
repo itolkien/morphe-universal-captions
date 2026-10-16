@@ -56,6 +56,16 @@ class CaptionFallbackWiringTest {
             assertFalse(original.calls().any { it.definingClass == bridge && it.name.startsWith("fallback") })
             assertFalse(original.calls().any { it.definingClass == model.type && it.name == native.name })
         }
+        val baselineClasses = classes(baseline).associateBy { it.type }
+        val abi = resolveCaptionTranslationAbi(clean.track, clean.translated, clean.language, clean.vss, baselineClasses::get)
+        val metadata = resolveCaptionMetadataAbi(clean, abi, baselineClasses[model.type]!!)
+        val targets = model.methods.single { it.name == "universalCaptions_targetLanguages" }
+        assertEquals(listOf("Z"), targets.parameterTypes.toList())
+        val reads = targets.implementation!!.instructions.mapNotNull { (it as? ReferenceInstruction)?.reference }
+        assertTrue(metadata.metadata in reads && metadata.targets in reads && metadata.targetCode in reads)
+        val defaultSource = model.methods.single { it.name == "universalCaptions_defaultSource" }
+        assertEquals(listOf("Z"), defaultSource.parameterTypes.toList())
+        assertTrue(defaultSource.calls().any { it == metadata.defaultSource })
         val factory = model.methods.single { it.name == "universalCaptions_autoTranslateOption" }
         assertTrue(factory.calls().any { it.returnType == clean.track.type })
         assertEquals(Opcode.RETURN_OBJECT, factory.implementation!!.instructions.last().opcode)

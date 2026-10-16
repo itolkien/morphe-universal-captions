@@ -8,7 +8,7 @@ dependencies {
 kotlin { jvmToolchain(17) }
 sourceSets.main {
     kotlin.srcDir("../../patches/src/main/kotlin")
-    kotlin.include("**/CaptionFingerprints.kt", "**/CaptionTranslationAbi.kt", "**/CaptionFallbackAbi.kt")
+    kotlin.include("**/CaptionFingerprints.kt", "**/CaptionTranslationAbi.kt", "**/CaptionFallbackAbi.kt", "**/CaptionMetadataAbi.kt")
 }
 sourceSets.main {
     java.srcDir("../../extensions/extension/src/main/java")
@@ -17,9 +17,8 @@ sourceSets.main {
 }
 sourceSets.test {
     java.srcDir("../java")
-    java.include("**/CaptionTranslationListTest.java", "**/CaptionIntegrationTest.java",
-        "**/SourceTranslationExperimentTest.java", "**/EmptyTranslationFallbackTest.java",
-        "app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java")
+    java.srcDir("../policy-upstream")
+
 }
 tasks.test {
     useJUnitPlatform()

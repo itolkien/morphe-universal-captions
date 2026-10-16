@@ -1,3 +1,5 @@
+> Current experimental validation: [experiment.4](EMPTY_TRANSLATION_EXPERIMENT.md). Historical stable evidence below does not imply device validation of the new experiment.
+
 # Compatibility and validation
 
 Release version: **2.0.0**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.

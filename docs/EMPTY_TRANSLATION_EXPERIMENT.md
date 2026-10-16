@@ -1,51 +1,53 @@
-# Empty translation menu experiment
+# Comprehensive translation menu experiment
 
-Version: **2.0.1-experiment.3**. Branch: `experiment/empty-translation-fallback`. PR #5 remains draft.
+Version: **2.0.1-experiment.4**. Branch: `experiment/empty-translation-fallback`. [PR #5](https://github.com/itolkien/morphe-universal-captions/pull/5) remains draft.
 
-## Scope
+## Scope and use
 
-Select **Universal Captions - experimental empty translation fallback** in place of the stable Universal Captions addon, alongside Morphe Captions. Do not select two Universal Captions versions together. Declared APK targets remain **21.20.405** and **21.41.525**; the 21.42.241 app mentioned in upstream issue #3780 has not been validated here.
+Import the experimental MPP into Morphe Manager and select **Universal Captions - experimental empty translation fallback** alongside Morphe **Captions**, replacing any other Universal Captions version. Supported APK targets: **21.20.405** and **21.41.525**. **21.42.241 remains unverified.**
 
-Experiment.2 was deliberately restricted to `PlsODqqqwFs` and Arabic ASR. The user confirmed that case working on-device, then provided a screenshot of `FlcePQVkmM4` with one named English track and no Auto-translate row. Public player metadata for that video identifies `en`, a named manual VSS (`.en.78oJUrdTLnk`), no ASR kind, and `isTranslatable=true`. A named-source suffix is an identity component, not a language tag or a target.
+The fallback accepts original ASR and uploaded/manual captions, including named tracks, across videos and source languages. When the native translation list is empty, it restores YouTube's own localized Auto-translate option and derives translations from a validated original source. An already-present option is preserved and its empty translation list can also be repaired.
 
-Experiment.3 removes the video/source-language allowlist. It supports exactly one validated original ASR or manual caption, including named tracks, when the native translated list is empty and the direct list has no native Auto-translate row. Zero/multiple sources, existing native translations/options, translated/pseudo tracks, invalid URLs, inconsistent metadata and failures retain the original list. No source or URL is cached between managers/videos. Caption preferences and automatic source selection remain Morphe's responsibility.
+For multiple originals, the native current-audio default is used if its full VSS and URL match an eligible direct source. If YouTube declares no usable default, the first original in its current-audio direct-list order is used. All original caption options remain available. Sources from another manager, video or audio's excluded caption indices are never imported. This chooses a translation source; it does not claim to follow a separately selected manual source in every native UI flow.
 
-## Identity and URL rules
+## Target languages
 
-- Original VSS is `a.<language>` (ASR) or `.<language>` (manual), optionally followed by one nonempty native name identifier using letters, digits, `_` or `-`.
-- Use only HTTPS YouTube `/api/timedtext` URLs with an 11-character video ID and a source language consistent with the track. ASR requires `kind=asr`; manual sources have no kind or an empty kind.
-- Reject translated URLs, duplicate or encoded protected query keys (`v`, `lang`, `kind`, `name`, `tlang`), and already translated/pseudo source identities.
-- Preserve the entire original VSS suffix and all original URL bytes, including the encoded `name`, signature and other parameters. Append `tlang` before any fragment. Never replace the source name with the target label.
-- Generate the existing supported target list with localized labels and sorting; exclude the original language and its known aliases.
+The patch structurally resolves the native caption metadata list and reads its target codes directly. A valid future target code needs no addon allowlist update. A nonempty native catalog is authoritative; malformed entries are rejected. Distinct regional targets such as `pt` and `pt-PT`, and Simplified/Traditional Chinese, remain distinct. Known legacy aliases are deduplicated.
 
-The native source's backend `isTranslatable` flag is not exposed by this addon interface. Structural validation is not a promise that YouTube will serve a translation for every source. This remains an explicitly selected experiment.
+Only when the native catalog is absent or empty, the addon uses a **156-code YouTube player-response snapshot observed 2026-10-16**, from [FlcePQVkmM4](https://www.youtube.com/watch?v=FlcePQVkmM4). The clean code-only fixture is in `tests/fixtures/`. This snapshot is a fallback, not a claim that YouTube has a permanent fixed language count. Labels use the app locale and available Android locale data, with the code as a fallback; menus are sorted by localized labels.
 
-## Morphe v2 coexistence
+Existing native translation entries and their source are preserved. When Morphe's native additional-language integration is present, supplementing a nonempty menu respects **Add additional auto-translate languages**. The explicitly selected empty-menu fallback remains independent of that setting. Missing or unknown setting APIs fail closed for nonempty native menus.
 
-Original native method names, signatures and semantic anchors remain intact. The saved-manager register and boolean raw-source helpers from experiment.2 are unchanged. Raw getters bypass fallback without global/per-thread state and remain excluded from Morphe's parameterless fingerprints. The native option factory supplies the localized menu label and flags.
+## Identity and architecture
 
-`CaptionIntegration` continues to leave nonempty native menus under Morphe's control in both additional-language setting states. The separately selected fallback fills only the single-source empty case, independent of that setting. The addon does not hook visibility, Off, explicit selection, preferences or network requests.
+- Original VSS: `a.<language>` (ASR) or `.<language>` (manual), optionally one native name identifier. Preserve the complete identifier.
+- Only HTTPS YouTube `/api/timedtext`, consistent source language, valid video identity, and matching ASR kind are accepted. Reject translated sources, conflicting video identities and duplicated/encoded protected query keys.
+- Preserve signed URL bytes and append `tlang` before any fragment. No external translation service, cookies, network interception or source cache.
+- Preserve original method names, signatures and anchors for Morphe v2 discovery. Boolean-parameter raw/metadata/default helpers avoid parameterless fingerprint collisions. Resolve the complete ABI before mutation.
+- Morphe owns preferred language, explicit user choice, caption visibility and Off. Its policy classes are untouched.
 
 ## Evidence and limits
 
-- Upstream [issue #3780](https://github.com/MorpheApp/morphe-patches/issues/3780#issuecomment-6213848463) explains that the native additional-language feature needs an existing Auto-translate menu. It does not itself create one when missing.
-- The user confirmed experiment.2 working for the Arabic video. This is user-reported device evidence for that example, not device evidence for the revised experiment.3.
-- In this investigation, the new video's English timedtext request returned HTTP 200 with caption events. A translated Turkish request returned HTTP 429; translated text and Android playback were not verified. No authenticated cookies or device were used.
-- Six added regressions failed against experiment.2 and passed with experiment.3: named English identity/name preservation, other video/source languages, source isolation, alias exclusion and malformed source rejection.
-- Independent source review found no Important code defects. Unknown future native option-factory shapes remain outside the two declared APK targets.
+The runtime matrix covers all **156 × 155** distinct source/target pairs for both manual and ASR source shapes in four display locales: **193,440 generated translations** with exact URL, VSS and label checks. This tests construction and isolation, not server playback. Dynamic catalogs, malformed data, multiple sources, setting ownership and native policy behavior have separate regressions.
 
-## Device test
+The tests compile and run the **unmodified upstream Morphe preferred-language implementation** (test-only fixture with its NOTICE/license). All catalog languages are offered to that policy; Off, provider priority, explicit user selection and new-video reset are checked. Its existing broad regional matching can select generic `pt` for preference `pt-PT`; both menu options exist and can be selected manually. The addon deliberately does not replace that policy.
 
-1. Import experiment.3 MPP into Morphe Manager, select its experimental patch with Captions, and patch a clean supported YouTube APK. Leave stable Universal Captions unselected.
-2. Open `https://www.youtube.com/watch?v=FlcePQVkmM4`, open Captions, then Auto-translate and choose Turkish. Check actual translated lines, not only the new menu row.
-3. Recheck `https://www.youtube.com/watch?v=PlsODqqqwFs`, Off, video switching and normal native translation menus. Source names must remain distinct and URLs must not leak across videos.
+YouTube may withhold a translation even when captions exist. The backend `isTranslatable` flag is not exposed by this bridge. Unsupported sources, account restrictions, server errors and absent original captions cannot be repaired by menu construction. No device is attached; experiment.4 playback has not been verified on Android. Previous user reports of working Arabic/English examples are not evidence for every language or this new artifact.
 
-The stable Manager feed and stable releases are unchanged. Local build/APK verification results for this exact revision are recorded below after validation.
+## Device checks still needed
 
-## Local validation (2026-10-16, experiment.3)
+1. Test actual translated text on `PlsODqqqwFs` and `FlcePQVkmM4`, including Turkish and a newly exposed language.
+2. Test a video with multiple originals and multiple audio tracks; switch audio, languages and videos.
+3. Check preferred-language selection, Off, manual selection and the native additional-language toggle.
+4. Report APK/Manager/Morphe versions and source/target language if a menu is present but text is missing. Do not publish signed caption URLs.
 
-- Clean 21.20.405 and 21.41.525: 35 passed, 1 native-only test skipped per APK. Complete host ABI/discovery and unchanged caption-policy checks passed.
-- Native Captions plus experiment.3 on 21.41.525: 36/36 passed, including both native/addon interfaces/hooks and byte-for-byte caption policy isolation.
-- All three newly produced APKs passed SDK DEX, cross-DEX hierarchy, alignment, disposable signing and APK verification. No patched APK or key is distributed.
-- The outgoing MPP passed ZIP integrity, root Android DEX coverage (17 JVM patch classes, 20 DEX classes), embedded runtime type/checksum checks, version/target metadata and SHA-256 verification.
-- The hook implementation/ABI is unchanged from experiment.2, whose two application orders were tested. This revision repeats native-first combined validation and all runtime regressions; it does not claim a new reverse-order APK build.
+The stable Manager feed and released artifacts are unchanged. Exact build/APK results are recorded after final validation below.
+
+## Exact local validation (2026-10-16)
+
+- Clean 21.20.405 and 21.41.525: **44 passed, 1 native-only check skipped**, per APK.
+- Native Captions plus experiment.4 on 21.41.525, **both application orders**: **45/45 passed**, per order. Original host anchors, live metadata/default helpers and both native/addon interfaces/hooks were verified from the resulting DEX.
+- All four new APKs passed SDK DEX, cross-DEX hierarchy, alignment, disposable signing and APK verification. Native caption-policy classes remained byte-for-byte equivalent to their baseline. No APK or signing key is distributed.
+- Final MPP: 758,441 bytes; root Android DEX coverage **19 JVM / 22 DEX classes**; required embedded runtime types, ZIP integrity, DEX SHA-1/Adler-32 checksums, exact embedded MPE equality, version and declared target metadata passed. A deliberately corrupted DEX was rejected.
+- SHA-256: `f3a3251d82b67babc8f52ac0bd30a733ea5aa1b894ba9283adfceb7e65214637`.
+- Independent final source review found no Important regressions. Android playback/server availability and APK 21.42.241 remain unverified.

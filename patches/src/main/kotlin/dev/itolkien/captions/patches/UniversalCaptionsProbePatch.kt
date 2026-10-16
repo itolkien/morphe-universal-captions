@@ -49,7 +49,7 @@ private fun readSmali(reference: Reference): String = when (reference) {
 @Suppress("unused")
 val universalCaptionsPatch = bytecodePatch(
     name = "Universal Captions - experimental empty translation fallback",
-    description = "Experimental: restores missing Auto-translate from a single original caption source, including ASR and named tracks. Caption preferences remain managed by Morphe.",
+    description = "Experimental: restores missing Auto-translate using YouTube target languages and current-audio original sources, including ASR and named tracks. Caption preferences remain managed by Morphe.",
     default = false,
 ) {
     compatibleWith(Compatibility(
@@ -64,6 +64,7 @@ val universalCaptionsPatch = bytecodePatch(
         val abi = resolveCaptionTranslationAbi(model.track, model.translated,
             model.language, model.vss, ::classDefByOrNull)
         val autoOption = resolveNativeAutoOption(model, abi)
+        val metadata = resolveCaptionMetadataAbi(model, abi, classDefBy(model.direct.definingClass))
         for (method in listOf(model.direct, model.translated)) {
             check(method.implementation!!.registerCount in 1..15 && method.parameterTypes.isEmpty() &&
                 !AccessFlags.STATIC.isSet(method.accessFlags)) { "Unsupported native menu register layout" }
@@ -119,16 +120,34 @@ val universalCaptionsPatch = bytecodePatch(
             return-object v0
         """)
 
-        for ((index, register) in returns.reversed()) {
-            // Replace the return so branch targets also pass through augmentation.
-            translated.replaceInstruction(index,
-                "invoke-static/range { v$register .. v$register }, $EXTENSION->augment(Ljava/util/List;)Ljava/util/List;")
-            translated.addInstructions(index + 1, """
-                move-result-object v$register
-                return-object v$register
-            """)
-        }
-
+        manager.addTranslationHelper("universalCaptions_targetLanguages", listOf("Z"), "Ljava/util/List;", 4, """
+            new-instance v0, Ljava/util/ArrayList;
+            invoke-direct { v0 }, Ljava/util/ArrayList;-><init>()V
+            iget-object v1, p0, ${metadata.metadata}
+            if-eqz v1, :done
+            iget-object v1, v1, ${metadata.targets}
+            if-eqz v1, :done
+            invoke-interface { v1 }, Ljava/util/List;->iterator()Ljava/util/Iterator;
+            move-result-object v1
+            :next
+            invoke-interface { v1 }, Ljava/util/Iterator;->hasNext()Z
+            move-result v2
+            if-eqz v2, :done
+            invoke-interface { v1 }, Ljava/util/Iterator;->next()Ljava/lang/Object;
+            move-result-object v2
+            check-cast v2, ${metadata.targetCode.definingClass}
+            if-eqz v2, :next
+            iget-object v3, v2, ${metadata.targetCode}
+            invoke-interface { v0, v3 }, Ljava/util/List;->add(Ljava/lang/Object;)Z
+            goto :next
+            :done
+            return-object v0
+        """)
+        manager.addTranslationHelper("universalCaptions_defaultSource", listOf("Z"), TRACK_INTERFACE, 1, """
+            invoke-virtual { p0 }, ${metadata.defaultSource}
+            move-result-object v0
+            return-object v0
+        """)
         manager.interfaces.add(SOURCE_INTERFACE)
         manager.methods.add(ImmutableMethod(manager.type, "universalCaptions_autoTranslateOption",
             emptyList(), TRACK_INTERFACE, AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,

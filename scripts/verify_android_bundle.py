@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Reject JVM-only or incomplete MPP artifacts before Android distribution."""
 
+import hashlib
+import zlib
 import re
 import struct
 import sys
@@ -12,6 +14,11 @@ def dex_classes(data):
         raise ValueError("invalid DEX header")
     if struct.unpack_from("<I", data, 32)[0] != len(data):
         raise ValueError("invalid DEX file size")
+
+    if hashlib.sha1(data[32:]).digest() != data[12:32]:
+        raise ValueError("invalid DEX SHA-1 signature")
+    if zlib.adler32(data[12:]) & 0xffffffff != struct.unpack_from("<I", data, 8)[0]:
+        raise ValueError("invalid DEX Adler-32 checksum")
 
     def uint(offset):
         return struct.unpack_from("<I", data, offset)[0]
@@ -43,6 +50,8 @@ def dex_classes(data):
 def verify(path):
     with zipfile.ZipFile(path) as bundle:
         names = bundle.namelist()
+        if len(names) != len(set(names)) or bundle.testzip() is not None:
+            raise ValueError("duplicate or corrupt ZIP entries")
         if "classes.dex" not in names:
             raise ValueError("missing root classes.dex: this bundle cannot load patches on Android")
         dex = set()
@@ -59,6 +68,15 @@ def verify(path):
         missing = expected - dex
         if missing:
             raise ValueError(f"{len(missing)} JVM classes missing from Android DEX: {sorted(missing)[:5]}")
+        runtime = dex_classes(bundle.read("extensions/extension.mpe"))
+        required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack", "CaptionIntegration",
+                    "SourceTranslationExperiment", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
+                    "NativeTranslationBridge"}
+        missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
+        if missing_runtime:
+            raise ValueError(f"missing extension runtime classes: {sorted(missing_runtime)}")
+        if any(name.startswith("app/morphe/extension/youtube/patches/") for name in runtime):
+            raise ValueError("native Morphe caption implementation must not be bundled")
         print(f"{path}: Android bundle verified ({len(expected)} JVM classes, {len(dex)} DEX classes)")
 
 

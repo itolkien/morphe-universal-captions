@@ -33,6 +33,21 @@ public final class CaptionIntegration {
         return CaptionTranslationList.augment(tracks, locale);
     }
 
+    static List<CaptionTrack> augmentMetadata(List<CaptionTrack> tracks, Locale locale, List<String> targets) {
+        if (isManagedByNative(tracks, NATIVE_TRACK_INTERFACE) && !nativeAdditionalLanguagesEnabled()) return tracks;
+        return CaptionTranslationList.augment(tracks, locale, targets);
+    }
+
+    private static boolean nativeAdditionalLanguagesEnabled() {
+        try {
+            Object setting = Class.forName("app.morphe.extension.youtube.settings.Settings")
+                    .getField("AUTO_TRANSLATE_ADDITIONAL_LANGUAGES").get(null);
+            return Boolean.TRUE.equals(setting.getClass().getMethod("get").invoke(setting));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
     static boolean isManagedByNative(List<?> tracks, Class<?> nativeInterface) {
         if (nativeInterface == null || tracks == null) return false;
         for (Object track : tracks) {

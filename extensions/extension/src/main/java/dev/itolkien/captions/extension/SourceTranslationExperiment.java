@@ -60,6 +60,16 @@ public final class SourceTranslationExperiment {
         }
     }
 
+    static String videoId(URI uri) {
+        for (String parameter : uri.getRawQuery().split("&")) {
+            if (parameter.startsWith("v=")) {
+                try { return URLDecoder.decode(parameter.substring(2), "UTF-8"); }
+                catch (java.io.UnsupportedEncodingException impossible) { throw new AssertionError(impossible); }
+            }
+        }
+        return "";
+    }
+
     public static CaptionTranslationList.CaptionTrack preview(
             CaptionTranslationList.CaptionTrack source, String target, Locale locale) {
         if (!language(target) || locale == null || originalUri(source) == null) return null;
