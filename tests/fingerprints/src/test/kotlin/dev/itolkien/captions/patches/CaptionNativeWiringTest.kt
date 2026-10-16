@@ -26,7 +26,7 @@ class CaptionNativeWiringTest {
                 (it as? ReferenceInstruction)?.reference as? MethodReference
             }.orEmpty()
             calls.any { it.definingClass == nativeOwner && it.name == "addTranslationLanguages" } &&
-                calls.any { it.definingClass == addonOwner && it.name == "augment" }
+                calls.any { it.definingClass == addonOwner && it.name == "fallbackTranslated" }
         }, "The translated list must pass through both hooks")
     }
 }

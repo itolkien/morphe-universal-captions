@@ -11,3 +11,7 @@ local.properties
 /tests/fingerprints/.gradle/
 /tests/fingerprints/.kotlin/
 /tests/fingerprints/build/
+
+# Generated Python caches
+__pycache__/
+*.py[cod]

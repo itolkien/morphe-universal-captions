@@ -26,14 +26,25 @@ public final class CaptionTranslationList {
         CaptionTrack universalCaptions_copyTranslation(String language, String url, String vss, CharSequence label);
     }
 
-    // Curated targets; their presence in the menu does not guarantee server availability.
-    private static final String[] TARGETS = ("af am ar as az be bg bho bn bs ca ceb co cs cy da de " +
-            "dv el en eo es et eu fa fi fil fr fy ga gd gl gu ha haw he hi hmn hr ht hu hy " +
-            "id ig is it ja jv ka kk km kn ko ku ky la lb lo lt lv mg mi mk ml mn mr ms " +
-            "mt my ne nl no ny or pa pl ps pt ro ru rw sd si sk sl sm sn so sq sr st su " +
-            "sv sw ta te tg th tk tr tt ug uk ur uz vi xh yi yo zh-Hans zh-Hant zu").split(" ");
+    // YouTube player translationLanguages snapshot, 2026-10-16, video FlcePQVkmM4.
+    // Used only when native metadata is absent; runtime metadata takes precedence.
+    static final String[] TARGETS = "ab aa af ak sq am ar hy as ay az bn ba eu be bho bs br bg my ca ceb zh-Hans zh-Hant co hr cs da dv nl dz en eo et ee fo fj fil fi fr gaa gl lg ka de el gn gu ht ha haw iw hi hmn hu is ig id iu ga it ja jv kl kn kk kha km rw ko kri ku ky lo la lv ln lt lua luo lb mk mg ms ml mt gv mi mr mn mfe ne new nso no ny oc or om os pam ps fa pl pt pt-PT pa qu ro rn ru sm sg sa gd sr crs sn sd si sk sl so st es su sw ss sv tg ta tt te th bo ti to ts tn tum tr tk uk ur ug uz ve vi war cy fy wo xh yi yo zu".split(" ");
+
+    static List<String> targets(List<String> nativeTargets) {
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        if (nativeTargets != null) for (String code : nativeTargets) {
+            if (code != null && code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*") && seen.add(languageKey(code))) result.add(code);
+        }
+        // An explicit nonempty metadata list is authoritative, including one containing no valid codes.
+        return nativeTargets == null || nativeTargets.isEmpty() ? java.util.Arrays.asList(TARGETS) : result;
+    }
 
     public static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale) {
+        return augment(tracks, locale, null);
+    }
+
+    static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets) {
         if (tracks == null || tracks.isEmpty()) return tracks;
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
@@ -48,7 +59,7 @@ public final class CaptionTranslationList {
             String oldUrl = prototype.universalCaptions_getCaptionUrl();
             String oldVss = prototype.universalCaptions_getVssId();
             String vssPrefix = oldVss.substring(0, oldVss.length() - oldLanguage.length());
-            for (String code : TARGETS) {
+            for (String code : targets(nativeTargets)) {
                 if (!represented.add(languageKey(code))) continue;
                 String name = Locale.forLanguageTag(code).getDisplayName(locale);
                 if (name.isEmpty()) name = code;
@@ -56,6 +67,20 @@ public final class CaptionTranslationList {
                         translatedUrl(oldUrl, oldLanguage, code),
                         vssPrefix + code, name));
             }
+        }
+        return sorted(result, locale);
+    }
+
+    /** Used only by the explicitly selected, single-source empty-menu experiment. */
+    static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale) {
+        return fromSource(source, locale, null);
+    }
+
+    static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale, List<String> nativeTargets) {
+        List<CaptionTrack> result = new ArrayList<>();
+        for (String target : targets(nativeTargets)) {
+            CaptionTrack translated = SourceTranslationExperiment.preview(source, target, locale);
+            if (translated != null) result.add(translated);
         }
         return sorted(result, locale);
     }
@@ -93,7 +118,7 @@ public final class CaptionTranslationList {
         }
     }
 
-    private static String languageKey(String raw) {
+    static String languageKey(String raw) {
         if (raw == null) return "";
         String code = raw.trim().replace('_', '-').toLowerCase(Locale.ROOT);
         String primary = code.split("-")[0];
@@ -109,7 +134,7 @@ public final class CaptionTranslationList {
                 if (code.endsWith("-tw") || code.endsWith("-hk")) return "zh-hant";
                 if (code.endsWith("-cn") || code.endsWith("-sg")) return "zh-hans";
                 return code;
-            default: return primary;
+            default: return code;
         }
     }
 

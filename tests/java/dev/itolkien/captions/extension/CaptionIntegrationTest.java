@@ -53,4 +53,18 @@ class CaptionIntegrationTest {
         assertFalse(CaptionIntegration.isManagedByNative(List.of(), NativeTrack.class));
         assertTrue(CaptionIntegration.isManagedByNative(Arrays.asList(null, new IntegratedTrack()), NativeTrack.class));
     }
+    @Test void dynamicNativeMetadataHonorsBothStatesOfTheNativeAdditionalLanguageSetting() {
+        List<CaptionTrack> input = List.of(new IntegratedTrack());
+        var setting = app.morphe.extension.youtube.settings.Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES;
+        setting.value = false;
+        assertSame(input, CaptionIntegration.augmentMetadata(input, Locale.ENGLISH, List.of("gaa", "pt-PT")));
+        setting.value = true;
+        try {
+            var result = CaptionIntegration.augmentMetadata(input, Locale.ENGLISH, List.of("gaa", "pt-PT"));
+            assertEquals(3, result.size());
+            assertTrue(result.stream().anyMatch(t -> "gaa".equals(t.universalCaptions_getLanguageCode())));
+            assertTrue(result.stream().anyMatch(t -> "pt-PT".equals(t.universalCaptions_getLanguageCode())));
+        } finally { setting.value = false; }
+    }
+
 }

@@ -1,3 +1,5 @@
+> Historical stable2.0.0 architecture. Stable **2.1.0** adds current-audio source fallback and reads the native target catalog; see [release evidence](RELEASE_2.1.0.md) and [fallback architecture](EMPTY_TRANSLATION_EXPERIMENT.md).
+
 # Menu-only architecture
 
 The independent patch discovers the native caption track and translated-track list using semantic string anchors, then resolves the builder through copy-constructor data flow. Resolution completes before modifying host bytecode. Both direct-field and abstract-getter layouts are supported, with ambiguous identities rejected.

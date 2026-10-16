@@ -8,20 +8,21 @@ dependencies {
 kotlin { jvmToolchain(17) }
 sourceSets.main {
     kotlin.srcDir("../../patches/src/main/kotlin")
-    kotlin.include("**/CaptionFingerprints.kt", "**/CaptionTranslationAbi.kt")
+    kotlin.include("**/CaptionFingerprints.kt", "**/CaptionTranslationAbi.kt", "**/CaptionFallbackAbi.kt", "**/CaptionMetadataAbi.kt")
 }
 sourceSets.main {
     java.srcDir("../../extensions/extension/src/main/java")
-    java.include("**/CaptionTranslationList.java", "**/CaptionIntegration.java")
+    java.include("**/CaptionTranslationList.java", "**/CaptionIntegration.java",
+        "**/SourceTranslationExperiment.java", "**/EmptyTranslationFallback.java")
 }
 sourceSets.test {
     java.srcDir("../java")
-    java.include("**/CaptionTranslationListTest.java", "**/CaptionIntegrationTest.java",
-        "app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java")
+    java.srcDir("../policy-upstream")
+
 }
 tasks.test {
     useJUnitPlatform()
-    for (name in listOf("YOUTUBE_CAPTIONS_APK", "CAPTIONS_BASELINE_APK", "CAPTIONS_PATCHED_APK", "CAPTIONS_COMBINED_APK")) {
+    for (name in listOf("YOUTUBE_CAPTIONS_APK", "CAPTIONS_BASELINE_APK", "CAPTIONS_PATCHED_APK", "CAPTIONS_COMBINED_APK", "CAPTIONS_FALLBACK_APK")) {
         val path = providers.environmentVariable(name)
         inputs.property(name, path.orElse(""))
         path.orNull?.let { inputs.file(it).withPropertyName("${name}_file") }

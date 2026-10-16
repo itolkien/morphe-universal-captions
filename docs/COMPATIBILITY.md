@@ -1,3 +1,5 @@
+> Current stable validation: [2.1.0](RELEASE_2.1.0.md). Earlier experimental and stable evidence below is historical.
+
 # Compatibility and validation
 
 Release version: **2.0.0**. Declared APK targets: **21.20.405**, **21.41.525**. No other version is verified.

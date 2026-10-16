@@ -19,6 +19,16 @@ public final class NativeTranslationBridge {
         return Locale.getDefault();
     }
 
+    public static List<CaptionTrack> fallbackDirect(List<CaptionTrack> tracks,
+            EmptyTranslationFallback.CaptionSource source) {
+        return EmptyTranslationFallback.direct(tracks, source, menuLocale());
+    }
+
+    public static List<CaptionTrack> fallbackTranslated(List<CaptionTrack> tracks,
+            EmptyTranslationFallback.CaptionSource source) {
+        return EmptyTranslationFallback.translated(tracks, source, menuLocale());
+    }
+
     public static List<CaptionTrack> augment(List<CaptionTrack> tracks) {
         try {
             return CaptionIntegration.augment(tracks, menuLocale());

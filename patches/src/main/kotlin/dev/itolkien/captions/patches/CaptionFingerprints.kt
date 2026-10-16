@@ -9,6 +9,7 @@ import com.android.tools.smali.dexlib2.iface.reference.*
 internal data class CaptionTranslationModel(
     val track: ClassDef,
     val translated: Method,
+    val direct: Method,
     val language: Reference,
     val vss: Reference,
 )
@@ -53,6 +54,8 @@ internal fun resolveCaptionTranslationModel(classes: Iterable<ClassDef>): Captio
     val model = all.filter { type -> type.methods.any { it.listWith("AUTO_TRANSLATE_CAPTIONS_OPTION") } }
         .filter { type -> type.methods.any { it.listWith("&tlang=") } }.unique("caption list model")
     val translated = model.methods.filter { it.listWith("&tlang=") }.unique("translation list")
-    return CaptionTranslationModel(track, translated, accessor(languageMethod, "language accessor"),
+    return CaptionTranslationModel(track, translated,
+        model.methods.filter { it.listWith("AUTO_TRANSLATE_CAPTIONS_OPTION") }.unique("direct list"),
+        accessor(languageMethod, "language accessor"),
         accessor(vssMethod, "vss accessor"))
 }

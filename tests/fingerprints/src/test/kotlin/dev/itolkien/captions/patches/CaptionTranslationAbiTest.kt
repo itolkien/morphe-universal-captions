@@ -124,6 +124,10 @@ class CaptionTranslationAbiTest {
         val model = resolveCaptionTranslationModel(classes.values)
         val track = model.track
         val abi = resolveCaptionTranslationAbi(track, model.translated, model.language, model.vss, classes::get)
+        assertNotNull(resolveNativeAutoOption(model, abi))
+        val metadata = resolveCaptionMetadataAbi(model, abi, classes[model.direct.definingClass]!!)
+        assertEquals("Ljava/lang/String;", metadata.targetCode.type)
+        println("Resolved live target catalog: $metadata")
         assertEquals(track.type, abi.copy.parameterTypes.single())
         assertEquals(track.type, abi.build.returnType)
         assertNotEquals(abi.languageSetter, abi.urlSetter)

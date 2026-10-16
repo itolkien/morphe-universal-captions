@@ -3,7 +3,7 @@ on:
   pull_request:
   workflow_dispatch:
   push:
-    branches: [main, experiment/source-track-selection]
+    branches: [main, experiment/empty-translation-fallback]
     paths:
       - 'patches/**'
       - 'extensions/**'
@@ -33,14 +33,14 @@ jobs:
           mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
           cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
           # Use an updated bundle version so Manager can distinguish old incompatible artifacts.
-          sed -i 's/^version = .*/version = 2.0.0/' template/gradle.properties
+          sed -i 's/^version = .*/version = 2.1.0/' template/gradle.properties
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
           s=p.read_text()
           s=s.replace('group = "app.template"', 'group = "dev.itolkien.captions"')
           s=s.replace('name = "UserXYZ Patches"', 'name = "Morphe Universal Captions"')
-          s=s.replace('description = "Patches for apps I like"', 'description = "Additional native YouTube Auto-translate languages"')
+          s=s.replace('description = "Patches for apps I like"', 'description = "Native YouTube translation languages and missing menu fallback; caption preferences remain managed by Morphe."')
           s=s.replace('source = "git@github.com:UserXYZ/morphe-patches.git"', 'source = "https://github.com/itolkien/morphe-universal-captions"')
           s=s.replace('author = "Awesome dev"', 'author = "itolkien"')
           s=s.replace('contact = "na"', 'contact = "https://github.com/itolkien/morphe-universal-captions/issues"')
@@ -59,7 +59,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :patches:generatePatchesList --no-daemon
           ./gradlew :patches:buildAndroid --no-daemon
-          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-2.0.0.mpp
+          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-2.1.0.mpp
           find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
       - name: Verify generated compatibility metadata
         run: |
@@ -67,7 +67,7 @@ jobs:
           import json
           from pathlib import Path
           data = json.loads(Path("template/patches-list.json").read_text())
-          assert data["version"] == "2.0.0", data["version"]
+          assert data["version"] == "2.1.0", data["version"]
           patches = [p for p in data["patches"] if p["name"].startswith("Universal Captions")]
           assert len(patches) == 1, patches
           packages = patches[0]["compatiblePackages"]
@@ -80,15 +80,15 @@ jobs:
       - name: Upload Morphe Manager MPP
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-2.0.0-youtube-mpp
-          path: template/patches/build/libs/patches-2.0.0.mpp
+          name: universal-captions-2.1.0-youtube-mpp
+          path: template/patches/build/libs/patches-2.1.0.mpp
           if-no-files-found: error
           retention-days: 14
 
       - name: Upload generated patch metadata
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-2.0.0-metadata
+          name: universal-captions-2.1.0-metadata
           path: template/patches-list.json
           if-no-files-found: error
           retention-days: 14
