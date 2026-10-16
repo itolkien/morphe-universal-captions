@@ -49,7 +49,7 @@ private fun readSmali(reference: Reference): String = when (reference) {
 @Suppress("unused")
 val universalCaptionsPatch = bytecodePatch(
     name = "Universal Captions - experimental empty translation fallback",
-    description = "Experimental: restores missing Auto-translate only for PlsODqqqwFs with a single Arabic ASR source. Other menus defer to Morphe. Device validation pending.",
+    description = "Experimental: restores missing Auto-translate from a single original caption source, including ASR and named tracks. Caption preferences remain managed by Morphe.",
     default = false,
 ) {
     compatibleWith(Compatibility(

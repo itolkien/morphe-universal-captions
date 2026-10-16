@@ -49,10 +49,10 @@ class EmptyTranslationFallbackTest {
         assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
         assertSame(source.translations, EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH));
     }
-    @Test void unrelatedVideosMultipleSourcesManualAndMalformedTracksAreUntouched() {
+    @Test void multipleSourcesAndMalformedTracksAreUntouched() {
         Source source = new Source();
         for (List<CaptionTrack> tracks : List.of(
-                List.<CaptionTrack>of(new Track("ar", URL.replace("PlsODqqqwFs", "otherVideo1"), "a.ar")),
+                List.<CaptionTrack>of(new Track("ar", URL.replace("PlsODqqqwFs", "short"), "a.ar")),
                 List.<CaptionTrack>of(new Track("ar", URL, "a.ar"), new Track("ar", URL, "a.ar")),
                 List.<CaptionTrack>of(new Track("ar", URL, ".ar")),
                 List.<CaptionTrack>of(new Track("ar", URL + "&tlang=de", "a.ar")),
@@ -70,7 +70,7 @@ class EmptyTranslationFallbackTest {
     @Test void sourceIsPerManagerAndNativeIntegratedTracksCanUseOnlyTheExplicitFallback() {
         Source first = new Source();
         Source second = new Source();
-        second.direct = List.of(new Track("ar", URL.replace("PlsODqqqwFs", "otherVideo1"), "a.ar"));
+        second.direct = List.of(new Track("ar", URL.replace("PlsODqqqwFs", "short"), "a.ar"));
         assertEquals(3, EmptyTranslationFallback.direct(first.direct, first, Locale.ENGLISH).size());
         assertSame(second.direct, EmptyTranslationFallback.direct(second.direct, second, Locale.ENGLISH));
         class NativeAsr extends Track implements app.morphe.extension.youtube.patches.AutoTranslateCaptionsPatch.CaptionTrackInterface {
@@ -89,4 +89,45 @@ class EmptyTranslationFallbackTest {
         };
         assertSame(broken.direct, EmptyTranslationFallback.direct(broken.direct, broken, Locale.ENGLISH));
     }
+    @Test void namedEnglishSourceGetsNativeMenuAndTurkishTranslationWithoutAnAsrFlag() {
+        Source source = new Source();
+        String url = "https://www.youtube.com/api/timedtext?v=FlcePQVkmM4&lang=en&name=896wrPZbXJE&sig=a%2Bb";
+        CaptionTrack english = new Track("en", url, ".en.78oJUrdTLnk");
+        source.direct = List.of(source.direct.get(0), english);
+        List<CaptionTrack> direct = EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH);
+        assertEquals(3, direct.size());
+        assertSame(english, direct.get(1));
+        assertSame(source.option, direct.get(2));
+        List<CaptionTrack> translated = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
+        CaptionTrack tr = translated.stream().filter(t -> "tr".equals(t.universalCaptions_getLanguageCode())).findFirst().orElseThrow();
+        assertEquals(url + "&tlang=tr", tr.universalCaptions_getCaptionUrl());
+        assertEquals("t.en.78oJUrdTLnk.tr", tr.universalCaptions_getVssId());
+        assertFalse(translated.stream().anyMatch(t -> "en".equals(t.universalCaptions_getLanguageCode())));
+    }
+
+    @Test void singleSourcesInOtherLanguagesAndVideosNeedNoAllowlist() {
+        Source source = new Source();
+        for (String language : List.of("de", "hi", "ja", "fr", "zh-Hans")) {
+            String url = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=" + language + "&kind=asr&sig=a%2Bb";
+            source.direct = List.of(new Track(language, url, "a." + language));
+            assertEquals(2, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
+            List<CaptionTrack> translations = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
+            assertTrue(translations.size() > 100);
+            assertFalse(translations.stream().anyMatch(t -> language.equals(t.universalCaptions_getLanguageCode())));
+        }
+    }
+
+    @Test void validSourcesInDifferentManagersNeverReuseEachOthersUrls() {
+        Source arabic = new Source();
+        Source english = new Source();
+        String url = "https://www.youtube.com/api/timedtext?v=FlcePQVkmM4&lang=en&name=source";
+        english.direct = List.of(new Track("en", url, ".en.source"));
+        List<CaptionTrack> first = EmptyTranslationFallback.translated(arabic.translations, arabic, Locale.ENGLISH);
+        List<CaptionTrack> second = EmptyTranslationFallback.translated(english.translations, english, Locale.ENGLISH);
+        assertTrue(first.stream().allMatch(t -> t.universalCaptions_getCaptionUrl().contains("v=PlsODqqqwFs&")));
+        assertTrue(second.size() > 100);
+        assertTrue(second.stream().allMatch(t -> t.universalCaptions_getCaptionUrl().contains("v=FlcePQVkmM4&")));
+        assertTrue(first.stream().noneMatch(t -> t.universalCaptions_getCaptionUrl().contains("FlcePQVkmM4")));
+    }
+
 }

@@ -1,6 +1,6 @@
 # Morphe Universal Captions
 
-> **Experimental branch:** [Empty translation fallback test instructions](docs/EMPTY_TRANSLATION_EXPERIMENT.md). The bundle built here is `2.0.1-experiment.2`, scoped to `PlsODqqqwFs`; device playback is unverified. Stable 2.0.0 details below describe the released addon.
+> **Experimental branch:** [Empty translation fallback test instructions](docs/EMPTY_TRANSLATION_EXPERIMENT.md). The bundle built here is `2.0.1-experiment.3`, supports one original source across videos/languages, including named English captions; new device playback is unverified. Stable 2.0.0 details below describe the released addon.
 
 
 More languages in YouTube’s native **Auto-translate** menu, sorted alphabetically by their displayed names.

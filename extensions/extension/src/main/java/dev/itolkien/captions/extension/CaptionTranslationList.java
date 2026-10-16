@@ -60,7 +60,7 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    /** Used only by the explicitly selected, video-scoped empty-menu experiment. */
+    /** Used only by the explicitly selected, single-source empty-menu experiment. */
     static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale) {
         List<CaptionTrack> result = new ArrayList<>();
         for (String target : TARGETS) {
@@ -103,7 +103,7 @@ public final class CaptionTranslationList {
         }
     }
 
-    private static String languageKey(String raw) {
+    static String languageKey(String raw) {
         if (raw == null) return "";
         String code = raw.trim().replace('_', '-').toLowerCase(Locale.ROOT);
         String primary = code.split("-")[0];
