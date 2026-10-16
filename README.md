@@ -37,12 +37,15 @@ Updating the patch source does not modify an already installed YouTube app; reap
 | --- | --- |
 | Patch version | **2.1.0** |
 | App | YouTube for Android |
-| APK targets | **21.20.405**, **21.41.525** |
+| Declared APK targets / local APK validation | **21.20.405**, **21.41.525** |
+| User-reported device compatibility | **20.21.37–21.42.241**, including intermediate versions |
 | Installation | Morphe Manager (`.mpp`) |
 
 The release uses the same runtime as device-tested experiment.4. Automated checks cover all 156 × 155 catalog source/target pairs for ASR and manual source shapes in four display locales, native Morphe coexistence in both patch orders, and unchanged caption-policy classes. User device testing on **21.20.405** reported working translations, Off/on, source/audio changes and video switching; captured process logs showed no crash.
 
-**Known limits:** 21.42.241 is unverified. Morphe's existing automatic regional matching can choose generic `pt` for preference `pt-PT`; manual menu targets remain separate. The fallback's source is the current-audio default/order; exact tracking of every manual source selection is not guaranteed. Server restrictions and absent original captions remain outside the addon's control.
+On 2026-10-16, the user additionally confirmed successful device testing of **20.21.37**, **21.42.241** and intermediate versions across that range, with no observed problems. This is user-reported compatibility evidence; no per-version test matrix or additional logs were supplied for this follow-up. Local automated APK validation and the shipped target metadata remain limited to the two versions listed above.
+
+**Known limits:** Morphe's existing automatic regional matching can choose generic `pt` for preference `pt-PT`; manual menu targets remain separate. The fallback's source is the current-audio default/order; exact tracking of every manual source selection is not guaranteed. Server restrictions and absent original captions remain outside the addon's control.
 
 See [2.1.0 release evidence](docs/RELEASE_2.1.0.md), [fallback design and experiment history](docs/EMPTY_TRANSLATION_EXPERIMENT.md) and [historical compatibility evidence](docs/COMPATIBILITY.md). The native additional-language feature was integrated through [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754).
 

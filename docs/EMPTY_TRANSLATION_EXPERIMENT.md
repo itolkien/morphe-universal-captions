@@ -1,4 +1,4 @@
-> Historical experiment record. Stable **2.1.0** promotes this runtime; use the [current installation guide](../README.md) and [release evidence](RELEASE_2.1.0.md). References below to draft status, pending device tests and an unchanged feed describe earlier stages.
+> Historical experiment record. Stable **2.1.0** promotes this runtime; use the [current installation guide](../README.md) and [release evidence](RELEASE_2.1.0.md). References below to draft status, pending device tests, unverified versions and an unchanged feed describe earlier stages. Later user feedback confirmed device operation across **20.21.37–21.42.241**, including intermediate versions; see the release evidence for scope.
 
 # Comprehensive translation menu experiment
 

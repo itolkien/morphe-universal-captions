@@ -15,6 +15,8 @@ The experiment.4 implementation passed 193,440 generated translation checks and 
 
 The user subsequently tested the runtime on Morphe YouTube **21.20.405**, reporting no observed problems in different target languages, captions Off/on, audio/source transitions and switching between the Arabic ASR, named English and multi-audio examples. A 6 minute 17 second capture contained 18,255 app-process log lines, one PID stream, and no observed process crash. Those logs did not expose individual caption operations; visual outcomes are user-reported. Unattributed YouTube network/UI warnings were present. Private device logs are not published in this repository or release.
 
+Additional device feedback (2026-10-16): the user confirmed that **20.21.37–21.42.241**, including both endpoints and intermediate versions, worked in device testing with no observed problems. This follow-up is user-reported; a per-version scenario matrix and additional logs were not supplied. It extends the reported device compatibility without changing the release artifact or its declared target metadata.
+
 Final 2.1.0 verification (2026-10-16):
 
 - Full fresh suite against supplied native-combined fixtures: **45 passed, zero failures/skips**.
@@ -28,4 +30,4 @@ Only MPP, generated patch metadata and checksum are distributed; modified APKs, 
 
 ## Remaining limits
 
-Only 21.20.405 and 21.41.525 are declared targets; 21.42.241 is unverified. Translation service availability is not guaranteed. Native automatic regional preference matching can select `pt` for `pt-PT`; manual menu entries are distinct. Translation-source selection follows the native current-audio default/direct order rather than guaranteeing every manual source choice.
+Only 21.20.405 and 21.41.525 are declared targets and locally APK-validated versions. Device compatibility across 20.21.37–21.42.241 is user-reported as described above. Translation service availability is not guaranteed. Native automatic regional preference matching can select `pt` for `pt-PT`; manual menu entries are distinct. Translation-source selection follows the native current-audio default/direct order rather than guaranteeing every manual source choice.

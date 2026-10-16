@@ -1,4 +1,4 @@
-> Current stable validation: [2.1.0](RELEASE_2.1.0.md). Earlier experimental and stable evidence below is historical.
+> Current stable validation: [2.1.0](RELEASE_2.1.0.md). On 2026-10-16, the user confirmed successful device testing across **20.21.37–21.42.241**, including intermediate versions. This is user-reported evidence, separate from local APK validation on 21.20.405 and 21.41.525. Earlier experimental and stable evidence below is historical.
 
 # Compatibility and validation
 
