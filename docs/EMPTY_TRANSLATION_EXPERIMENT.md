@@ -1,3 +1,5 @@
+> Historical experiment record. Stable **2.1.0** promotes this runtime; use the [current installation guide](../README.md) and [release evidence](RELEASE_2.1.0.md). References below to draft status, pending device tests and an unchanged feed describe earlier stages.
+
 # Comprehensive translation menu experiment
 
 Version: **2.0.1-experiment.4**. Branch: `experiment/empty-translation-fallback`. [PR #5](https://github.com/itolkien/morphe-universal-captions/pull/5) remains draft.
@@ -51,3 +53,9 @@ The stable Manager feed and released artifacts are unchanged. Exact build/APK re
 - Final MPP: 758,441 bytes; root Android DEX coverage **19 JVM / 22 DEX classes**; required embedded runtime types, ZIP integrity, DEX SHA-1/Adler-32 checksums, exact embedded MPE equality, version and declared target metadata passed. A deliberately corrupted DEX was rejected.
 - SHA-256: `f3a3251d82b67babc8f52ac0bd30a733ea5aa1b894ba9283adfceb7e65214637`.
 - Independent final source review found no Important regressions. Android playback/server availability and APK 21.42.241 remain unverified.
+
+## Device confirmation and stable promotion
+
+After the experiment.4 package was built, the user reported successful device testing on **21.20.405**, including the manual test sequence for translations, Off/on, audio/source transitions and video switching. The app-process capture showed no observed crash; it did not contain detailed caption-operation diagnostics, so individual visual outcomes are user-reported. Earlier “no device verification” notes above describe the state at the time of the experimental build.
+
+The unchanged runtime is promoted to **2.1.0**; see [release evidence](RELEASE_2.1.0.md). Regional preference matching and other stated limits remain documented.

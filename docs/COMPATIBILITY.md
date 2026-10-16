@@ -1,4 +1,4 @@
-> Current experimental validation: [experiment.4](EMPTY_TRANSLATION_EXPERIMENT.md). Historical stable evidence below does not imply device validation of the new experiment.
+> Current stable validation: [2.1.0](RELEASE_2.1.0.md). Earlier experimental and stable evidence below is historical.
 
 # Compatibility and validation
 

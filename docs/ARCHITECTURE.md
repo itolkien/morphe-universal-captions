@@ -1,4 +1,4 @@
-> This page describes stable 2.0.0. The experimental branch adds current-audio source fallback and reads the native target catalog; see [experiment.4 architecture and limits](EMPTY_TRANSLATION_EXPERIMENT.md).
+> Historical stable2.0.0 architecture. Stable **2.1.0** adds current-audio source fallback and reads the native target catalog; see [release evidence](RELEASE_2.1.0.md) and [fallback architecture](EMPTY_TRANSLATION_EXPERIMENT.md).
 
 # Menu-only architecture
 
