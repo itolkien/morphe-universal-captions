@@ -60,6 +60,16 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
+    /** Used only by the explicitly selected, video-scoped empty-menu experiment. */
+    static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale) {
+        List<CaptionTrack> result = new ArrayList<>();
+        for (String target : TARGETS) {
+            CaptionTrack translated = SourceTranslationExperiment.preview(source, target, locale);
+            if (translated != null) result.add(translated);
+        }
+        return sorted(result, locale);
+    }
+
     private static String translatedUrl(String url, String oldLanguage, String code) {
         int start = url.indexOf('?') + 1;
         int fragment = url.indexOf('#', start);

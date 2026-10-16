@@ -8,7 +8,7 @@ import java.net.URI;
 import java.util.Locale;
 
 /**
- * Experimental source-to-translation prototype. NOT wired into the YouTube hook.
+ * Pure source-to-translation construction used by the opt-in empty-menu fallback.
  *
  * Unlike CaptionTranslationList.augment(), this accepts an original direct
  * caption track, including YouTube ASR tracks such as a.ar. Whether YouTube

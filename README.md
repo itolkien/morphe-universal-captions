@@ -1,5 +1,8 @@
 # Morphe Universal Captions
 
+> **Experimental branch:** [Empty translation fallback test instructions](docs/EMPTY_TRANSLATION_EXPERIMENT.md). The bundle built here is `2.0.1-experiment.2`, scoped to `PlsODqqqwFs`; device playback is unverified. Stable 2.0.0 details below describe the released addon.
+
+
 More languages in YouTube’s native **Auto-translate** menu, sorted alphabetically by their displayed names.
 
 [Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download v2.0.0](https://github.com/itolkien/morphe-universal-captions/releases/tag/v2.0.0) · [Report an issue](https://github.com/itolkien/morphe-universal-captions/issues)
