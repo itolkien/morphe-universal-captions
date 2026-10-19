@@ -33,7 +33,7 @@ ready for integration.
 | Native target list empty or absent | Use the 156-code compatibility snapshot to restore missing menus | Empty and null metadata regressions | Repeated protobuf fields do not distinguish an unset field from an empty one |
 | Snapshot targets | Labels and URLs are generated locally only for a validated original source | 156×155 source/target cases, four UI locales | YouTube can reject entries independently of menus |
 | ASR vs uploaded/named tracks | Derive only from an identity-validated original timedtext track | ASR/manual/named, VSS, kind and URL tests | Whether an individual native track is translatable is not exposed |
-| Multiple audio/source languages | Prefer exact native default; do not guess when unmatched languages coexist | Mixed sources, different video IDs, native-default tests | No guaranteed access to Web's full audio-track index |
+| Multiple audio/source tracks | Native direct list is already filtered for the **current** audio; prefer an exact default and never guess between distinct VSS sources | Mixed sources, identical-language distinct-VSS, cross-video, native-default tests | Full per-target eligibility still unavailable to fallback |
 | Regional targets and old aliases | Keep `pt` and `pt-PT`, both Chinese scripts, and language-tag regions distinct | Alias and regional-code tests | Web localization may use its own preferred display name |
 | Web's active target ordering | Preserve native selection; sort translated language choices alphabetically | Sort, stable labels and pseudo-option tests | Web can pin the currently selected target above the sorted list; we do not have a native selected-track getter in this addon |
 | Dubbed audio tracks | Prefer an exact current-audio/default caption source rather than the alphabetically first language | Default source, mixed-language, cross-video tests | Without audioTracks[].captionTrackIndices/defaultAudioTrackIndex we cannot prove a precise match for every dub |
@@ -125,7 +125,7 @@ extension ABI. Never infer "selected" from list order, language preferences
 or the last network request — those can differ from the user's actual choice.
 
 [YouTube's automatic dubbing documentation](https://support.google.com/youtube/answer/15569972?hl=en-EN)
-confirms that videos can offer multiple selectable audio tracks. The Web
+confirms that videos can offer multiple selectable audio tracks. The Android 21.20.405 DEX confirms that the native manager updates both its active audio entry and index upon an audio-change event. The Web
 captions player response keeps `audioTracks` and `defaultAudioTrackIndex`
 alongside `captionTracks`. An unordered or alphabetically first caption
 source is not necessarily the original/current audio. This code uses an

@@ -112,11 +112,22 @@ maintaining a speculative fallback. A new resolver must follow the
 Read the detailed, version-scoped mapping in
 [Native metadata 21.20.405](NATIVE_METADATA_21_20_405.md).
 
-**Next static-only prerequisite:** inspect `classes2.dex` (builder
-and caption manager) plus `classes3.dex` (protobuf field definitions)
-to trace register-level data flow and hook exact semantic relationships.
-This does not require patching, installing, launching YouTube, or testing
-on a device.
+**Static DEX inspection completed for 21.20.405:** the builder, caption
+manager, audio-change event and protobuf field relationships are documented
+in [Native metadata 21.20.405](NATIVE_METADATA_21_20_405.md). Next, compare
+the same semantic relationships against the other supported APK version.
+No installation or device testing has been performed.
+
+### Source identity must be track-specific
+
+The original native audio-specific caption list can contain two source
+tracks in the **same language** with different VSS identities. Since
+the native translation selector works with track indices, a first-track
+fallback based solely on matching language is unsafe. The regression
+test `twoSameLanguageSourcesRequireNativeDefaultToAvoidWrongTrack`
+now requires an exact native default when different source identities
+coexist. This is a conservative bridge until full per-target eligibility
+is exposed.
 
 ## A measured refactor path
 
