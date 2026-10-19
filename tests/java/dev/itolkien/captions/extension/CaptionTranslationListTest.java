@@ -91,6 +91,25 @@ public class CaptionTranslationListTest {
         assertEquals(direct, CaptionTranslationList.augment(direct, Locale.ENGLISH));
     }
 
+    @Test public void absentMetadataAndAuthoritativelyEmptyCatalogDiffer() {
+        assertEquals(156, CaptionTranslationList.targets(null).size());
+        assertTrue(CaptionTranslationList.targets(List.of()).isEmpty());
+
+        List<CaptionTranslationList.CaptionTrack> input = List.of(german());
+        assertEquals(input, CaptionTranslationList.augment(input, Locale.ENGLISH, List.of()));
+        assertTrue(CaptionTranslationList.augment(input, Locale.ENGLISH, null).size() > 100);
+    }
+
+    @Test public void translatedPrototypeMustMatchItsOriginalSourceLanguage() {
+        Track mismatched = new Track("de", URL.replace("lang=en", "lang=fr"), "ta.en.de", "German");
+        assertEquals(List.of(mismatched),
+                CaptionTranslationList.augment(List.of(mismatched), Locale.ENGLISH));
+
+        Track duplicate = new Track("de", URL + "&lang=fr", "ta.en.de", "German");
+        assertEquals(List.of(duplicate),
+                CaptionTranslationList.augment(List.of(duplicate), Locale.ENGLISH));
+    }
+
     @Test public void rejectsUntrustedUrlsAndInconsistentTrackIdentities() {
         for (String url : List.of(URL.replace("https:", "http:"),
                 URL.replace("www.youtube.com", "youtube.com.evil.test"),

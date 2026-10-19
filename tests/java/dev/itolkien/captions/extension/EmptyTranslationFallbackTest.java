@@ -13,7 +13,7 @@ class EmptyTranslationFallbackTest {
         List<CaptionTrack> direct = List.of(new Track("DISABLE_CAPTIONS_OPTION", "", ""),
                 new Track("ar", URL, "a.ar"));
         List<CaptionTrack> translations = List.of();
-        List<String> targets = List.of();
+        List<String> targets; // null means YouTube did not provide a catalog
         CaptionTrack preferred;
         public List<String> universalCaptions_targetLanguages(boolean unused) { return targets; }
         public CaptionTrack universalCaptions_defaultSource(boolean unused) { return preferred; }
@@ -165,6 +165,25 @@ class EmptyTranslationFallbackTest {
         source.preferred = new Track("de", URL.replace("lang=ar", "lang=de"), "a.de");
         result = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
         assertTrue(result.stream().allMatch(t -> t.universalCaptions_getCaptionUrl().contains("lang=ar&")));
+    }
+
+    @Test void emptyNativeTranslationCatalogDoesNotInventLanguagesOrMenu() {
+        Source source = new Source();
+        source.targets = List.of(); // Explicitly empty, unlike absent metadata.
+        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
+        assertSame(source.translations, EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH));
+        source.targets = null;
+        assertEquals(3, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
+    }
+
+    @Test void ambiguousMultipleSourceLanguagesDoNotGuessTheAudioTrack() {
+        Source source = new Source();
+        CaptionTrack english = new Track("en",
+                "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=x", ".en");
+        source.direct = List.of(source.direct.get(0), source.direct.get(1), english);
+        source.targets = List.of("tr", "de");
+        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
+        assertSame(source.translations, EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH));
     }
 
     @Test void sourceOnlyOrInvalidCatalogCannotExposeAnEmptySubmenu() {
