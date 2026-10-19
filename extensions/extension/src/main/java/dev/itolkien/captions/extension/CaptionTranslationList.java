@@ -58,10 +58,22 @@ public final class CaptionTranslationList {
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;
+        String sourceVss = null;
         for (CaptionTrack track : tracks) {
             if (track == null) continue;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
-            if (prototype == null && isTranslationPrototype(track)) prototype = track;
+            if (!isTranslationPrototype(track)) continue;
+            String code = track.universalCaptions_getLanguageCode();
+            String candidateSource = track.universalCaptions_getVssId();
+            candidateSource = candidateSource.substring(0, candidateSource.length() - code.length());
+            if (prototype != null && !sourceVss.equals(candidateSource)) {
+                // Never generate missing targets from an arbitrary audio/caption source.
+                return sorted(result, locale);
+            }
+            if (prototype == null) {
+                prototype = track;
+                sourceVss = candidateSource;
+            }
         }
         if (prototype != null) {
             String oldLanguage = prototype.universalCaptions_getLanguageCode();

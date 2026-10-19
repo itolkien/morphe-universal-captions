@@ -20,10 +20,10 @@ final class OriginalCaptionSource {
     private final String urlSuffix;
     private final String vssPrefix;
 
-    private OriginalCaptionSource(CaptionTrack track, String videoId, String url, String vss) {
+    private OriginalCaptionSource(CaptionTrack track, String language, String videoId, String url, String vss) {
         this.track = track;
         this.videoId = videoId;
-        this.languageKey = CaptionTranslationList.languageKey(track.universalCaptions_getLanguageCode());
+        this.languageKey = CaptionTranslationList.languageKey(language);
         int fragment = url.indexOf('#');
         this.urlPrefix = (fragment < 0 ? url : url.substring(0, fragment)) + "&tlang=";
         this.urlSuffix = fragment < 0 ? "" : url.substring(fragment);
@@ -81,7 +81,7 @@ final class OriginalCaptionSource {
                     || !CaptionTranslationList.validLanguageCode(urlLanguage)
                     || !CaptionTranslationList.languageKey(language).equals(CaptionTranslationList.languageKey(urlLanguage))
                     || (asr ? !"asr".equals(kind) : kind != null && !kind.isEmpty())) return null;
-            return new OriginalCaptionSource(track, video, url, vss);
+            return new OriginalCaptionSource(track, language, video, url, vss);
         } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
             return null;
         }
