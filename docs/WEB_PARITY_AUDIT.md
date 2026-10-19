@@ -72,6 +72,22 @@ YouTube provides a nonempty list, its entries are authoritative. A dependable
 `isTranslatable` or presence signal would allow a stricter policy after
 native structure verification.
 
+### Selective creator styling versus a blanket pen reset
+
+The #3837 workaround intentionally discards **all** creator-defined pen IDs
+on translated documents. It solves the observed invisible-text problem but
+cannot reproduce every styled YouTube Web translation: intentionally colored
+or emphasized translated words would also fall back to the user's default
+style. The proper target is to preserve valid translated styling where
+possible and override only genuinely invisible or invalid pen applications.
+That requires access to the document's pen definitions and rendered segment
+context, which are not exposed at the current `getPenId(int)` hook.
+
+The current default-pen behavior is kept as an explicitly documented
+**readability-first fallback**, not described as exact Web visual parity.
+Do not guess invisible pen IDs from a global integer constant; IDs belong
+to individual timedtext documents.
+
 ### 1. Request-to-document association for styled captions
 
 A raw `/api/timedtext?tlang=...` URL is known when the network request is

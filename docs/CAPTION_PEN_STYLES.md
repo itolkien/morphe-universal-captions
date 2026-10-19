@@ -24,6 +24,16 @@ text black or invisible even though its caption data is present.
   Morphe, remove the old `TranslatedCaptionPensPatch` hooks rather than
   applying both copies.
 
+## Web-style behavior versus this fallback
+
+Web can apply or adapt styling for the translated caption document. Our
+current workaround returns a default pen ID for **all** translated styles,
+which fixes invisible subtitles but may also discard legitimate highlighting
+or creator colors on translated words. Restoring those styles accurately
+requires reading each document's pen definitions and associating them with
+its translated segments. Numeric pen IDs are scoped to the document, so a
+global "bad pen id" list would be incorrect.
+
 ## Safety and limitations
 
 The request URL and the srv3 XML parser do not share a demonstrated per-document
