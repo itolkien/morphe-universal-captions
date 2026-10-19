@@ -22,6 +22,10 @@ Translation availability depends on the video, account and YouTube's backend. A 
 
 Use it alongside Morphe's **Captions** patch. If your Morphe build includes **Add additional auto-translate languages**, the addon respects that setting when supplementing existing native menus. The missing-menu fallback is enabled by selecting this addon and works independently of that toggle.
 
+### Caption styling
+
+This addon manages translation target lists and missing Auto-translate menus. It does **not** modify timed-text pen styles. Morphe's separate [styled translated-caption fix (#3837)](https://github.com/MorpheApp/morphe-patches/pull/3837) handles text that becomes invisible after automatic translation. That fix is available when using a Morphe build containing it with the **Captions** patch selected; copying its hooks into this addon would duplicate host modifications. Independent operation of that fix without Morphe Captions is not claimed.
+
 ## Installation
 
 1. Install [Morphe Manager](https://morphe.software/) and [add this repository as a source](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions), or import the release `.mpp` locally.
