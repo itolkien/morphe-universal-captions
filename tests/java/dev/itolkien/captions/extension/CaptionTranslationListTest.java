@@ -40,6 +40,25 @@ public class CaptionTranslationListTest {
                 .findFirst().orElseThrow(AssertionError::new);
     }
 
+    @Test public void neverReusesTheOriginalLanguageAsATranslationTarget() {
+        // The native list is translated from English to German; the available
+        // target catalog also contains English, which must remain an original.
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                List.of(german()), Locale.ENGLISH, List.of("de", "en", "el"));
+        assertEquals(2, result.size());
+        assertEquals("de", result.get(0).universalCaptions_getLanguageCode());
+        assertEquals("el", result.get(1).universalCaptions_getLanguageCode());
+        assertFalse(result.stream().anyMatch(t -> "en".equals(t.universalCaptions_getLanguageCode())));
+
+        // Legacy aliases must not generate a self-translation either.
+        Track fromLegacyHebrew = new Track("tr", URL.replace("lang=en", "lang=iw").replace("tlang=de", "tlang=tr"),
+                "ta.iw.tr", "Turkish");
+        var aliasResult = CaptionTranslationList.augment(
+                List.of(fromLegacyHebrew), Locale.ENGLISH, List.of("he", "tr", "fr"));
+        assertEquals(2, aliasResult.size());
+        assertFalse(aliasResult.stream().anyMatch(t -> "he".equals(t.universalCaptions_getLanguageCode())));
+    }
+
     @Test public void addsGreekUsingTheSameSignedSourceAndKeepsNativeObjects() {
         Track nativeGerman = german();
         List<CaptionTranslationList.CaptionTrack> input = List.of(nativeGerman);
