@@ -104,10 +104,4 @@ final class OriginalCaptionSource {
                 vssPrefix + language, label);
     }
 
-    /** Create one translated track after validating the original. */
-    static CaptionTrack preview(CaptionTrack source, String language, Locale locale) {
-        if (locale == null || !CaptionTranslationList.validLanguageCode(language)) return null;
-        OriginalCaptionSource original = from(source);
-        return original == null ? null : original.translate(language, locale);
-    }
 }
