@@ -66,6 +66,21 @@ a second network request matches the current Android playback session.
 The independent patch should first consume the existing in-process
 Android caption objects and avoid redundant requests.
 
+## Single-owner cleanup in the 3.0 development branch
+
+The final Morphe port is intended to **replace** the old AutoTranslateCaptions
+implementation, so the draft removed the runtime `CaptionIntegration` class,
+its native-interface reflection and obsolete compatibility tests. The empty
+menu and native target metadata still flow through `EmptyTranslationFallback`
+and `CaptionTranslationList` directly. This intentionally removes coexistence
+with the **old** Morphe auto-translate toggle: do not test this development
+bundle with both implementations selected. The published 2.1.0 release
+remains unchanged and compatible with its historical host.
+
+No user caption preference/Off behavior was moved into this module; the
+integrated Morphe patch must continue to leave that policy to the existing
+preferred-caption settings.
+
 ## A measured refactor path
 
 1. **Already usable:** Keep native target codes, original/native track identity,

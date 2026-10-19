@@ -48,7 +48,7 @@ public final class EmptyTranslationFallback {
     public static List<CaptionTrack> translated(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
-            if (!tracks.isEmpty()) return CaptionIntegration.augmentMetadata(tracks, locale,
+            if (!tracks.isEmpty()) return CaptionTranslationList.augment(tracks, locale,
                     source.universalCaptions_targetLanguages(true));
             OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) return tracks;
