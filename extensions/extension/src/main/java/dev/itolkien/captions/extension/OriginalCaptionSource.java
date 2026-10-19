@@ -12,7 +12,7 @@ import java.util.Map;
 import dev.itolkien.captions.extension.CaptionTranslationList.CaptionTrack;
 
 /** One validated original caption source, bound to its video and signed URL. */
-public final class OriginalCaptionSource {
+final class OriginalCaptionSource {
     private final CaptionTrack track;
     private final String videoId;
     private final String languageKey;
@@ -105,7 +105,7 @@ public final class OriginalCaptionSource {
     }
 
     /** Create one translated track after validating the original. */
-    public static CaptionTrack preview(CaptionTrack source, String language, Locale locale) {
+    static CaptionTrack preview(CaptionTrack source, String language, Locale locale) {
         if (locale == null || !CaptionTranslationList.validLanguageCode(language)) return null;
         OriginalCaptionSource original = from(source);
         return original == null ? null : original.translate(language, locale);
