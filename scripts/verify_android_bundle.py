@@ -52,6 +52,8 @@ def verify(path):
         names = bundle.namelist()
         if len(names) != len(set(names)) or bundle.testzip() is not None:
             raise ValueError("duplicate or corrupt ZIP entries")
+        if "NOTICE" not in names or not bundle.read("NOTICE").startswith(b"Morphe NOTICE\\n"):
+            raise ValueError("missing original Morphe GPLv3 Section 7 user notice")
         if "classes.dex" not in names:
             raise ValueError("missing root classes.dex: this bundle cannot load patches on Android")
         dex = set()

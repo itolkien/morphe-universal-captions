@@ -59,6 +59,18 @@ jobs:
           chmod +x gradlew
           ./gradlew :patches:generatePatchesList --no-daemon
           ./gradlew :patches:buildAndroid --no-daemon
+          # Morphe's Section 7 notice must accompany redistributed derivative binaries.
+          python3 - <<'PYNOTICE'
+          from pathlib import Path
+          from zipfile import ZipFile
+          bundle = Path("patches/build/libs/patches-3.0.0-dev.1.mpp")
+          notice = Path("../addon/NOTICE").read_bytes()
+          with ZipFile(bundle, "a") as archive:
+              if "NOTICE" in archive.namelist():
+                  assert archive.read("NOTICE") == notice
+              else:
+                  archive.writestr("NOTICE", notice)
+          PYNOTICE
           python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-3.0.0-dev.1.mpp
           find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
       - name: Verify generated compatibility metadata
