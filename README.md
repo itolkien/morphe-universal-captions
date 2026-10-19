@@ -15,7 +15,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - No external translation service, overlay or separate caption preference UI.
 - In **3.0.0-dev.1**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
-Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video.
+Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video. This is still a development build, not a claim of complete YouTube Web parity.
 
 ## Using it with Morphe
 

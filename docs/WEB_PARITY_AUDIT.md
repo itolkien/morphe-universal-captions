@@ -35,6 +35,8 @@ ready for integration.
 | ASR vs uploaded/named tracks | Derive only from an identity-validated original timedtext track | ASR/manual/named, VSS, kind and URL tests | Whether an individual native track is translatable is not exposed |
 | Multiple audio/source languages | Prefer exact native default; do not guess when unmatched languages coexist | Mixed sources, different video IDs, native-default tests | No guaranteed access to Web's full audio-track index |
 | Regional targets and old aliases | Keep `pt` and `pt-PT`, both Chinese scripts, and language-tag regions distinct | Alias and regional-code tests | Web localization may use its own preferred display name |
+| Web's active target ordering | Preserve native selection; sort translated language choices alphabetically | Sort, stable labels and pseudo-option tests | Web can pin the currently selected target above the sorted list; we do not have a native selected-track getter in this addon |
+| Dubbed audio tracks | Prefer an exact current-audio/default caption source rather than the alphabetically first language | Default source, mixed-language, cross-video tests | Without audioTracks[].captionTrackIndices/defaultAudioTrackIndex we cannot prove a precise match for every dub |
 | Selected track, CC Off/On and preferences | Never force CC visibility, overwrite manual selection or auto-enable tracks | Preferred policy and Off/integration tests | Morphe preference patch has its own regional matching |
 | Styled translations | Replace incompatible pen IDs with a default for translated srv3; preserve creator style for originals | Unit tests, MPP compilation and embedded class check | **Request/parser concurrency is not correctly correlated yet** |
 | Signed YouTube requests | Replace only the actual `tlang` value; retain the rest of the opaque URL | Encoded key, fragment, duplicate, HTTPS/host tests | A valid URL is not proof of a nonempty server response |
@@ -95,7 +97,26 @@ reliable implementation needs a *structurally verified* native accessor or
 real response-state feedback, rather than inventing successful translations
 from a language-code allowlist.
 
-### 3. Native display names
+### 3. Active subtitle and multi-audio Web semantics
+
+A recent [YouTube Web walkthrough](https://polytested.com/blog/translate-youtube-video-subtitles-auto-dub)
+shows the currently chosen Auto-translate target pinned above an otherwise
+alphabetical language list. We currently sort all translated entries; the
+source-aware manager's selected caption track is not exposed through our
+extension ABI. Never infer "selected" from list order, language preferences
+or the last network request — those can differ from the user's actual choice.
+
+[YouTube's automatic dubbing documentation](https://support.google.com/youtube/answer/15569972?hl=en-EN)
+confirms that videos can offer multiple selectable audio tracks. The Web
+captions player response keeps `audioTracks` and `defaultAudioTrackIndex`
+alongside `captionTracks`. An unordered or alphabetically first caption
+source is not necessarily the original/current audio. This code uses an
+exact native default match and rejects ambiguous mixed-language sources
+rather than silently translating the wrong dub. Full Web parity needs a
+verified mapping from the active audio-track index to its eligible
+caption tracks.
+
+### 4. Native display names
 
 The Web response offers localized `translationLanguages[].languageName`.
 The addon currently derives names with the app's `Locale`. This is sensible
