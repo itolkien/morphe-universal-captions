@@ -59,5 +59,6 @@ Still required before an upstream replacement or release:
 2. On device, test MrBeast video `RE3_PGwDwhw` translated into Hebrew,
    Arabic and Persian, then switch back to original styled English captions.
 3. Test rapid video, language and source switching and overlapping requests.
-4. Verify coexistence with installed Morphe's Captions patch or test the
-   planned clean replacement that removes the duplicate #3837 hooks.
+4. Validate the planned **clean replacement** that removes the old Morphe
+   auto-translate and #3837 hooks. Running both owners together is unsupported
+   in the 3.0 development branch.

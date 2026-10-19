@@ -53,9 +53,11 @@ ready for integration.
    translations only if there is a safe source and at least one target.
 4. `CaptionPenStyles` and `CaptionPenHooks`: the adapted #3837 implementation
    owned by Universal Captions, not a separately duplicated upstream patch.
-5. `CaptionIntegration` and `NativeTranslationBridge`: compatibility adapters
-   for the **currently existing** Morphe native implementation. They can be
-   simplified or removed only when that implementation has been replaced.
+5. `NativeTranslationBridge`: standalone extension entry point for locale and
+   manager hooks. The separate `CaptionIntegration` native-coexistence adapter
+   was removed from this 3.0 development branch because the Morphe port will
+   replace the old auto-translate and pen hooks. The final integrated port may
+   call Morphe's locale API directly, eliminating the remaining reflection.
 
 ## Important open engineering questions
 

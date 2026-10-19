@@ -21,7 +21,7 @@ Translation availability depends on the video, account and YouTube's backend. A 
 
 **Morphe owns preferred language, caption visibility, Off and explicit user selections.** This addon extends language menus and supplies the missing-menu fallback.
 
-The released **2.1.0** addon can be used alongside Morphe's **Captions** patch. The unreleased **3.0.0-dev.1** prototype must **not** be installed simultaneously with the old translated-pen hooks until the upstream replacement is tested. If your Morphe build includes **Add additional auto-translate languages**, the addon respects that setting when supplementing existing native menus. The missing-menu fallback is enabled by selecting this addon and works independently of that toggle.
+The released **2.1.0** addon works alongside Morphe's **Captions** patch, respects the native **Add additional auto-translate languages** setting in nonempty menus, and can restore an absent Auto-translate menu. The **unreleased 3.0 development branch** is a single-owner replacement: its legacy Morphe `CaptionIntegration` adapter has been removed, and it must **not** be used alongside the old Morphe auto-translate or translated-pen implementations. The existing preferred-language, explicit choice and CC visibility policy remains Morphe's responsibility.
 
 ### Caption styling
 
@@ -54,7 +54,7 @@ On 2026-10-16, the user additionally confirmed successful device testing of **20
 
 **Known limits:** Morphe's existing automatic regional matching can choose generic `pt` for preference `pt-PT`; manual menu targets remain separate. The fallback's source is the native default, or an unambiguous direct-list source; exact tracking of every manual source selection is not guaranteed. Server restrictions and absent original captions remain outside the addon's control.
 
-For the ongoing comparison with the YouTube Web player and outstanding behavior gaps, see the [web parity audit](docs/WEB_PARITY_AUDIT.md). See [2.1.0 release evidence](docs/RELEASE_2.1.0.md), [fallback design and experiment history](docs/EMPTY_TRANSLATION_EXPERIMENT.md) and [historical compatibility evidence](docs/COMPATIBILITY.md). The native additional-language feature was integrated through [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754).
+For the ongoing comparison with the YouTube Web player and outstanding behavior gaps, see the [web parity audit](docs/WEB_PARITY_AUDIT.md) and [native metadata feasibility research](docs/METADATA_FIRST_RESEARCH.md). See [2.1.0 release evidence](docs/RELEASE_2.1.0.md), [fallback design and experiment history](docs/EMPTY_TRANSLATION_EXPERIMENT.md) and [historical compatibility evidence](docs/COMPATIBILITY.md). The native additional-language feature was integrated through [MorpheApp/morphe-patches#3754](https://github.com/MorpheApp/morphe-patches/pull/3754).
 
 ## Feedback
 
