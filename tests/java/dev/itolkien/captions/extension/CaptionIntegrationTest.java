@@ -43,6 +43,12 @@ class CaptionIntegrationTest {
                 .anyMatch(t -> "el".equals(t.universalCaptions_getLanguageCode())));
     }
 
+    @Test void mixedTrackListsStillDeferToNativeOwnership() {
+        List<CaptionTrack> mixed = List.of(new Track(), new IntegratedTrack());
+        assertTrue(CaptionIntegration.isManagedByNative(mixed, NativeTrack.class));
+        assertSame(mixed, CaptionIntegration.augment(mixed, Locale.ENGLISH, NativeTrack.class));
+    }
+
     @Test void absentNativeExtensionAndEmptyListsRemainSafe() {
         assertFalse(CaptionIntegration.isManagedByNative(List.of(new Object()), null));
         assertTrue(CaptionIntegration.augment(List.of(new Track()), Locale.ENGLISH, null).stream()

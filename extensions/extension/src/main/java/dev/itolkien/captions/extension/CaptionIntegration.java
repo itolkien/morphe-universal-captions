@@ -51,7 +51,7 @@ public final class CaptionIntegration {
     static boolean isManagedByNative(List<?> tracks, Class<?> nativeInterface) {
         if (nativeInterface == null || tracks == null) return false;
         for (Object track : tracks) {
-            if (track != null) return nativeInterface.isInstance(track);
+            if (nativeInterface.isInstance(track)) return true;
         }
         return false;
     }
