@@ -103,6 +103,17 @@ public class CaptionTranslationListTest {
         assertEquals(List.of(wrongVss), CaptionTranslationList.augment(List.of(wrongVss), Locale.ENGLISH));
     }
 
+    @Test public void rejectsEncodedOrMalformedDuplicateTranslationParameters() {
+        // URI.getRawQuery() preserves encoded keys. An additional encoded tlang must
+        // not be overlooked when we clone an otherwise valid native translation.
+        for (String suffix : List.of("&%74lang=fr", "&tlang", "&%74lang")) {
+            Track track = new Track("de", URL + suffix, "ta.en.de", "German");
+            List<CaptionTranslationList.CaptionTrack> input = List.of(track);
+            assertEquals(input, CaptionTranslationList.augment(input, Locale.ENGLISH),
+                    "unexpectedly augmented: " + suffix);
+        }
+    }
+
     @Test public void expandingTwiceDoesNotAddDuplicatesOrChangeNativeIdentities() {
         List<CaptionTranslationList.CaptionTrack> once = CaptionTranslationList.augment(List.of(german()), Locale.ENGLISH);
         List<CaptionTranslationList.CaptionTrack> twice = CaptionTranslationList.augment(once, Locale.ENGLISH);
