@@ -58,21 +58,19 @@ public final class CaptionTranslationList {
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;
-        String sourceVss = null;
+        String sourceIdentity = null;
         for (CaptionTrack track : tracks) {
             if (track == null) continue;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
-            if (!isTranslationPrototype(track)) continue;
-            String code = track.universalCaptions_getLanguageCode();
-            String candidateSource = track.universalCaptions_getVssId();
-            candidateSource = candidateSource.substring(0, candidateSource.length() - code.length());
-            if (prototype != null && !sourceVss.equals(candidateSource)) {
-                // Never generate missing targets from an arbitrary audio/caption source.
+            String identity = translationSourceIdentity(track);
+            if (identity == null) continue;
+            if (prototype != null && !sourceIdentity.equals(identity)) {
+                // Two different source tracks or videos: do not pick one arbitrarily.
                 return sorted(result, locale);
             }
             if (prototype == null) {
                 prototype = track;
-                sourceVss = candidateSource;
+                sourceIdentity = identity;
             }
         }
         if (prototype != null) {
@@ -118,15 +116,20 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    private static boolean isTranslationPrototype(CaptionTrack track) {
+    /**
+     * Verify a native translated track and identify its original source.
+     * Includes video identity when present to avoid extending stale cross-video lists.
+     */
+    private static String translationSourceIdentity(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
         String vss = track.universalCaptions_getVssId();
-        if (!validLanguageCode(code) ||
-                vss == null || !vss.startsWith("t") || !vss.endsWith("." + code)) return false;
+        if (!validLanguageCode(code) || vss == null ||
+                !vss.startsWith("t") || !vss.endsWith("." + code)) return null;
         try {
             URI uri = OriginalCaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
-            if (uri == null) return false;
-            String sourceLanguage = null;
+            if (uri == null) return null;
+            String sourceLanguage = null, videoId = "";
+            boolean hasVideoId = false;
             int targetCount = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {
                 int equals = parameter.indexOf('=');
@@ -134,19 +137,26 @@ public final class CaptionTranslationList {
                 String key = URLDecoder.decode(rawKey, "UTF-8");
                 if ("tlang".equals(key)) {
                     if (!rawKey.equals(key) || !parameter.equals("tlang=" + code) || ++targetCount != 1)
-                        return false;
+                        return null;
                 } else if ("lang".equals(key)) {
-                    if (!rawKey.equals(key) || equals < 0 || sourceLanguage != null) return false;
+                    if (!rawKey.equals(key) || equals < 0 || sourceLanguage != null) return null;
                     sourceLanguage = URLDecoder.decode(parameter.substring(equals + 1), "UTF-8");
-                    if (!validLanguageCode(sourceLanguage)) return false;
+                    if (!validLanguageCode(sourceLanguage)) return null;
+                } else if ("v".equals(key)) {
+                    if (!rawKey.equals(key) || equals < 0 || hasVideoId) return null;
+                    hasVideoId = true;
+                    videoId = URLDecoder.decode(parameter.substring(equals + 1), "UTF-8");
+                    if (!videoId.matches("[A-Za-z0-9_-]{1,128}")) return null;
                 }
             }
-            if (targetCount != 1 || sourceLanguage == null) return false;
+            if (targetCount != 1 || sourceLanguage == null) return null;
             String originalVss = vss.substring(1, vss.length() - code.length() - 1);
-            return OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
-                    || OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage);
+            if (!OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
+                    && !OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage))
+                return null;
+            return vss.substring(0, vss.length() - code.length()) + "|" + videoId;
         } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
-            return false;
+            return null;
         }
     }
 
