@@ -6,8 +6,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EmptyTranslationFallbackTest {
     static final String URL = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=ar&kind=asr&sig=a%2Bb";
-    static class Track extends CaptionIntegrationTest.Track {
-        Track(String code, String url, String vss) { super(code, url, vss, code); }
+    static class Track implements CaptionTrack {
+        final String code, url, vss;
+        final CharSequence label;
+        Track(String code, String url, String vss) { this(code, url, vss, code); }
+        Track(String code, String url, String vss, CharSequence label) {
+            this.code = code;
+            this.url = url;
+            this.vss = vss;
+            this.label = label;
+        }
+        public String universalCaptions_getLanguageCode() { return code; }
+        public String universalCaptions_getVssId() { return vss; }
+        public String universalCaptions_getCaptionUrl() { return url; }
+        public CharSequence universalCaptions_getCaptionLabel() { return label; }
+        public CaptionTrack universalCaptions_copyTranslation(
+                String language, String url, String vss, CharSequence label) {
+            return new Track(language, url, vss, label);
+        }
     }
     static class Source implements EmptyTranslationFallback.CaptionSource {
         List<CaptionTrack> direct = List.of(new Track("DISABLE_CAPTIONS_OPTION", "", ""),
