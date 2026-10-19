@@ -6,6 +6,7 @@
 package dev.itolkien.captions.extension;
 
 import java.net.URI;
+import java.net.URLDecoder;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -105,12 +106,14 @@ public final class CaptionTranslationList {
             if (uri == null) return false;
             int languageParameters = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {
-                if (!parameter.startsWith("tlang=")) continue;
+                int equals = parameter.indexOf('=');
+                String rawKey = equals < 0 ? parameter : parameter.substring(0, equals);
+                if (!"tlang".equals(URLDecoder.decode(rawKey, "UTF-8"))) continue;
+                if (!"tlang".equals(rawKey) || !parameter.equals("tlang=" + code)) return false;
                 languageParameters++;
-                if (!parameter.equals("tlang=" + code)) return false;
             }
             return languageParameters == 1;
-        } catch (IllegalArgumentException | NullPointerException ignored) {
+        } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
             return false;
         }
     }
