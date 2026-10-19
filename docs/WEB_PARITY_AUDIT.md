@@ -29,8 +29,9 @@ ready for integration.
 | --- | --- | --- | --- |
 | No original caption track | Do not fabricate transcription or expose a fake translation source | Empty / malformed original tests | Backend-specific exceptions cannot be proven offline |
 | Native translations exist | Keep native objects and add only missing, valid targets | Signed URL, dedup, alias and idempotence tests | Server availability can still vary per target |
-| Native per-video target metadata exists | Use only declared codes; **explicit empty list means no target** | Present/empty/invalid catalog regressions | Some upstream builds may not expose metadata |
-| Native metadata absent | Use dated 156-code snapshot, not a live promise that all translations exist | 156×155 source/target cases, four UI locales | YouTube can reject entries independently of menus |
+| Native per-video target metadata has codes | Use the declared codes and omit unsafe duplicates | Native/invalid catalog regressions | Some upstream builds may not expose metadata |
+| Native target list empty or absent | Use the 156-code compatibility snapshot to restore missing menus | Empty and null metadata regressions | Repeated protobuf fields do not distinguish an unset field from an empty one |
+| Snapshot targets | Labels and URLs are generated locally only for a validated original source | 156×155 source/target cases, four UI locales | YouTube can reject entries independently of menus |
 | ASR vs uploaded/named tracks | Derive only from an identity-validated original timedtext track | ASR/manual/named, VSS, kind and URL tests | Whether an individual native track is translatable is not exposed |
 | Multiple audio/source languages | Prefer exact native default; do not guess when unmatched languages coexist | Mixed sources, different video IDs, native-default tests | No guaranteed access to Web's full audio-track index |
 | Regional targets and old aliases | Keep `pt` and `pt-PT`, both Chinese scripts, and language-tag regions distinct | Alias and regional-code tests | Web localization may use its own preferred display name |
@@ -54,6 +55,19 @@ ready for integration.
    simplified or removed only when that implementation has been replaced.
 
 ## Important open engineering questions
+
+### Proto list presence is not the same as Web JSON presence
+
+[Protocol Buffers field presence](https://protobuf.dev/programming-guides/field_presence/)
+states that repeated fields do not track whether an empty list was explicitly
+sent or was omitted. The native YouTube target metadata is read from a repeated
+list; therefore `null` versus `[]` from our Java adapter is **not proven**
+to correspond to Web's optional `translationLanguages` property. The
+compatibility snapshot intentionally remains available for both empty and
+missing native lists, preserving the original missing-menu behavior. When
+YouTube provides a nonempty list, its entries are authoritative. A dependable
+`isTranslatable` or presence signal would allow a stricter policy after
+native structure verification.
 
 ### 1. Request-to-document association for styled captions
 

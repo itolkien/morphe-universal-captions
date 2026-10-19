@@ -13,7 +13,7 @@ class EmptyTranslationFallbackTest {
         List<CaptionTrack> direct = List.of(new Track("DISABLE_CAPTIONS_OPTION", "", ""),
                 new Track("ar", URL, "a.ar"));
         List<CaptionTrack> translations = List.of();
-        List<String> targets; // null means YouTube did not provide a catalog
+        List<String> targets; // null or empty: no target codes supplied by the native model
         CaptionTrack preferred;
         public List<String> universalCaptions_targetLanguages(boolean unused) { return targets; }
         public CaptionTrack universalCaptions_defaultSource(boolean unused) { return preferred; }
@@ -168,11 +168,12 @@ class EmptyTranslationFallbackTest {
         assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
     }
 
-    @Test void emptyNativeTranslationCatalogDoesNotInventLanguagesOrMenu() {
+    @Test void emptyProtoCatalogCanStillRestoreTheMissingMenu() {
         Source source = new Source();
-        source.targets = List.of(); // Explicitly empty, unlike absent metadata.
-        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
-        assertSame(source.translations, EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH));
+        // Repeated protobuf fields do not distinguish missing from empty.
+        source.targets = List.of();
+        assertEquals(3, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
+        assertTrue(EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH).size() > 100);
         source.targets = null;
         assertEquals(3, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
     }

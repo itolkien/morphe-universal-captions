@@ -102,13 +102,14 @@ public class CaptionTranslationListTest {
         assertEquals(direct, CaptionTranslationList.augment(direct, Locale.ENGLISH));
     }
 
-    @Test public void absentMetadataAndAuthoritativelyEmptyCatalogDiffer() {
+    @Test public void absentOrEmptyProtoCatalogUsesTheCompatibilitySnapshot() {
         assertEquals(156, CaptionTranslationList.targets(null).size());
-        assertTrue(CaptionTranslationList.targets(List.of()).isEmpty());
+        assertEquals(156, CaptionTranslationList.targets(List.of()).size());
 
         List<CaptionTranslationList.CaptionTrack> input = List.of(german());
-        assertEquals(input, CaptionTranslationList.augment(input, Locale.ENGLISH, List.of()));
+        assertTrue(CaptionTranslationList.augment(input, Locale.ENGLISH, List.of()).size() > 100);
         assertTrue(CaptionTranslationList.augment(input, Locale.ENGLISH, null).size() > 100);
+        assertTrue(CaptionTranslationList.targets(List.of("invalid&code")).isEmpty());
     }
 
     @Test public void translatedPrototypeMustMatchItsOriginalSourceLanguage() {

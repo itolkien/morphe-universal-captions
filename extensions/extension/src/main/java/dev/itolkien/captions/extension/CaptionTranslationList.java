@@ -39,13 +39,13 @@ public final class CaptionTranslationList {
     }
 
     static List<String> targets(List<String> nativeTargets) {
-        if (nativeTargets == null) return java.util.Arrays.asList(TARGETS);
+        if (nativeTargets == null || nativeTargets.isEmpty()) return java.util.Arrays.asList(TARGETS);
         List<String> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (String code : nativeTargets) {
             if (validLanguageCode(code) && seen.add(languageKey(code))) result.add(code);
         }
-        // A native catalog is authoritative, even when explicitly empty.
+        // Native nonempty metadata is authoritative; protobuf empty and absent lists look alike.
         return result;
     }
 

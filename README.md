@@ -7,7 +7,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 ## Features
 
 - Uses YouTube's per-video target-language metadata; no video or source-language allowlist.
-- Uses a dated 156-language fallback catalog only when native language metadata is **absent**; an explicitly empty native catalog stays empty.
+- Uses a dated 156-language fallback catalog when the native target list is missing or empty. A nonempty per-video catalog takes precedence.
 - Supports original automatic speech captions (ASR), uploaded/manual captions and named tracks.
 - Restores the native Auto-translate option when original captions exist but the translation menu is missing.
 - Preserves existing native translations and signed source URLs. With multiple originals, uses the current audio's native default; falls back to direct-list order only if the original language is unambiguous.
