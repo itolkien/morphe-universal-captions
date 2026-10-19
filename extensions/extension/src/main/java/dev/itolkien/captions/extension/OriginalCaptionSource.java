@@ -46,7 +46,7 @@ final class OriginalCaptionSource {
         }
     }
 
-    private static boolean originalVss(String vss, String prefix) {
+    static boolean originalVss(String vss, String prefix) {
         return vss != null && (vss.equals(prefix) || vss.startsWith(prefix + ".")
                 && vss.substring(prefix.length() + 1).matches("[A-Za-z0-9_-]{1,128}"));
     }

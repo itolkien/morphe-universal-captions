@@ -121,12 +121,14 @@ val universalCaptionsPatch = bytecodePatch(
         """)
 
         manager.addTranslationHelper("universalCaptions_targetLanguages", listOf("Z"), "Ljava/util/List;", 4, """
-            new-instance v0, Ljava/util/ArrayList;
-            invoke-direct { v0 }, Ljava/util/ArrayList;-><init>()V
+            const/4 v0, 0x0
             iget-object v1, p0, ${metadata.metadata}
             if-eqz v1, :done
             iget-object v1, v1, ${metadata.targets}
             if-eqz v1, :done
+            # null means metadata is absent; an actual empty list means no targets.
+            new-instance v0, Ljava/util/ArrayList;
+            invoke-direct { v0 }, Ljava/util/ArrayList;-><init>()V
             invoke-interface { v1 }, Ljava/util/List;->iterator()Ljava/util/Iterator;
             move-result-object v1
             :next

@@ -39,13 +39,13 @@ public final class CaptionTranslationList {
     }
 
     static List<String> targets(List<String> nativeTargets) {
-        if (nativeTargets == null || nativeTargets.isEmpty()) return java.util.Arrays.asList(TARGETS);
+        if (nativeTargets == null) return java.util.Arrays.asList(TARGETS);
         List<String> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (String code : nativeTargets) {
             if (validLanguageCode(code) && seen.add(languageKey(code))) result.add(code);
         }
-        // A nonempty native catalog is authoritative, even when every entry is invalid.
+        // A native catalog is authoritative, even when explicitly empty.
         return result;
     }
 
@@ -114,15 +114,25 @@ public final class CaptionTranslationList {
         try {
             URI uri = OriginalCaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
             if (uri == null) return false;
-            int languageParameters = 0;
+            String sourceLanguage = null;
+            int targetCount = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {
                 int equals = parameter.indexOf('=');
                 String rawKey = equals < 0 ? parameter : parameter.substring(0, equals);
-                if (!"tlang".equals(URLDecoder.decode(rawKey, "UTF-8"))) continue;
-                if (!"tlang".equals(rawKey) || !parameter.equals("tlang=" + code)) return false;
-                languageParameters++;
+                String key = URLDecoder.decode(rawKey, "UTF-8");
+                if ("tlang".equals(key)) {
+                    if (!rawKey.equals(key) || !parameter.equals("tlang=" + code) || ++targetCount != 1)
+                        return false;
+                } else if ("lang".equals(key)) {
+                    if (!rawKey.equals(key) || equals < 0 || sourceLanguage != null) return false;
+                    sourceLanguage = URLDecoder.decode(parameter.substring(equals + 1), "UTF-8");
+                    if (!validLanguageCode(sourceLanguage)) return false;
+                }
             }
-            return languageParameters == 1;
+            if (targetCount != 1 || sourceLanguage == null) return false;
+            String originalVss = vss.substring(1, vss.length() - code.length() - 1);
+            return OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
+                    || OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage);
         } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
             return false;
         }

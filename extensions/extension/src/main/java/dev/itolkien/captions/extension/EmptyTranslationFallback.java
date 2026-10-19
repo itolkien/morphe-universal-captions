@@ -63,7 +63,8 @@ public final class EmptyTranslationFallback {
         if (tracks == null) return null;
         OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
-        String video = null;
+        String video = null, firstLanguage = null;
+        boolean mixedLanguages = false;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
             String language = track.universalCaptions_getLanguageCode();
@@ -72,6 +73,9 @@ public final class EmptyTranslationFallback {
                     OriginalCaptionSource.from(track);
             if (original == null || video != null && !video.equals(original.videoId())) return null;
             video = original.videoId();
+            String languageKey = CaptionTranslationList.languageKey(track.universalCaptions_getLanguageCode());
+            if (firstLanguage == null) firstLanguage = languageKey;
+            else if (!firstLanguage.equals(languageKey)) mixedLanguages = true;
             if (first == null) first = original;
             if (nativeDefault != null && matchedDefault == null
                     && track.universalCaptions_getVssId().equals(nativeDefault.universalCaptions_getVssId())
@@ -79,7 +83,7 @@ public final class EmptyTranslationFallback {
                 matchedDefault = original;
             }
         }
-        // All candidates were validated before a source was returned.
-        return matchedDefault != null ? matchedDefault : first;
+        // With multiple language sources, never guess the selected audio track.
+        return matchedDefault != null ? matchedDefault : mixedLanguages ? null : first;
     }
 }

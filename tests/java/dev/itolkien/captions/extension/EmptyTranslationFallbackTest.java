@@ -164,7 +164,8 @@ class EmptyTranslationFallbackTest {
         assertEquals(4, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
         source.preferred = new Track("de", URL.replace("lang=ar", "lang=de"), "a.de");
         result = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
-        assertTrue(result.stream().allMatch(t -> t.universalCaptions_getCaptionUrl().contains("lang=ar&")));
+        assertSame(source.translations, result);
+        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
     }
 
     @Test void emptyNativeTranslationCatalogDoesNotInventLanguagesOrMenu() {
