@@ -63,8 +63,8 @@ public final class EmptyTranslationFallback {
         if (tracks == null) return null;
         OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
-        String video = null, firstLanguage = null;
-        boolean mixedLanguages = false;
+        String video = null, firstVss = null;
+        boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
             String language = track.universalCaptions_getLanguageCode();
@@ -73,17 +73,18 @@ public final class EmptyTranslationFallback {
                     OriginalCaptionSource.from(track);
             if (original == null || video != null && !video.equals(original.videoId())) return null;
             video = original.videoId();
-            String languageKey = CaptionTranslationList.languageKey(track.universalCaptions_getLanguageCode());
-            if (firstLanguage == null) firstLanguage = languageKey;
-            else if (!firstLanguage.equals(languageKey)) mixedLanguages = true;
-            if (first == null) first = original;
+            String vss = track.universalCaptions_getVssId();
+            if (first == null) {
+                first = original;
+                firstVss = vss;
+            } else if (!firstVss.equals(vss)) mixedSources = true;
             if (nativeDefault != null && matchedDefault == null
-                    && track.universalCaptions_getVssId().equals(nativeDefault.universalCaptions_getVssId())
+                    && vss.equals(nativeDefault.universalCaptions_getVssId())
                     && track.universalCaptions_getCaptionUrl().equals(nativeDefault.universalCaptions_getCaptionUrl())) {
                 matchedDefault = original;
             }
         }
-        // With multiple language sources, never guess the selected audio track.
-        return matchedDefault != null ? matchedDefault : mixedLanguages ? null : first;
+        // Native caption eligibility is track-specific, even within the same language.
+        return matchedDefault != null ? matchedDefault : mixedSources ? null : first;
     }
 }
