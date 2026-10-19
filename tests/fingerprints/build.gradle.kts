@@ -13,7 +13,7 @@ sourceSets.main {
 sourceSets.main {
     java.srcDir("../../extensions/extension/src/main/java")
     java.include("**/CaptionTranslationList.java", "**/CaptionIntegration.java",
-        "**/SourceTranslationExperiment.java", "**/EmptyTranslationFallback.java")
+        "**/CaptionSource.java", "**/EmptyTranslationFallback.java")
 }
 sourceSets.test {
     java.srcDir("../java")

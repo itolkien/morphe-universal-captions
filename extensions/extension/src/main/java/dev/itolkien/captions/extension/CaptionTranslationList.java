@@ -77,11 +77,11 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale, List<String> nativeTargets) {
+    static List<CaptionTrack> fromSource(CaptionSource source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
-        if (locale == null || SourceTranslationExperiment.originalUri(source) == null) return result;
+        if (locale == null || source == null) return result;
         for (String target : targets(nativeTargets)) {
-            CaptionTrack translated = SourceTranslationExperiment.previewValidated(source, target, locale);
+            CaptionTrack translated = source.translate(target, locale);
             if (translated != null) result.add(translated);
         }
         return sorted(result, locale);
@@ -102,7 +102,7 @@ public final class CaptionTranslationList {
         if (!validLanguageCode(code) ||
                 vss == null || !vss.startsWith("t") || !vss.endsWith("." + code)) return false;
         try {
-            URI uri = SourceTranslationExperiment.timedTextUri(track.universalCaptions_getCaptionUrl());
+            URI uri = CaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
             if (uri == null) return false;
             int languageParameters = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {

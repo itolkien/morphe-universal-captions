@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Locale;
 import static org.junit.jupiter.api.Assertions.*;
 
-class SourceTranslationExperimentTest {
+class CaptionSourceTest {
     private static final class Track implements CaptionTranslationList.CaptionTrack {
         final String lang, url, vss;
         final CharSequence label;
@@ -26,7 +26,7 @@ class SourceTranslationExperimentTest {
     @Test void canDeriveTurkishFromArabicAsrWithoutExistingTranslatedTrack() {
         Track arabic = new Track("ar", URL, "a.ar", "Arabic (auto-generated)");
         CaptionTranslationList.CaptionTrack result =
-                SourceTranslationExperiment.preview(arabic, "tr", Locale.forLanguageTag("tr"));
+                CaptionSource.preview(arabic, "tr", Locale.forLanguageTag("tr"));
         assertNotNull(result);
         assertEquals(URL + "&tlang=tr", result.universalCaptions_getCaptionUrl());
         assertEquals("ta.ar.tr", result.universalCaptions_getVssId());
@@ -35,9 +35,9 @@ class SourceTranslationExperimentTest {
     }
 
     @Test void rejectsTranslatedAndPseudoTracks() {
-        assertNull(SourceTranslationExperiment.preview(
+        assertNull(CaptionSource.preview(
                 new Track("de", URL + "&tlang=de", "ta.ar.de", "German"), "tr", Locale.ENGLISH));
-        assertNull(SourceTranslationExperiment.preview(
+        assertNull(CaptionSource.preview(
                 new Track("AUTO_TRANSLATE_CAPTIONS_OPTION", URL, "-", "Auto translate"),
                 "tr", Locale.ENGLISH));
     }
@@ -49,14 +49,14 @@ class SourceTranslationExperimentTest {
                 "https://www.youtube.com/other?v=x&lang=ar",
                 URL + "&tlang=fr"
         }) {
-            assertNull(SourceTranslationExperiment.preview(
+            assertNull(CaptionSource.preview(
                     new Track("ar", url, "a.ar", "Arabic"), "tr", Locale.ENGLISH));
         }
     }
     @Test void namedEnglishTrackKeepsItsFullSourceIdentityAndEncodedName() {
         String url = "https://www.youtube.com/api/timedtext?v=FlcePQVkmM4&lang=en&name=English%20-%20896wrPZbXJE&sig=a%2Bb";
         Track source = new Track("en", url, ".en.78oJUrdTLnk", "English - 896wrPZbXJE");
-        CaptionTranslationList.CaptionTrack translated = SourceTranslationExperiment.preview(source, "tr", Locale.ENGLISH);
+        CaptionTranslationList.CaptionTrack translated = CaptionSource.preview(source, "tr", Locale.ENGLISH);
         assertNotNull(translated);
         assertEquals(url + "&tlang=tr", translated.universalCaptions_getCaptionUrl());
         assertEquals("t.en.78oJUrdTLnk.tr", translated.universalCaptions_getVssId());
@@ -67,7 +67,7 @@ class SourceTranslationExperimentTest {
 
     @Test void originalLanguageAliasesAreNotOfferedAsTranslations() {
         Track source = new Track("iw", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=iw", ".iw", "Hebrew");
-        assertNull(SourceTranslationExperiment.preview(source, "he", Locale.ENGLISH));
+        assertNull(CaptionSource.preview(source, "he", Locale.ENGLISH));
     }
 
     @Test void rejectsAmbiguousOrInconsistentOriginalSources() {
@@ -79,7 +79,7 @@ class SourceTranslationExperimentTest {
                 "https://www.youtube.com/api/timedtext?v=FlcePQVkmM4&lang=en&kind=asr",
                 "https://www.youtube.com/api/timedtext?v=short&lang=en"
         }) {
-            assertNull(SourceTranslationExperiment.preview(new Track("en", url, ".en", "English"), "tr", Locale.ENGLISH), url);
+            assertNull(CaptionSource.preview(new Track("en", url, ".en", "English"), "tr", Locale.ENGLISH), url);
         }
     }
 
@@ -97,10 +97,10 @@ class SourceTranslationExperimentTest {
             }
         }
         CountingTrack source = new CountingTrack();
-        var tracks = CaptionTranslationList.fromSource(source, Locale.ENGLISH,
+        var tracks = CaptionTranslationList.fromSource(CaptionSource.from(source), Locale.ENGLISH,
                 java.util.List.of("ar", "tr", "de", "fr"));
         assertEquals(3, tracks.size());
-        // One validation read plus one URL read per generated track.
-        assertEquals(4, source.urlReads);
+        // Validation snapshots the URL once and reuses it for every target.
+        assertEquals(1, source.urlReads);
     }
 }
