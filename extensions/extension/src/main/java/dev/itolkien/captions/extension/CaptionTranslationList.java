@@ -143,12 +143,13 @@ public final class CaptionTranslationList {
         String code = raw.trim().replace('_', '-').toLowerCase(Locale.ROOT);
         int dash = code.indexOf('-');
         String primary = dash < 0 ? code : code.substring(0, dash);
+        String region = dash < 0 ? "" : code.substring(dash);
         switch (primary) {
-            case "iw": return "he";
-            case "in": return "id";
-            case "ji": return "yi";
-            case "tl": return "fil";
-            case "nb": return "no";
+            case "iw": return "he" + region;
+            case "in": return "id" + region;
+            case "ji": return "yi" + region;
+            case "tl": return "fil" + region;
+            case "nb": return "no" + region;
             case "zh":
                 if (code.contains("-hant")) return "zh-hant";
                 if (code.contains("-hans")) return "zh-hans";

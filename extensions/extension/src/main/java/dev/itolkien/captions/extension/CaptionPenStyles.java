@@ -5,6 +5,7 @@
 package dev.itolkien.captions.extension;
 
 import java.net.URI;
+import java.net.URLDecoder;
 
 /**
  * Prevents translated srv3 caption text from inheriting invisible creator-defined pens.
@@ -26,13 +27,23 @@ public final class CaptionPenStyles {
         URI uri = OriginalCaptionSource.timedTextUri(url);
         if (uri == null) return;
         boolean hasTarget = false;
-        for (String part : uri.getRawQuery().split("&", -1)) {
-            if (part.startsWith("tlang=")) {
+        try {
+            for (String part : uri.getRawQuery().split("&", -1)) {
+                int equals = part.indexOf('=');
+                String rawKey = equals < 0 ? part : part.substring(0, equals);
+                if (!"tlang".equals(URLDecoder.decode(rawKey, "UTF-8"))) continue;
+                // Invalid, encoded or duplicate translation targets are ambiguous.
+                if (hasTarget || !rawKey.equals("tlang") || equals < 0 ||
+                        !CaptionTranslationList.validLanguageCode(part.substring(equals + 1))) {
+                    translated = false;
+                    return;
+                }
                 hasTarget = true;
-                break;
             }
+            translated = hasTarget;
+        } catch (IllegalArgumentException | java.io.UnsupportedEncodingException ignored) {
+            translated = false;
         }
-        translated = hasTarget;
     }
 
     /** Called at the shared srv3 pen lookup, for pen/paragraph/segment styles. */
