@@ -1,4 +1,7 @@
-/* Copyright 2026 itolkien. Licensed under GPL-3.0-or-later; see LICENSE. */
+/*
+ * Styled translated-caption fix adapted from Morphe PR #3837.
+ * Copyright 2026 Morphe and itolkien. See NOTICE for GPLv3 Section 7 terms.
+ */
 package dev.itolkien.captions.extension;
 
 import java.net.URI;
@@ -19,6 +22,7 @@ public final class CaptionPenStyles {
 
     /** Called before YouTube constructs a timedtext network request. */
     public static void setTimedTextUrl(String url) {
+        if (url == null || !url.contains("/api/timedtext?")) return;
         URI uri = OriginalCaptionSource.timedTextUri(url);
         if (uri == null) return;
         boolean hasTarget = false;

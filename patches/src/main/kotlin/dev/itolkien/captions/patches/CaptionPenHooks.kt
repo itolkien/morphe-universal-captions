@@ -1,3 +1,7 @@
+/*
+ * Styled translated-caption hooks adapted from Morphe PR #3837.
+ * Copyright 2026 Morphe and itolkien. See NOTICE for GPLv3 Section 7 terms.
+ */
 package dev.itolkien.captions.patches
 
 import app.morphe.patcher.Fingerprint
