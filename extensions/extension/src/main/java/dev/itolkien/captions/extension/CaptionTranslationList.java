@@ -65,13 +65,29 @@ public final class CaptionTranslationList {
             String oldUrl = prototype.universalCaptions_getCaptionUrl();
             String oldVss = prototype.universalCaptions_getVssId();
             String vssPrefix = oldVss.substring(0, oldVss.length() - oldLanguage.length());
+
+            // Find the actual query parameter, not "tlang=" inside an opaque value or fragment.
+            int queryStart = oldUrl.indexOf('?') + 1;
+            int queryEnd = oldUrl.indexOf('#', queryStart);
+            if (queryEnd < 0) queryEnd = oldUrl.length();
+            int offset = queryStart, targetAt = -1;
+            for (String part : oldUrl.substring(queryStart, queryEnd).split("&", -1)) {
+                if (part.equals("tlang=" + oldLanguage)) {
+                    targetAt = offset + "tlang=".length();
+                    break;
+                }
+                offset += part.length() + 1;
+            }
+            if (targetAt < 0) return sorted(result, locale);
+            String urlPrefix = oldUrl.substring(0, targetAt);
+            String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
+
             for (String code : targets(nativeTargets)) {
                 if (!represented.add(languageKey(code))) continue;
                 String name = Locale.forLanguageTag(code).getDisplayName(locale);
                 if (name.isEmpty()) name = code;
-                result.add(prototype.universalCaptions_copyTranslation(code,
-                        translatedUrl(oldUrl, oldLanguage, code),
-                        vssPrefix + code, name));
+                result.add(prototype.universalCaptions_copyTranslation(
+                        code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
             }
         }
         return sorted(result, locale);
@@ -85,15 +101,6 @@ public final class CaptionTranslationList {
             if (translated != null) result.add(translated);
         }
         return sorted(result, locale);
-    }
-
-    private static String translatedUrl(String url, String oldLanguage, String code) {
-        int start = url.indexOf('?') + 1;
-        int fragment = url.indexOf('#', start);
-        int end = fragment < 0 ? url.length() : fragment;
-        String query = url.substring(start, end);
-        return url.substring(0, start) + query.replaceFirst("(^|&)tlang=" + oldLanguage + "(?=&|$)",
-                "$1tlang=" + code) + url.substring(end);
     }
 
     private static boolean isTranslationPrototype(CaptionTrack track) {
