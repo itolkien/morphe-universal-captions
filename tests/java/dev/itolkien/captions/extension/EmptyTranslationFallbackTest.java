@@ -98,18 +98,30 @@ class EmptyTranslationFallbackTest {
             assertEquals(source.translations, EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH));
         }
     }
-    @Test void sourceIsPerManagerAndNativeIntegratedTracksCanUseOnlyTheExplicitFallback() {
+    @Test void sourcesRemainIndependentAcrossManagers() {
         Source first = new Source();
         Source second = new Source();
         second.direct = List.of(new Track("ar", URL.replace("PlsODqqqwFs", "short"), "a.ar"));
         assertEquals(3, EmptyTranslationFallback.direct(first.direct, first, Locale.ENGLISH).size());
         assertSame(second.direct, EmptyTranslationFallback.direct(second.direct, second, Locale.ENGLISH));
-        class NativeAsr extends Track implements app.morphe.extension.youtube.patches.AutoTranslateCaptionsPatch.CaptionTrackInterface {
-            NativeAsr() { super("ar", URL, "a.ar"); }
-        }
-        first.direct = List.of(new NativeAsr());
+        first.direct = List.of(new Track("ar", URL, "a.ar"));
         assertTrue(EmptyTranslationFallback.translated(first.translations, first, Locale.ENGLISH).size() > 100);
     }
+    @Test void existingNativeTranslationsUseVideoMetadataWithoutLegacyMorpheAdapter() {
+        Source source = new Source();
+        source.targets = List.of("de", "tr");
+        Track nativeGerman = new Track("de", URL + "&tlang=de", "ta.ar.de");
+        source.translations = List.of(nativeGerman);
+
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(track -> track == nativeGerman));
+        assertEquals(URL + "&tlang=tr", result.stream()
+                .filter(track -> "tr".equals(track.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
+    }
+
     @Test void nullsAndFactoryFailuresFailClosed() {
         Source source = new Source();
         assertNull(EmptyTranslationFallback.direct(null, source, Locale.ENGLISH));
