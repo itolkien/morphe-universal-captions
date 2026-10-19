@@ -133,6 +133,19 @@ public class CaptionTranslationListTest {
         assertEquals(List.of(wrongVss), CaptionTranslationList.augment(List.of(wrongVss), Locale.ENGLISH));
     }
 
+    @Test public void mixedNativeSourceLanguagesAreNotArbitrarilyExpanded() {
+        Track englishSource = german();
+        Track spanishSource = new Track("fr",
+                URL.replace("lang=en", "lang=es").replace("tlang=de", "tlang=fr"),
+                "ta.es.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(spanishSource, englishSource);
+        List<CaptionTranslationList.CaptionTrack> result =
+                CaptionTranslationList.augment(nativeTracks, Locale.ENGLISH, List.of("el"));
+        assertEquals(2, result.size());
+        assertTrue(result.contains(englishSource));
+        assertTrue(result.contains(spanishSource));
+    }
+
     @Test public void nullLocaleKeepsNativeTracksUntouched() {
         List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(german());
         assertSame(nativeTracks, CaptionTranslationList.augment(nativeTracks, null));

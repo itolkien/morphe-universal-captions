@@ -93,8 +93,8 @@ class CaptionSourceTest {
 
     @Test void fallbackValidatesOriginalUrlOnlyOnceForAllTargets() {
         class CountingTrack implements CaptionTranslationList.CaptionTrack {
-            int urlReads;
-            public String universalCaptions_getLanguageCode() { return "ar"; }
+            int urlReads, languageReads;
+            public String universalCaptions_getLanguageCode() { languageReads++; return "ar"; }
             public String universalCaptions_getVssId() { return "a.ar"; }
             public String universalCaptions_getCaptionUrl() { urlReads++; return URL; }
             public CharSequence universalCaptions_getCaptionLabel() { return "Arabic"; }
@@ -109,5 +109,6 @@ class CaptionSourceTest {
         assertEquals(3, tracks.size());
         // Validation snapshots the URL once and reuses it for every target.
         assertEquals(1, source.urlReads);
+        assertEquals(1, source.languageReads);
     }
 }
