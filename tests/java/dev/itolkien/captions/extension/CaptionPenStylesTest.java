@@ -8,6 +8,21 @@ class CaptionPenStylesTest {
             "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=a%2Bb";
     private static final int DEFAULT_PEN = Integer.MIN_VALUE;
 
+    @Test void invalidOrAmbiguousTargetsDoNotOverrideCreatorPens() {
+        for (String url : new String[]{
+                ORIGINAL + "&tlang=",
+                ORIGINAL + "&tlang=tr&tlang=de",
+                ORIGINAL + "&tlang=tr&%74lang=de",
+                ORIGINAL + "&tlang=tr%26lang%3Dde",
+                ORIGINAL + "&tlang=bad%20value"
+        }) {
+            CaptionPenStyles.setTimedTextUrl(ORIGINAL + "&tlang=tr");
+            CaptionPenStyles.setTimedTextUrl(url);
+            assertEquals(8, CaptionPenStyles.getPenId(8), url);
+        }
+        CaptionPenStyles.setTimedTextUrl(ORIGINAL);
+    }
+
     @Test void translatedTracksUseDefaultPenAndOriginalTracksKeepCreatorStyles() {
         CaptionPenStyles.setTimedTextUrl(ORIGINAL + "&tlang=he");
         assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(1));

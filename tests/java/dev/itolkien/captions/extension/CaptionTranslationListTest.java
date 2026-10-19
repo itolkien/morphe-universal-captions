@@ -52,6 +52,17 @@ public class CaptionTranslationListTest {
         assertEquals(List.of(nativeGerman), input);
     }
 
+    @Test public void legacyLanguageAliasesPreserveRegionalSubtags() {
+        assertEquals("he", CaptionTranslationList.languageKey("iw"));
+        assertEquals("he-il", CaptionTranslationList.languageKey("iw-IL"));
+        assertEquals("id-id", CaptionTranslationList.languageKey("in-ID"));
+        assertEquals("yi-001", CaptionTranslationList.languageKey("ji-001"));
+        assertEquals("fil-ph", CaptionTranslationList.languageKey("tl-PH"));
+        assertEquals("no-no", CaptionTranslationList.languageKey("nb-NO"));
+        assertNotEquals(CaptionTranslationList.languageKey("iw-IL"),
+                CaptionTranslationList.languageKey("iw-US"));
+    }
+
     @Test public void doesNotDuplicateAliasesOrCollapseChineseScripts() {
         List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(List.of(
                 german(), new Track("iw", "", "", "Hebrew"),
