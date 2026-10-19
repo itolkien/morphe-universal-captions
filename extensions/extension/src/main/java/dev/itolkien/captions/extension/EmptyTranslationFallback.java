@@ -29,7 +29,7 @@ public final class EmptyTranslationFallback {
             // Only check whether a target exists; don't construct and sort 156 throwaway tracks.
             List<CaptionTrack> translated = source.universalCaptions_nativeTranslated(true);
             if (translated == null || !translated.isEmpty()) return tracks;
-            CaptionSource candidate = candidate(tracks, source);
+            OriginalCaptionSource candidate = candidate(tracks, source);
             if (candidate == null) return tracks;
             boolean hasTarget = CaptionTranslationList.targets(source.universalCaptions_targetLanguages(true))
                     .stream().anyMatch(candidate::canTranslate);
@@ -50,7 +50,7 @@ public final class EmptyTranslationFallback {
         try {
             if (!tracks.isEmpty()) return CaptionIntegration.augmentMetadata(tracks, locale,
                     source.universalCaptions_targetLanguages(true));
-            CaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
+            OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) return tracks;
             List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, source.universalCaptions_targetLanguages(true));
             return result.isEmpty() ? tracks : result;
@@ -59,17 +59,17 @@ public final class EmptyTranslationFallback {
         }
     }
 
-    private static dev.itolkien.captions.extension.CaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {
+    private static OriginalCaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {
         if (tracks == null) return null;
-        dev.itolkien.captions.extension.CaptionSource first = null, matchedDefault = null;
+        OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
         String video = null;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
             String language = track.universalCaptions_getLanguageCode();
             if ("DISABLE_CAPTIONS_OPTION".equals(language) || AUTO.equals(language)) continue;
-            dev.itolkien.captions.extension.CaptionSource original =
-                    dev.itolkien.captions.extension.CaptionSource.from(track);
+            OriginalCaptionSource original =
+                    OriginalCaptionSource.from(track);
             if (original == null || video != null && !video.equals(original.videoId())) return null;
             video = original.videoId();
             if (first == null) first = original;

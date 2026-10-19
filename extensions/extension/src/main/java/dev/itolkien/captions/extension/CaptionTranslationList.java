@@ -77,7 +77,7 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    static List<CaptionTrack> fromSource(CaptionSource source, Locale locale, List<String> nativeTargets) {
+    static List<CaptionTrack> fromSource(OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
         if (locale == null || source == null) return result;
         for (String target : targets(nativeTargets)) {
@@ -102,7 +102,7 @@ public final class CaptionTranslationList {
         if (!validLanguageCode(code) ||
                 vss == null || !vss.startsWith("t") || !vss.endsWith("." + code)) return false;
         try {
-            URI uri = CaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
+            URI uri = OriginalCaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
             if (uri == null) return false;
             int languageParameters = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {

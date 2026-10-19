@@ -70,7 +70,7 @@ def verify(path):
             raise ValueError(f"{len(missing)} JVM classes missing from Android DEX: {sorted(missing)[:5]}")
         runtime = dex_classes(bundle.read("extensions/extension.mpe"))
         required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack", "CaptionIntegration",
-                    "CaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
+                    "OriginalCaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
                     "NativeTranslationBridge"}
         missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
         if missing_runtime:
