@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** Extends a native translation list without selecting a caption track or changing caption visibility. */
 public final class CaptionTranslationList {
@@ -27,12 +28,14 @@ public final class CaptionTranslationList {
         CaptionTrack universalCaptions_copyTranslation(String language, String url, String vss, CharSequence label);
     }
 
+    private static final Pattern LANGUAGE_CODE = Pattern.compile("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
+
     // YouTube player translationLanguages snapshot, 2026-10-16, video FlcePQVkmM4.
     // Used only when native metadata is absent; runtime metadata takes precedence.
     static final String[] TARGETS = "ab aa af ak sq am ar hy as ay az bn ba eu be bho bs br bg my ca ceb zh-Hans zh-Hant co hr cs da dv nl dz en eo et ee fo fj fil fi fr gaa gl lg ka de el gn gu ht ha haw iw hi hmn hu is ig id iu ga it ja jv kl kn kk kha km rw ko kri ku ky lo la lv ln lt lua luo lb mk mg ms ml mt gv mi mr mn mfe ne new nso no ny oc or om os pam ps fa pl pt pt-PT pa qu ro rn ru sm sg sa gd sr crs sn sd si sk sl so st es su sw ss sv tg ta tt te th bo ti to ts tn tum tr tk uk ur ug uz ve vi war cy fy wo xh yi yo zu".split(" ");
 
     static boolean validLanguageCode(String code) {
-        return code != null && code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
+        return code != null && LANGUAGE_CODE.matcher(code).matches();
     }
 
     static List<String> targets(List<String> nativeTargets) {
