@@ -188,6 +188,6 @@ val universalCaptionsPatch = bytecodePatch(
             manager.methods.add(hooked)
             manager.methods.add(raw)
         }
-          applyPenHooks()
+        applyPenHooks()
     }
 }

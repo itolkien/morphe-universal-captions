@@ -11,6 +11,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.opcode
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -61,6 +62,7 @@ private object CaptionSegmentPenFingerprint : Fingerprint(
  * Resolve both independent host hooks before mutating any method.
  * This implementation lives in Universal Captions, not in Morphe's Captions patch.
  */
+context(_: BytecodePatchContext)
 internal fun resolveCaptionPenHooks(): () -> Unit {
     val request = CaptionTimedTextRequestFingerprint
     val index = request.instructionMatches[0].index
