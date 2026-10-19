@@ -78,8 +78,9 @@ public final class CaptionTranslationList {
 
     static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
+        if (locale == null || SourceTranslationExperiment.originalUri(source) == null) return result;
         for (String target : targets(nativeTargets)) {
-            CaptionTrack translated = SourceTranslationExperiment.preview(source, target, locale);
+            CaptionTrack translated = SourceTranslationExperiment.previewValidated(source, target, locale);
             if (translated != null) result.add(translated);
         }
         return sorted(result, locale);
