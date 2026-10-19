@@ -30,6 +30,7 @@ class CaptionMetadataAbiTest {
             1 -> listOf(targetName)
             2 -> listOf(targetName, secondName)
             3 -> listOf(foreignName)
+            4 -> listOf(targetName, foreignName)
             else -> emptyList()
         }
         val nativeLabelWrites = targetLabels.flatMap { name -> listOf(
@@ -69,6 +70,7 @@ class CaptionMetadataAbiTest {
         assertNull(resolve().targetLabel)
         assertNull(resolve(labelReads = 2).targetLabel)
         assertNull(resolve(labelReads = 3).targetLabel)
+        assertNull(resolve(labelReads = 4).targetLabel)
     }
     @Test fun `ambiguous defaults and unrecognized setter flows fail closed`() {
         assertThrows(IllegalStateException::class.java) { resolve(ambiguous = true) }

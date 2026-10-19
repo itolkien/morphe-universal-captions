@@ -86,12 +86,17 @@ internal fun resolveCaptionMetadataAbi(model: CaptionTranslationModel, abi: Capt
         }
         return null
     }
-    val targetLabel = code.indices.filter { index ->
+    val labelSources = code.indices.filter { index ->
         index > cast && code[index].opcode == Opcode.IPUT_OBJECT &&
                 code[index].ref() == abi.labelField
-    }.mapNotNull { index ->
+    }.map { index ->
         labelSource(index, (code[index] as TwoRegisterInstruction).registerA)
-    }.distinct().singleOrNull()
+    }
+    // Every label assignment must resolve to the very same target entry field.
+    // One proven path is insufficient if another path assigns an unknown label.
+    val targetLabel = labelSources.firstOrNull()?.takeIf { candidate ->
+        labelSources.all { it == candidate }
+    }
 
     return CaptionMetadataAbi(metadata, targets, targetCode, defaultSource, targetLabel)
 }
