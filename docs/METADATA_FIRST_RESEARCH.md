@@ -81,6 +81,22 @@ No user caption preference/Off behavior was moved into this module; the
 integrated Morphe patch must continue to leave that policy to the existing
 preferred-caption settings.
 
+## Structurally resolving localized native names (draft)
+
+The Kotlin ABI resolver now performs an **optional** data-flow check for a
+second field on a target-language protobuf entry. It accepts a native name
+only when that field's value directly reaches the **actual caption builder
+label field**, and rejects ambiguous or non-target values. Synthetic
+fixtures cover positive, missing, ambiguous and unrelated-field cases.
+
+This resolver deliberately returns `null` for unrecognized native
+instruction layouts. **It does not yet inject a localized-name getter or
+replace `Locale.forLanguageTag` in the runtime**. We cannot claim that the
+field is present on supported YouTube versions until the native method
+layout is verified at the final APK inspection stage. That limitation is
+preferable to silently assigning an unrelated obfuscated String field as a
+user-facing label.
+
 ## A measured refactor path
 
 1. **Already usable:** Keep native target codes, original/native track identity,

@@ -12,6 +12,8 @@ internal data class CaptionMetadataAbi(
     val targets: FieldReference,
     val targetCode: FieldReference,
     val defaultSource: Method,
+    // Optional: only present if a target's label is proven to flow into the caption builder.
+    val targetLabel: FieldReference?,
 )
 
 /** Follow the target-language builder argument back to its protobuf entry and outer list. */
@@ -54,6 +56,42 @@ internal fun resolveCaptionMetadataAbi(model: CaptionTranslationModel, abi: Capt
         .map { it as FieldReference }.one("manager metadata field")
     val defaultSource = manager.methods.filter { it.returnType == model.track.type && it.parameterTypes.isEmpty() &&
             !AccessFlags.STATIC.isSet(it.accessFlags) && AccessFlags.PUBLIC.isSet(it.accessFlags) }.one("native default source")
+
     check(code.take(listIndex).any { it.opcode == Opcode.IGET_OBJECT && it.ref() == metadata })
-    return CaptionMetadataAbi(metadata, targets, targetCode, defaultSource)
+
+    // A target entry may expose its localized name, but multiple obfuscated
+    // String fields are not evidence. Only accept direct data flow to the
+    // track builder's actual label field; otherwise return null.
+    val targetRegister = (code[cast] as? OneRegisterInstruction)?.registerA
+    fun labelSource(before: Int, initialRegister: Int): FieldReference? {
+        if (targetRegister == null) return null
+        var register = initialRegister
+        for (i in before - 1 downTo cast + 1) {
+            val instruction = code[i]
+            if (!instruction.opcode.setsRegister() ||
+                    (instruction as? OneRegisterInstruction)?.registerA != register) continue
+            when (instruction.opcode) {
+                Opcode.IGET_OBJECT -> {
+                    val field = instruction.ref() as? FieldReference ?: return null
+                    return field.takeIf {
+                        it != targetCode && it.definingClass == targetCode.definingClass &&
+                                it.type in listOf("Ljava/lang/String;", "Ljava/lang/CharSequence;") &&
+                                (instruction as TwoRegisterInstruction).registerB == targetRegister
+                    }
+                }
+                Opcode.MOVE_OBJECT, Opcode.MOVE_OBJECT_FROM16, Opcode.MOVE_OBJECT_16 ->
+                    register = (instruction as TwoRegisterInstruction).registerB
+                else -> return null
+            }
+        }
+        return null
+    }
+    val targetLabel = code.indices.filter { index ->
+        index > cast && code[index].opcode == Opcode.IPUT_OBJECT &&
+                code[index].ref() == abi.labelField
+    }.mapNotNull { index ->
+        labelSource(index, (code[index] as TwoRegisterInstruction).registerA)
+    }.distinct().singleOrNull()
+
+    return CaptionMetadataAbi(metadata, targets, targetCode, defaultSource, targetLabel)
 }
