@@ -83,9 +83,11 @@ public final class CaptionTranslationList {
             if (targetAt < 0) return sorted(result, locale);
             String urlPrefix = oldUrl.substring(0, targetAt);
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
+            String sourceKey = languageKey(timedText.field("lang"));
 
             for (String code : targets(nativeTargets)) {
-                if (!represented.add(languageKey(code))) continue;
+                String key = languageKey(code);
+                if (sourceKey.equals(key) || !represented.add(key)) continue;
                 String name = Locale.forLanguageTag(code).getDisplayName(locale);
                 if (name.isEmpty()) name = code;
                 result.add(prototype.universalCaptions_copyTranslation(
