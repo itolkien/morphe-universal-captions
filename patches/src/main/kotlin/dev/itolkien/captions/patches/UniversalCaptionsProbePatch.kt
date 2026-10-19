@@ -65,6 +65,8 @@ val universalCaptionsPatch = bytecodePatch(
             model.language, model.vss, ::classDefByOrNull)
         val autoOption = resolveNativeAutoOption(model, abi)
         val metadata = resolveCaptionMetadataAbi(model, abi, classDefBy(model.direct.definingClass))
+        // Resolve the srv3 pen hooks before changing any native code.
+        val applyPenHooks = resolveCaptionPenHooks()
         for (method in listOf(model.direct, model.translated)) {
             check(method.implementation!!.registerCount in 1..15 && method.parameterTypes.isEmpty() &&
                 !AccessFlags.STATIC.isSet(method.accessFlags)) { "Unsupported native menu register layout" }
@@ -186,5 +188,6 @@ val universalCaptionsPatch = bytecodePatch(
             manager.methods.add(hooked)
             manager.methods.add(raw)
         }
+          applyPenHooks()
     }
 }

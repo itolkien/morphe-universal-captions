@@ -71,7 +71,7 @@ def verify(path):
         runtime = dex_classes(bundle.read("extensions/extension.mpe"))
         required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack", "CaptionIntegration",
                     "OriginalCaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
-                    "NativeTranslationBridge"}
+                    "NativeTranslationBridge", "CaptionPenStyles"}
         missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
         if missing_runtime:
             raise ValueError(f"missing extension runtime classes: {sorted(missing_runtime)}")

@@ -13,6 +13,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - Preserves existing native translations and signed source URLs. With multiple originals, uses the current audio's native default, or native direct-list order if no eligible default exists.
 - Localized alphabetical language ordering, including distinct regional targets.
 - No external translation service, overlay or separate caption preference UI.
+- Restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
 Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video.
 
@@ -24,7 +25,9 @@ Use it alongside Morphe's **Captions** patch. If your Morphe build includes **Ad
 
 ### Caption styling
 
-This addon manages translation target lists and missing Auto-translate menus. It does **not** modify timed-text pen styles. Morphe's separate [styled translated-caption fix (#3837)](https://github.com/MorpheApp/morphe-patches/pull/3837) handles text that becomes invisible after automatic translation. That fix is available when using a Morphe build containing it with the **Captions** patch selected; copying its hooks into this addon would duplicate host modifications. Independent operation of that fix without Morphe Captions is not claimed.
+The **3.0.0-dev.1** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
+
+This is the source-of-truth implementation for the planned Morphe port. The upstream port should **replace**, not retain alongside, Morphe's existing #3837 hooks. Running this development patch alongside a Morphe build that already includes #3837 is not yet device-verified for duplicate hooks. The latest-request flag can also misattribute overlapping caption requests; per-document correlation remains a known limitation. See [caption style design and verification](docs/CAPTION_PEN_STYLES.md).
 
 ## Installation
 
