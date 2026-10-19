@@ -206,6 +206,28 @@ class EmptyTranslationFallbackTest {
         assertEquals(3, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
     }
 
+    @Test void twoSameLanguageSourcesRequireNativeDefaultToAvoidWrongTrack() {
+        Source source = new Source();
+        String root = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=x";
+        Track uploaded = new Track("en", root + "&name=uploaded", ".en.uploaded");
+        Track alternate = new Track("en", root + "&name=alternate", ".en.alternate");
+        source.direct = List.of(uploaded, alternate);
+        source.targets = List.of("tr");
+
+        // YouTube's actual source eligibility is by caption index, not language.
+        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
+        assertSame(source.translations, EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH));
+
+        // If YouTube supplies the native default, it is safe to use that source.
+        source.preferred = alternate;
+        List<CaptionTrack> translated = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(1, translated.size());
+        assertEquals(alternate.url + "&tlang=tr",
+                translated.get(0).universalCaptions_getCaptionUrl());
+    }
+
     @Test void ambiguousMultipleSourceLanguagesDoNotGuessTheAudioTrack() {
         Source source = new Source();
         CaptionTrack english = new Track("en",
