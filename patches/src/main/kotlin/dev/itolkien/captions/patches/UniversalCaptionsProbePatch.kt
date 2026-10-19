@@ -78,11 +78,9 @@ val universalCaptionsPatch = bytecodePatch(
             it.name == model.translated.name && it.parameterTypes == model.translated.parameterTypes &&
                 it.returnType == model.translated.returnType
         }
-        val returns = translated.implementation!!.instructions.mapIndexedNotNull { index, instruction ->
-            if (instruction.opcode == Opcode.RETURN_OBJECT)
-                index to (instruction as OneRegisterInstruction).registerA else null
+        check(translated.implementation!!.instructions.any { it.opcode == Opcode.RETURN_OBJECT }) {
+            "Caption translations: no native list returns"
         }
-        check(returns.isNotEmpty()) { "Caption translations: no native list returns" }
 
         val mutableBuilder = mutableClassDefBy(abi.builder.type)
         mutableBuilder.addTranslationHelper("universalCaptions_setCaptionLabel", listOf(LABEL), "V", 0, """
@@ -157,8 +155,6 @@ val universalCaptionsPatch = bytecodePatch(
                 Triple(translated, "universalCaptions_nativeTranslated", "fallbackTranslated"))) {
             val implementation = original.implementation!!
             val registers = implementation.registerCount
-            check(registers in 1..15 && original.parameterTypes.isEmpty() &&
-                !AccessFlags.STATIC.isSet(original.accessFlags)) { "Unsupported native menu register layout" }
             val snapshot = ImmutableMethodImplementation.of(implementation)!!
             // An extra unused boolean keeps raw copies out of Morphe's parameterless fingerprints.
             // With R+1 registers and two incoming words, raw p0 remains at the original R-1.

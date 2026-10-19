@@ -30,14 +30,19 @@ public final class CaptionTranslationList {
     // Used only when native metadata is absent; runtime metadata takes precedence.
     static final String[] TARGETS = "ab aa af ak sq am ar hy as ay az bn ba eu be bho bs br bg my ca ceb zh-Hans zh-Hant co hr cs da dv nl dz en eo et ee fo fj fil fi fr gaa gl lg ka de el gn gu ht ha haw iw hi hmn hu is ig id iu ga it ja jv kl kn kk kha km rw ko kri ku ky lo la lv ln lt lua luo lb mk mg ms ml mt gv mi mr mn mfe ne new nso no ny oc or om os pam ps fa pl pt pt-PT pa qu ro rn ru sm sg sa gd sr crs sn sd si sk sl so st es su sw ss sv tg ta tt te th bo ti to ts tn tum tr tk uk ur ug uz ve vi war cy fy wo xh yi yo zu".split(" ");
 
+    static boolean validLanguageCode(String code) {
+        return code != null && code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
+    }
+
     static List<String> targets(List<String> nativeTargets) {
+        if (nativeTargets == null || nativeTargets.isEmpty()) return java.util.Arrays.asList(TARGETS);
         List<String> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        if (nativeTargets != null) for (String code : nativeTargets) {
-            if (code != null && code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*") && seen.add(languageKey(code))) result.add(code);
+        for (String code : nativeTargets) {
+            if (validLanguageCode(code) && seen.add(languageKey(code))) result.add(code);
         }
-        // An explicit nonempty metadata list is authoritative, including one containing no valid codes.
-        return nativeTargets == null || nativeTargets.isEmpty() ? java.util.Arrays.asList(TARGETS) : result;
+        // A nonempty native catalog is authoritative, even when every entry is invalid.
+        return result;
     }
 
     public static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale) {
@@ -71,11 +76,6 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    /** Used only by the explicitly selected, single-source empty-menu experiment. */
-    static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale) {
-        return fromSource(source, locale, null);
-    }
-
     static List<CaptionTrack> fromSource(CaptionTrack source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
         if (locale == null || SourceTranslationExperiment.originalUri(source) == null) return result;
@@ -98,15 +98,11 @@ public final class CaptionTranslationList {
     private static boolean isTranslationPrototype(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
         String vss = track.universalCaptions_getVssId();
-        if (code == null || !code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*") ||
+        if (!validLanguageCode(code) ||
                 vss == null || !vss.startsWith("t") || !vss.endsWith("." + code)) return false;
         try {
-            URI uri = URI.create(track.universalCaptions_getCaptionUrl());
-            String host = uri.getHost();
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null ||
-                    !("youtube.com".equalsIgnoreCase(host) || host.toLowerCase(Locale.ROOT).endsWith(".youtube.com")) ||
-                    uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443) ||
-                    !"/api/timedtext".equals(uri.getRawPath()) || uri.getRawQuery() == null) return false;
+            URI uri = SourceTranslationExperiment.timedTextUri(track.universalCaptions_getCaptionUrl());
+            if (uri == null) return false;
             int languageParameters = 0;
             for (String parameter : uri.getRawQuery().split("&", -1)) {
                 if (!parameter.startsWith("tlang=")) continue;
@@ -122,7 +118,8 @@ public final class CaptionTranslationList {
     static String languageKey(String raw) {
         if (raw == null) return "";
         String code = raw.trim().replace('_', '-').toLowerCase(Locale.ROOT);
-        String primary = code.split("-")[0];
+        int dash = code.indexOf('-');
+        String primary = dash < 0 ? code : code.substring(0, dash);
         switch (primary) {
             case "iw": return "he";
             case "in": return "id";

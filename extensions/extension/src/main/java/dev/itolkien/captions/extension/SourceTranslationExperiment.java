@@ -10,10 +10,6 @@ import java.util.Map;
 /** Derives translations from one validated original ASR or manual caption source. */
 public final class SourceTranslationExperiment {
     private SourceTranslationExperiment() { }
-    private static boolean language(String code) {
-        return code != null && code.matches("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
-    }
-
     private static boolean originalVss(String vss, String prefix) {
         if (vss == null) return false;
         if (vss.equals(prefix)) return true;
@@ -21,23 +17,33 @@ public final class SourceTranslationExperiment {
                 && vss.substring(prefix.length() + 1).matches("[A-Za-z0-9_-]{1,128}");
     }
 
-    /** Validate identity/query consistency without rewriting signed bytes or guessing a source. */
-    static URI originalUri(CaptionTranslationList.CaptionTrack source) {
-        if (source == null) return null;
-        String code = source.universalCaptions_getLanguageCode();
-        String vss = source.universalCaptions_getVssId();
-        if (!language(code)) return null;
-        boolean asr = originalVss(vss, "a." + code);
-        if (!asr && !originalVss(vss, "." + code)) return null;
+    /** Original and translated tracks must use the same trusted timedtext endpoint. */
+    static URI timedTextUri(String url) {
         try {
-            URI uri = URI.create(source.universalCaptions_getCaptionUrl());
+            URI uri = URI.create(url);
             String host = uri.getHost();
             if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null
                     || !("youtube.com".equalsIgnoreCase(host)
                     || host.toLowerCase(Locale.ROOT).endsWith(".youtube.com"))
                     || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)
-                    || !"/api/timedtext".equals(uri.getRawPath())
-                    || uri.getRawQuery() == null || uri.getRawQuery().isEmpty()) return null;
+                    || !"/api/timedtext".equals(uri.getRawPath()) || uri.getRawQuery() == null) return null;
+            return uri;
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            return null;
+        }
+    }
+
+    /** Validate identity/query consistency without rewriting signed bytes or guessing a source. */
+    static URI originalUri(CaptionTranslationList.CaptionTrack source) {
+        if (source == null) return null;
+        String code = source.universalCaptions_getLanguageCode();
+        String vss = source.universalCaptions_getVssId();
+        if (!CaptionTranslationList.validLanguageCode(code)) return null;
+        boolean asr = originalVss(vss, "a." + code);
+        if (!asr && !originalVss(vss, "." + code)) return null;
+        try {
+            URI uri = timedTextUri(source.universalCaptions_getCaptionUrl());
+            if (uri == null || uri.getRawQuery().isEmpty()) return null;
             Map<String, String> parameters = new HashMap<>();
             for (String part : uri.getRawQuery().split("&", -1)) {
                 int split = part.indexOf('=');
@@ -51,7 +57,7 @@ public final class SourceTranslationExperiment {
             String video = parameters.get("v");
             String urlLanguage = parameters.get("lang");
             String kind = parameters.get("kind");
-            if (video == null || !video.matches("[A-Za-z0-9_-]{11}") || !language(urlLanguage)
+            if (video == null || !video.matches("[A-Za-z0-9_-]{11}") || !CaptionTranslationList.validLanguageCode(urlLanguage)
                     || !CaptionTranslationList.languageKey(code).equals(CaptionTranslationList.languageKey(urlLanguage))) return null;
             if (asr ? !"asr".equals(kind) : kind != null && !kind.isEmpty()) return null;
             return uri;
@@ -72,7 +78,7 @@ public final class SourceTranslationExperiment {
 
     public static CaptionTranslationList.CaptionTrack preview(
             CaptionTranslationList.CaptionTrack source, String target, Locale locale) {
-        if (!language(target) || locale == null || originalUri(source) == null) return null;
+        if (!CaptionTranslationList.validLanguageCode(target) || locale == null || originalUri(source) == null) return null;
         return previewValidated(source, target, locale);
     }
 

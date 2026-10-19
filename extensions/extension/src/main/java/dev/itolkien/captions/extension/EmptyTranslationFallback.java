@@ -26,11 +26,15 @@ public final class EmptyTranslationFallback {
             for (CaptionTrack track : tracks) {
                 if (track != null && AUTO.equals(track.universalCaptions_getLanguageCode())) return tracks;
             }
-            CaptionTrack candidate = candidate(tracks, source);
-            if (candidate == null || CaptionTranslationList.fromSource(candidate, locale,
-                    source.universalCaptions_targetLanguages(true)).isEmpty()) return tracks;
+            // Only check whether a target exists; don't construct and sort 156 throwaway tracks.
             List<CaptionTrack> translated = source.universalCaptions_nativeTranslated(true);
             if (translated == null || !translated.isEmpty()) return tracks;
+            CaptionTrack candidate = candidate(tracks, source);
+            if (candidate == null) return tracks;
+            String sourceKey = CaptionTranslationList.languageKey(candidate.universalCaptions_getLanguageCode());
+            boolean hasTarget = CaptionTranslationList.targets(source.universalCaptions_targetLanguages(true))
+                    .stream().anyMatch(code -> !sourceKey.equals(CaptionTranslationList.languageKey(code)));
+            if (!hasTarget) return tracks;
             // Use YouTube's own localized menu row, including its native option flags.
             CaptionTrack option = source.universalCaptions_autoTranslateOption();
             if (option == null || !AUTO.equals(option.universalCaptions_getLanguageCode())) return tracks;
@@ -58,7 +62,8 @@ public final class EmptyTranslationFallback {
 
     private static CaptionTrack candidate(List<CaptionTrack> tracks, CaptionSource source) {
         if (tracks == null) return null;
-        List<CaptionTrack> originals = new ArrayList<>();
+        CaptionTrack first = null, matchedDefault = null;
+        CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
         String video = null;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
@@ -69,16 +74,14 @@ public final class EmptyTranslationFallback {
             String identity = SourceTranslationExperiment.videoId(uri);
             if (video != null && !video.equals(identity)) return null;
             video = identity;
-            originals.add(track);
+            if (first == null) first = track;
+            if (nativeDefault != null && matchedDefault == null
+                    && track.universalCaptions_getVssId().equals(nativeDefault.universalCaptions_getVssId())
+                    && track.universalCaptions_getCaptionUrl().equals(nativeDefault.universalCaptions_getCaptionUrl())) {
+                matchedDefault = track;
+            }
         }
-        if (originals.isEmpty()) return null;
-        CaptionTrack preferred = source.universalCaptions_defaultSource(true);
-        if (preferred != null) for (CaptionTrack original : originals) {
-            if (original.universalCaptions_getVssId().equals(preferred.universalCaptions_getVssId())
-                    && original.universalCaptions_getCaptionUrl().equals(preferred.universalCaptions_getCaptionUrl())) return original;
-        }
-        // The native direct list already contains only the current audio's caption indices.
-        // Keep its order if YouTube declares no default; never import an unrelated source.
-        return originals.get(0);
+        // All candidates were validated before a source was returned.
+        return matchedDefault != null ? matchedDefault : first;
     }
 }

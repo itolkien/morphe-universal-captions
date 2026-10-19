@@ -22,6 +22,17 @@ class EmptyTranslationFallbackTest {
         public List<CaptionTrack> universalCaptions_nativeTranslated(boolean bypassFallback) { return translations; }
         public CaptionTrack universalCaptions_autoTranslateOption() { return option; }
     }
+    @Test void menuRowDoesNotAllocateTranslatedTracks() {
+        Source source = new Source();
+        source.direct = List.of(new Track("ar", URL, "a.ar") {
+            @Override public CaptionTrack universalCaptions_copyTranslation(
+                    String language, String url, String vss, CharSequence label) {
+                throw new AssertionError("Menu availability must not synthesize tracks");
+            }
+        });
+        assertEquals(2, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
+    }
+
     @Test void missingMenuGetsNativeOptionWithoutChangingOriginalOrOffEntry() {
         Source source = new Source();
         List<CaptionTrack> result = EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH);
