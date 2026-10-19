@@ -1,0 +1,38 @@
+/* Copyright 2026 itolkien. Licensed under GPL-3.0-or-later; see LICENSE. */
+package dev.itolkien.captions.extension;
+
+import java.net.URI;
+
+/**
+ * Prevents translated srv3 caption text from inheriting invisible creator-defined pens.
+ * Original captions keep their creator styles.
+ */
+public final class CaptionPenStyles {
+    private CaptionPenStyles() { }
+
+    private static final int DEFAULT_PEN = Integer.MIN_VALUE;
+
+    // A timedtext request can be dispatched on a different thread from the srv3 parser.
+    // The latest-request state is therefore process-wide; concurrent requests remain
+    // a known limitation until request/parser identities can be paired.
+    private static volatile boolean translated;
+
+    /** Called before YouTube constructs a timedtext network request. */
+    public static void setTimedTextUrl(String url) {
+        URI uri = OriginalCaptionSource.timedTextUri(url);
+        if (uri == null) return;
+        boolean hasTarget = false;
+        for (String part : uri.getRawQuery().split("&", -1)) {
+            if (part.startsWith("tlang=")) {
+                hasTarget = true;
+                break;
+            }
+        }
+        translated = hasTarget;
+    }
+
+    /** Called at the shared srv3 pen lookup, for pen/paragraph/segment styles. */
+    public static int getPenId(int penId) {
+        return translated ? DEFAULT_PEN : penId;
+    }
+}
