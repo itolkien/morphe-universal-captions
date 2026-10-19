@@ -81,21 +81,42 @@ No user caption preference/Off behavior was moved into this module; the
 integrated Morphe patch must continue to leave that policy to the existing
 preferred-caption settings.
 
-## Structurally resolving localized native names (draft)
+## Native model discovery from YouTube 21.20.405 (JADX)
 
-The Kotlin ABI resolver now performs an **optional** data-flow check for a
-second field on a target-language protobuf entry. It accepts a native name
-only when that field's value directly reaches the **actual caption builder
-label field**, and rejects ambiguous or non-target values. Synthetic
-fixtures cover positive, missing, ambiguous and unrelated-field cases.
+The developer supplied the actual decompiled `apdk`, `apdi`, `apdh`,
+`bfuf`, `bfue`, `bfud`, and `bfug` classes. These are source-level
+relationships, not bytecode-hook verification.
 
-This resolver deliberately returns `null` for unrecognized native
-instruction layouts. **It does not yet inject a localized-name getter or
-replace `Locale.forLanguageTag` in the runtime**. We cannot claim that the
-field is present on supported YouTube versions until the native method
-layout is verified at the final APK inspection stage. That limitation is
-preferable to silently assigning an unrelated obfuscated String field as a
-user-facing label.
+The caption manager already has the ingredients for target-specific,
+audio-aware source selection:
+- `bfuf.e` selects an audio entry in `bfuf.c`; `bfud.d` lists captions
+  valid for that audio entry, and `bfud.e` / `bfud.f` describe its default.
+- Each target entry `bfug` has language code `c`, rich-text label `d`,
+  target-preferred caption indices `e`, and excluded audio indices `f`.
+- Manager `bfuf.f` is the general source-index fallback. The native method
+  `apdk.g()` **also requires that list to be nonempty**, so an empty list
+  can still suppress the menu even if a target's own source-index list
+  is nonempty. This is not automatically equivalent to a Web
+  `isTranslatable` flag.
+- Native caption labels are **not** read directly from another
+  `String` field: `bfug.d` is a `bbbt` rich-text protobuf, decoded by
+  `apkp.b()` to `Spanned`, then converted to text before assignment to
+  the builder's `CharSequence` label field.
+
+The prior optional `targetLabel` resolver assumed a direct
+`String`/ `CharSequence` field. That cannot match this confirmed source
+path, was unused by runtime, and has therefore been removed rather than
+maintaining a speculative fallback. A new resolver must follow the
+**rich-text conversion and builder assignment** in the actual DEX.
+
+Read the detailed, version-scoped mapping in
+[Native metadata 21.20.405](NATIVE_METADATA_21_20_405.md).
+
+**Next static-only prerequisite:** inspect `classes2.dex` (builder
+and caption manager) plus `classes3.dex` (protobuf field definitions)
+to trace register-level data flow and hook exact semantic relationships.
+This does not require patching, installing, launching YouTube, or testing
+on a device.
 
 ## A measured refactor path
 
