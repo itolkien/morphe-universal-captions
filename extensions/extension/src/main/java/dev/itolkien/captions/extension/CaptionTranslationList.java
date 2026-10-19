@@ -51,7 +51,7 @@ public final class CaptionTranslationList {
     }
 
     static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets) {
-        if (tracks == null || tracks.isEmpty()) return tracks;
+        if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;

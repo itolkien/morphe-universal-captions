@@ -103,6 +103,11 @@ public class CaptionTranslationListTest {
         assertEquals(List.of(wrongVss), CaptionTranslationList.augment(List.of(wrongVss), Locale.ENGLISH));
     }
 
+    @Test public void nullLocaleKeepsNativeTracksUntouched() {
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(german());
+        assertSame(nativeTracks, CaptionTranslationList.augment(nativeTracks, null));
+    }
+
     @Test public void rejectsEncodedOrMalformedDuplicateTranslationParameters() {
         // URI.getRawQuery() preserves encoded keys. An additional encoded tlang must
         // not be overlooked when we clone an otherwise valid native translation.
