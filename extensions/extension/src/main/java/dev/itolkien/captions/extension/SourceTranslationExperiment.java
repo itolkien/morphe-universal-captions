@@ -73,6 +73,12 @@ public final class SourceTranslationExperiment {
     public static CaptionTranslationList.CaptionTrack preview(
             CaptionTranslationList.CaptionTrack source, String target, Locale locale) {
         if (!language(target) || locale == null || originalUri(source) == null) return null;
+        return previewValidated(source, target, locale);
+    }
+
+    /** Called only after the source has been validated by originalUri(). */
+    static CaptionTranslationList.CaptionTrack previewValidated(
+            CaptionTranslationList.CaptionTrack source, String target, Locale locale) {
         String sourceCode = source.universalCaptions_getLanguageCode();
         if (CaptionTranslationList.languageKey(sourceCode).equals(CaptionTranslationList.languageKey(target))) return null;
         String url = source.universalCaptions_getCaptionUrl();
