@@ -5,7 +5,6 @@
 package dev.itolkien.captions.extension;
 
 import java.net.URI;
-import java.net.URLDecoder;
 
 /**
  * Prevents translated srv3 caption text from inheriting invisible creator-defined pens.
@@ -24,26 +23,13 @@ public final class CaptionPenStyles {
     /** Called before YouTube constructs a timedtext network request. */
     public static void setTimedTextUrl(String url) {
         if (url == null || !url.contains("/api/timedtext?")) return;
-        URI uri = OriginalCaptionSource.timedTextUri(url);
+        URI uri = TimedTextUrl.trustedUri(url);
         if (uri == null) return;
-        boolean hasTarget = false;
-        try {
-            for (String part : uri.getRawQuery().split("&", -1)) {
-                int equals = part.indexOf('=');
-                String rawKey = equals < 0 ? part : part.substring(0, equals);
-                if (!"tlang".equals(URLDecoder.decode(rawKey, "UTF-8"))) continue;
-                // Invalid, encoded or duplicate translation targets are ambiguous.
-                if (hasTarget || !rawKey.equals("tlang") || equals < 0 ||
-                        !CaptionTranslationList.validLanguageCode(part.substring(equals + 1))) {
-                    translated = false;
-                    return;
-                }
-                hasTarget = true;
-            }
-            translated = hasTarget;
-        } catch (IllegalArgumentException | java.io.UnsupportedEncodingException ignored) {
-            translated = false;
-        }
+        TimedTextUrl timedText = TimedTextUrl.parse(url, uri);
+        // Malformed, encoded or duplicated targets never override the user's caption style.
+        translated = timedText != null
+                && CaptionTranslationList.validLanguageCode(timedText.field("tlang"))
+                && timedText.targetValueOffset(timedText.field("tlang")) >= 0;
     }
 
     /** Called at the shared srv3 pen lookup, for pen/paragraph/segment styles. */

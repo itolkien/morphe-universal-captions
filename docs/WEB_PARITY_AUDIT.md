@@ -42,7 +42,8 @@ ready for integration.
 ## Source-of-truth architecture
 
 1. `OriginalCaptionSource`: one validated original source (video ID, language,
-   VSS, signed URL). No cross-video caching.
+   VSS, signed URL). No cross-video caching. `TimedTextUrl` is the shared
+   parser for original sources, native translations and caption style requests.
 2. `CaptionTranslationList`: validate native translation prototypes, use video
    target metadata, deduplicate and display-sort without changing native
    caption selection.

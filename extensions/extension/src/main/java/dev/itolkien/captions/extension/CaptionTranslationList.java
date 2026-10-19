@@ -5,8 +5,6 @@
 
 package dev.itolkien.captions.extension;
 
-import java.net.URI;
-import java.net.URLDecoder;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -79,18 +77,9 @@ public final class CaptionTranslationList {
             String oldVss = prototype.universalCaptions_getVssId();
             String vssPrefix = oldVss.substring(0, oldVss.length() - oldLanguage.length());
 
-            // Find the actual query parameter, not "tlang=" inside an opaque value or fragment.
-            int queryStart = oldUrl.indexOf('?') + 1;
-            int queryEnd = oldUrl.indexOf('#', queryStart);
-            if (queryEnd < 0) queryEnd = oldUrl.length();
-            int offset = queryStart, targetAt = -1;
-            for (String part : oldUrl.substring(queryStart, queryEnd).split("&", -1)) {
-                if (part.equals("tlang=" + oldLanguage)) {
-                    targetAt = offset + "tlang=".length();
-                    break;
-                }
-                offset += part.length() + 1;
-            }
+            // Keep opaque/signed bytes untouched, replacing only the real query target.
+            TimedTextUrl timedText = TimedTextUrl.parse(oldUrl);
+            int targetAt = timedText == null ? -1 : timedText.targetValueOffset(oldLanguage);
             if (targetAt < 0) return sorted(result, locale);
             String urlPrefix = oldUrl.substring(0, targetAt);
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
@@ -116,48 +105,26 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    /**
-     * Verify a native translated track and identify its original source.
-     * Includes video identity when present to avoid extending stale cross-video lists.
-     */
+    /** Validate each native translated track and identify its original source and video. */
     private static String translationSourceIdentity(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
         String vss = track.universalCaptions_getVssId();
         if (!validLanguageCode(code) || vss == null ||
                 !vss.startsWith("t") || !vss.endsWith("." + code)) return null;
-        try {
-            URI uri = OriginalCaptionSource.timedTextUri(track.universalCaptions_getCaptionUrl());
-            if (uri == null) return null;
-            String sourceLanguage = null, videoId = "";
-            boolean hasVideoId = false;
-            int targetCount = 0;
-            for (String parameter : uri.getRawQuery().split("&", -1)) {
-                int equals = parameter.indexOf('=');
-                String rawKey = equals < 0 ? parameter : parameter.substring(0, equals);
-                String key = URLDecoder.decode(rawKey, "UTF-8");
-                if ("tlang".equals(key)) {
-                    if (!rawKey.equals(key) || !parameter.equals("tlang=" + code) || ++targetCount != 1)
-                        return null;
-                } else if ("lang".equals(key)) {
-                    if (!rawKey.equals(key) || equals < 0 || sourceLanguage != null) return null;
-                    sourceLanguage = URLDecoder.decode(parameter.substring(equals + 1), "UTF-8");
-                    if (!validLanguageCode(sourceLanguage)) return null;
-                } else if ("v".equals(key)) {
-                    if (!rawKey.equals(key) || equals < 0 || hasVideoId) return null;
-                    hasVideoId = true;
-                    videoId = URLDecoder.decode(parameter.substring(equals + 1), "UTF-8");
-                    if (!videoId.matches("[A-Za-z0-9_-]{1,128}")) return null;
-                }
-            }
-            if (targetCount != 1 || sourceLanguage == null) return null;
-            String originalVss = vss.substring(1, vss.length() - code.length() - 1);
-            if (!OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
-                    && !OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage))
-                return null;
-            return vss.substring(0, vss.length() - code.length()) + "|" + videoId;
-        } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
+
+        TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
+        if (url == null || !code.equals(url.field("tlang")) ||
+                url.targetValueOffset(code) < 0) return null;
+        String sourceLanguage = url.field("lang");
+        if (!validLanguageCode(sourceLanguage)) return null;
+        String video = url.field("v");
+        if (video != null && !video.matches("[A-Za-z0-9_-]{1,128}")) return null;
+
+        String originalVss = vss.substring(1, vss.length() - code.length() - 1);
+        if (!OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
+                && !OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage))
             return null;
-        }
+        return vss.substring(0, vss.length() - code.length()) + "|" + (video == null ? "" : video);
     }
 
     static String languageKey(String raw) {
