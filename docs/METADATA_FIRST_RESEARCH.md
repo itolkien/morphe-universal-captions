@@ -1,0 +1,106 @@
+# Metadata-first feasibility: Universal Captions 3.0
+
+Research updated 2026-10-20. This is a source-code / public-schema audit,
+**not an APK or device test**. The standalone repository remains the development
+source of truth; Morphe's old runtime will be replaced only after validation.
+
+## What YouTube actually exposes
+
+The Web player response commonly includes
+`captions.playerCaptionsTracklistRenderer` with:
+- `captionTracks` (`baseUrl`, `vssId`, `languageCode`, `kind`,
+  `isTranslatable`, and a localized name)
+- `translationLanguages` (`languageCode` and `languageName`)
+- `audioTracks[].captionTrackIndices` and `defaultAudioTrackIndex`
+
+References:
+- [YouTube player response schema](https://github.com/kkdai/youtube/blob/master/response_data.go)
+- [PlayerCaptionsTracklistRenderer protobuf API](https://lighttube-org.github.io/InnerTube/api/InnerTube.Protobuf.PlayerCaptionsTracklistRenderer.html)
+- [yt-dlp's active YouTube subtitle extractor](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/youtube/_video.py)
+
+**Important client difference:** yt-dlp explicitly comments that
+*only Web/MWeb player clients provide `translationLanguages` in the response
+it consumes*. This is evidence of client-dependent responses, **not proof**
+that no native Android playback component can ever receive target-language
+metadata. Our Kotlin `CaptionMetadataAbi` already finds a native runtime
+list of target-language codes in the Android caption manager.
+
+## Current Android native bridge: verified from source
+
+| Field / behavior | Current bridge | Confidence |
+| --- | --- | --- |
+| Current track code, VSS ID, URL and label | `CaptionTranslationAbi` / injected getters | Structurally resolved; unit and existing historical APK evidence |
+| Available native translated track objects | Translated manager getter | Structurally resolved |
+| Native video target-language codes | `CaptionMetadataAbi.targetCode` and `metadata.targets` | Structurally resolved; not a guarantee that a target returns text |
+| Native default caption source | `CaptionMetadataAbi.defaultSource` | Structurally resolved; not proven identical to Web's currently selected audio index |
+| Source track `isTranslatable` | **Not exposed by bridge** | Unknown native field or method |
+| Target language's native `languageName` | **Not exposed by bridge** | Target entry object is located, label accessor not resolved |
+| `audioTracks[].captionTrackIndices` / current audio index | **Not exposed** | Web schema known, native equivalent not established |
+| Active UI caption selection | Owned by Morphe preferred-language/selection logic | Do not infer from alphabetical list order |
+| Subtitle request ↔ parsed srv3 document | **Not linked** | Global latest-request flag remains racy |
+| Translation server success / rejection | **Not exposed** | Metadata does not prove successful timedtext response |
+
+### Why the 156-target fallback cannot simply disappear
+
+The project repairs videos where native Android produces *no translated
+tracks/menu*. A missing native list may coexist with a working source and
+Web translation support. The existing runtime uses native target codes
+whenever provided, and a dated 156-code snapshot only for a missing or empty
+native list. Google's [Protobuf field-presence rules](https://protobuf.dev/programming-guides/field_presence/)
+confirm that a repeated list cannot distinguish omitted from explicitly
+empty. Removing fallback on this basis alone would reintroduce the bug.
+
+A list of codes is not a list of guaranteed, successful translation results.
+The server may refuse even a valid `tlang`. yt-dlp additionally documents
+that same-source `tlang` may produce damaged subtitles and that some
+signed requests need PO Tokens. The standalone augmentation previously
+generated a target equal to its original source; the regression test
+`neverReusesTheOriginalLanguageAsATranslationTarget` now covers this case.
+
+### Why not request the Web player's metadata again?
+
+Morphe's [YouTube Music CaptionsFetcher](https://github.com/MorpheApp/morphe-patches/blob/dev/extensions/music/src/main/java/app/morphe/extension/music/patches/lyrics/requests/CaptionsFetcher.java)
+demonstrates Web Innertube requests, token/cookie support, parsing, retries
+and failures. It is a separate HTTP pipeline and *does not* prove that
+a second network request matches the current Android playback session.
+The independent patch should first consume the existing in-process
+Android caption objects and avoid redundant requests.
+
+## A measured refactor path
+
+1. **Already usable:** Keep native target codes, original/native track identity,
+   native default-source filtering, and unmodified native translated tracks.
+   Never generate the original language as its own `tlang` target.
+2. **Potential high value, requires native field evidence:** Follow the
+   translated-track generator's data flow back to source
+   `isTranslatable` / active audio and the target entry's localized name.
+   Add bridge accessors only after identifying exact types and ownership.
+   Reject ambiguous matches before bytecode mutation; prove them on both
+   supported versions at the final APK verification stage.
+3. **Do not remove yet:** the 156-language fallback, source identity guard,
+   signed URL preservation, CC/manual-selection protection, or styled-caption
+   document handling. None is made redundant by language codes alone.
+4. **At Morphe migration:** share one runtime core and one native adapter.
+   Remove the standalone/native coexistence bridge and redundant obfuscated
+   ABI discovery **from the integrated target**, where Morphe's current
+   semantic fingerprints can replace them. Keep a separate lightweight
+   adapter only if independent standalone patching remains a supported build.
+
+## Reality check on code size
+
+This draft has approximately **561 Java + 591 Kotlin production lines**
+(before this research/test change). Most Kotlin is version-tolerant bytecode
+patching/ABI detection; the 156-language snapshot is a **single string
+constant**. More metadata can improve behavior and simplify source guessing,
+but *cannot itself guarantee a 50% line reduction*. A large reduction is
+more plausible in the **integrated Morphe target**, once duplicate adapters
+and fingerprints have been deleted and proven unnecessary.
+
+## Verification gate
+
+No clean APK patching or device playback for this phase, as requested.
+Keep CI regression tests and MPP build green. For any newly claimed native
+metadata field, document a reproducible native instruction/data-flow
+derivation before replacing the working fallback; add synthetic regressions
+and finally verify both YouTube targets when the project reaches its
+APK/device validation phase.
