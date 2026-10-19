@@ -83,4 +83,24 @@ class SourceTranslationExperimentTest {
         }
     }
 
+
+    @Test void fallbackValidatesOriginalUrlOnlyOnceForAllTargets() {
+        class CountingTrack implements CaptionTranslationList.CaptionTrack {
+            int urlReads;
+            public String universalCaptions_getLanguageCode() { return "ar"; }
+            public String universalCaptions_getVssId() { return "a.ar"; }
+            public String universalCaptions_getCaptionUrl() { urlReads++; return URL; }
+            public CharSequence universalCaptions_getCaptionLabel() { return "Arabic"; }
+            public CaptionTranslationList.CaptionTrack universalCaptions_copyTranslation(
+                    String lang, String url, String vss, CharSequence label) {
+                return new Track(lang, url, vss, label);
+            }
+        }
+        CountingTrack source = new CountingTrack();
+        var tracks = CaptionTranslationList.fromSource(source, Locale.ENGLISH,
+                java.util.List.of("ar", "tr", "de", "fr"));
+        assertEquals(3, tracks.size());
+        // One validation read plus one URL read per generated track.
+        assertEquals(4, source.urlReads);
+    }
 }
