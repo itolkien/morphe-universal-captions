@@ -5,7 +5,7 @@ Caption translation enhancements for YouTube on Android, built with Morphe.
 ## Features
 
 - Restore the Auto-translate menu when YouTube exposes a usable original caption source.
-- Offer the 156 known translation language codes while preserving YouTube's native tracks and labels.
+- Read YouTube's per-video native translation targets first; offer missing choices from the 156-code catalog only when the source is eligible, without replacing YouTube's native tracks and labels.
 - Prefer YouTube's active-audio caption source rather than guessing between several originals.
 - Keep signed timedtext URLs and regional language distinctions intact.
 - Restore readable translated subtitles without changing original caption styling or overriding explicit CC-off/manual choices.

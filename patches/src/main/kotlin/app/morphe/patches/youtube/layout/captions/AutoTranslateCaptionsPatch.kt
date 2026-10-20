@@ -191,6 +191,7 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
                 invoke-interface { v1 }, Ljava/util/Iterator;->next()Ljava/lang/Object;
                 move-result-object v2
                 check-cast v2, ${nativeTargets.code.definingClass}
+                if-eqz v2, :next
                 iget-object v3, v2, ${nativeTargets.code}
                 invoke-interface { v0, v3 }, Ljava/util/List;->add(Ljava/lang/Object;)Z
                 goto :next

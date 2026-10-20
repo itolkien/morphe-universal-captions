@@ -99,9 +99,20 @@ public final class AutoTranslateCaptionsPatch {
         return new ArrayList<>(available.values());
     }
 
+    /** The menu gate checks native target eligibility without allocating 156 track choices. */
     static boolean hasTranslationTarget(List<String> nativeTargets, String sourceLanguage) {
         String source = exactTargetKey(sourceLanguage);
-        for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
+        String[] codes;
+        if (nativeTargets == null || nativeTargets.isEmpty()) {
+            codes = TRANSLATION_LANGUAGES;
+        } else {
+            for (String code : nativeTargets) {
+                if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()
+                        && !exactTargetKey(code).equals(source)) return true;
+            }
+            return false;
+        }
+        for (String code : codes) {
             if (!exactTargetKey(code).equals(source)) return true;
         }
         return false;

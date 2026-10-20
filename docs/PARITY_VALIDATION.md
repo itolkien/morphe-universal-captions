@@ -8,6 +8,10 @@ itself is not a quality metric.
 
 ## Improvements in the current experimental implementation
 
+- Read the video-specific native translation target list from the caption
+  metadata using validated field relationships rather than obfuscated names.
+  A source-only catalog does not force an Auto-translate row; native targets
+  are retained before adding snapshot choices.
 - Use the native active-audio source for menu eligibility, including when
   several original caption tracks exist (new Kotlin hook and menu tests).
 - Reject ambiguous source identities or cross-video native translations
@@ -25,9 +29,9 @@ benchmarked speed improvements or proof of successful APK patching.
 
 ## Remaining release blockers
 
-- Obtain and validate the native video-specific translation target catalog.
-  The current static 156-code fallback is not proof a given video supports
-  every target.
+- Confirm the native target-list field resolver against real DEX layouts in
+  both supported YouTube versions. Unit tests validate target decisions but
+  cannot prove the metadata field mapping or JNI bytecode bindings.
 - Verify that the new native menu-count hook and scoped pen decoder hook
   work against real DEX layouts in both supported YouTube versions.
 - Perform regression comparisons on actual patched APKs, not just pure
@@ -67,13 +71,11 @@ before testing, metadata generation and Android MPP packaging.
    21.20.405 and 21.41.525 APKs. Neither version has been patch-tested on a
    device as part of this parity exercise. Request/catch handler hooks require
    those actual DEX layouts to be tested.
-2. **Native target catalog / menu availability:** the 3.0.1 standalone
-   implementation reads the per-video native translation-target metadata.
-   Morphe's current adapter exposes its default/eligible caption source, but
-   does not pass the full native target catalog to the additional-language
-   runtime. This can cause a different menu decision on videos where the
-   native catalog contains only the source language or an invalid target.
-   Byte-for-byte behavioral equivalence is **not** established for this case.
+2. **Native catalog field access:** the experimental adapter now resolves
+   YouTube's target-list metadata and passes it into both the translation menu
+   gate and list expansion. The JVM tests verify source-only, missing,
+   unsupported and mixed native-target lists. The actual obfuscated DEX field
+   bindings remain **unverified on device** and must be checked on both APKs.
 3. **Audio routing in the native menu-count gate:** the candidate
    now passes the active-audio translation source into the menu count hook,
    including ambiguous native lists. The Kotlin/Java build and JVM tests do
@@ -108,6 +110,6 @@ For **each** of YouTube 21.20.405 and 21.41.525:
   request, interrupted network response or decoder error.
 
 **Release criterion:** keep the branch experimental until both APKs pass
-and the remaining native target-catalog and DEX hook questions are resolved.
+and the remaining native-catalog field resolution and DEX hook questions are resolved.
 Do not claim performance, feature superiority or reliable Android compatibility
 based only on lines of code, JVM tests or a successful MPP build.
