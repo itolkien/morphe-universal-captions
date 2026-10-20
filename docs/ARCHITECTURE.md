@@ -1,19 +1,60 @@
-> Historical stable2.0.0 architecture. Stable **2.1.0** adds current-audio source fallback and reads the native target catalog; see [release evidence](RELEASE_2.1.0.md) and [fallback architecture](EMPTY_TRANSLATION_EXPERIMENT.md).
+# Architecture
 
-# Menu-only architecture
+Universal Captions adds missing translation choices to YouTube's native caption
+model. It does not select the user's language, turn captions on or fetch text
+from another translation service. The project was developed independently
+by itolkien; Morphe's tooling is used to package and distribute the patch.
 
-The independent patch discovers the native caption track and translated-track list using semantic string anchors, then resolves the builder through copy-constructor data flow. Resolution completes before modifying host bytecode. Both direct-field and abstract-getter layouts are supported, with ambiguous identities rejected.
+## Patch-time resolution
 
-Generated accessors live in the owning native class so private field access remains valid. Every helper uses the `universalCaptions_` prefix to avoid colliding with Morphe’s `patch_` helpers.
+`CaptionFingerprints.kt` locates the native caption track and menu getters.
+`CaptionTranslationAbi.kt`, `CaptionMetadataAbi.kt` and
+`CaptionFallbackAbi.kt` resolve the builder, original sources, target list
+and native Auto-translate row. These checks run before native bytecode is
+modified. Ambiguous layouts fail patching rather than guessing names.
 
-Only translated-list returns are intercepted. `CaptionTranslationList` retains native entries, clones a valid native translated prototype for additional targets, preserves its source and signed URL parameters, and sorts ordinary language entries using a locale collator. Special entries retain their slots. The runtime never reads or writes caption preferences, source-selection decisions or visibility policies.
+`UniversalCaptionsProbePatch.kt` is the production patch despite its old
+filename. It adds `universalCaptions_` accessors and hooks the direct and
+translated menu getters. The unused boolean on saved original getters is
+intentional: it keeps them out of upstream parameterless fingerprints.
+There is no diagnostic probe logger in the shipped extension.
 
-The bridge reads Morphe’s app locale when the Requester API is available and otherwise uses the system locale. No app context or persistent state is required. Runtime augmentation failures return the original list.
+## Menu runtime
 
-The original v1.4 implementation and its selection-policy documentation remain available in the v1.4.0 Git tag.
+- `TimedTextUrl` validates signed YouTube timedtext URLs, preserving all
+  unrelated query bytes.
+- `OriginalCaptionSource` holds one validated caption source and video.
+- `CaptionTranslationList` preserves native translated entries and fills
+  missing targets. Its fallback catalog is a dated YouTube player snapshot,
+  not proof that the server will serve each translation.
+- `EmptyTranslationFallback` restores YouTube's native Auto-translate row
+  where a safe original exists. It intersects the native current-audio caption
+  indices with eligible source indices and rejects ambiguous fallback choices.
+- `NativeTranslationBridge` supplies the current app locale and menu hooks.
 
-## Native Morphe coexistence
+No source URL is shared across caption managers or videos. The extension
+does not persist or change caption preferences, visibility or the selected
+subtitle track.
 
-The integration from Morphe PR #3754 now has its own menu setting and an injected `AutoTranslateCaptionsPatch$CaptionTrackInterface`. The addon resolves that interface without initializing Morphe settings and checks actual returned tracks. If a track implements the interface, the addon returns the exact input list. This leaves both native setting states and either list-hook order under Morphe control. Checking only for an extension class would be insufficient: shared extension classes may exist even when Captions was not selected.
+## Caption styling
 
-Independent host helpers retain their distinct namespace. The addon keeps structural ABI guards and exact URL-parameter replacement because it runs independently of Morphe’s fingerprints and declared version range. It does not duplicate the native settings UI or broaden supported APK versions based solely on upstream fixes. Source: https://github.com/MorpheApp/morphe-patches/pull/3754/commits/078692dfb82dcfce55a529b43c5c4e7c585507cd
+Some translated srv3 documents carry creator-defined pens that make text
+invisible. `CaptionPenHooks.kt` finds synchronous parser calls in the network
+and file-cache paths. `CaptionPenStyles` tracks each parser in a nested
+thread-local scope; `endCaption(request)` only closes that request's scope.
+The original subtitle keeps its creator styling, while translated subtitles
+use the default pen for readability.
+
+See [caption pen handling](CAPTION_PEN_STYLES.md). This is not a claim of
+pixel-perfect Web-style reproduction.
+
+## Checks and history
+
+`scripts/test-core.sh` runs the Kotlin ABI and Java caption regressions.
+The MPP workflow compiles against a pinned Morphe template, then checks
+the Android DEX, embedded extension, NOTICE and release metadata.
+Some structural tests require local YouTube APKs and are skipped on CI,
+which does not include copyrighted app binaries.
+
+Earlier 2.x behavior is in the v2.1.0 tag and
+[historical fallback notes](EMPTY_TRANSLATION_EXPERIMENT.md).

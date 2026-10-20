@@ -1,6 +1,6 @@
 /*
- * Styled translated-caption fix adapted from Morphe PR #3837.
- * Copyright 2026 Morphe and itolkien. See NOTICE for GPLv3 Section 7 terms.
+ * Copyright 2026 Morphe and itolkien.
+ * GPL-3.0-or-later; see LICENSE and NOTICE.
  */
 package dev.itolkien.captions.extension;
 
@@ -20,7 +20,17 @@ public final class CaptionPenStyles {
     }
 
     private static final int DEFAULT_PEN = Integer.MIN_VALUE;
-    private static final ThreadLocal<ArrayDeque<Boolean>> SCOPES = new ThreadLocal<>();
+    private static final class Scope {
+        final Object request;
+        final boolean translated;
+
+        Scope(Object request, boolean translated) {
+            this.request = request;
+            this.translated = translated;
+        }
+    }
+
+    private static final ThreadLocal<ArrayDeque<Scope>> SCOPES = new ThreadLocal<>();
 
     /** Called at a synchronous caption parser invocation, never at request dispatch. */
     public static void beginCaption(Object request) {
@@ -41,26 +51,28 @@ public final class CaptionPenStyles {
                 // An unknown native track must never alter the original's creator styles.
             }
         }
-        ArrayDeque<Boolean> scopes = SCOPES.get();
+        ArrayDeque<Scope> scopes = SCOPES.get();
         if (scopes == null) {
             scopes = new ArrayDeque<>();
             SCOPES.set(scopes);
         }
-        scopes.push(translated);
+        scopes.push(new Scope(request, translated));
     }
 
-    /** Called on parser success and exception exits. */
-    public static void endCaption() {
-        ArrayDeque<Boolean> scopes = SCOPES.get();
-        if (scopes == null || scopes.isEmpty()) return;
+    /** Only close the scope opened by this parser invocation.
+     * An exception handler can also run for code before beginCaption().
+     */
+    public static void endCaption(Object request) {
+        ArrayDeque<Scope> scopes = SCOPES.get();
+        if (scopes == null || scopes.isEmpty() || scopes.peek().request != request) return;
         scopes.pop();
         if (scopes.isEmpty()) SCOPES.remove();
     }
 
     /** Native pen lookup can occur during a translated or original document parse. */
     public static int getPenId(int penId) {
-        ArrayDeque<Boolean> scopes = SCOPES.get();
-        return scopes != null && !scopes.isEmpty() && scopes.peek()
+        ArrayDeque<Scope> scopes = SCOPES.get();
+        return scopes != null && !scopes.isEmpty() && scopes.peek().translated
                 ? DEFAULT_PEN : penId;
     }
 }

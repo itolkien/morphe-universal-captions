@@ -1,9 +1,7 @@
-# YouTube Web behavior audit — Universal Captions 3.0 development
+# YouTube Web behavior audit — Universal Captions 3.0
 
-This document is a source-of-truth **behavior contract**, not a claim that an
-unreleased Android build is already equivalent to the YouTube Web player.
-Device/APK playback verification is deliberately postponed until the code is
-ready for integration.
+This compares the implementation with YouTube Web. The 3.0 development builds
+have been tested manually; full parity and backend coverage are not claimed.
 
 ## Evidence for the comparison
 
@@ -19,9 +17,6 @@ ready for integration.
 - [YTT/SRV3 format notes](https://github.com/FyraLabs/yttml/blob/main/crates/srv3-ttml/internals/srv3-format.md):
   `<pen>` styles are declared in the document header and referenced by
   paragraphs and spans. Translations can inherit incompatible pen references.
-- [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837):
-  confirmed Android rendering symptom, pen lookup strategy and original
-  author/source. Its global latest-request race is explicitly acknowledged.
 
 ## Runtime decisions
 
@@ -38,7 +33,7 @@ ready for integration.
 | Web's active target ordering | Preserve native selection; sort translated language choices alphabetically | Sort, stable labels and pseudo-option tests | Web can pin the currently selected target above the sorted list; we do not have a native selected-track getter in this addon |
 | Dubbed audio tracks | Use the native audio entry's caption indices, then exact default/unambiguous source only if needed | Current-audio source indices, source-switch and cross-video tests | A later manually selected subtitle is not necessarily the native audio default |
 | Selected track, CC Off/On and preferences | Never force CC visibility, overwrite manual selection or auto-enable tracks | Preferred policy and Off/integration tests | Morphe preference patch has its own regional matching |
-| Styled translations | Scope creator-pen reset to the native track being decoded (network and cached paths), not the latest request | Cross-thread/nested scope unit tests, MPP build, original 21.20.405 DEX inspection | New parser hooks need both-APK smoke tests; rare uncaught exceptions and full style parity still unproven |
+| Styled translations | Scope creator-pen reset to the native track being decoded (network and cached paths), not the latest request | Cross-thread/nested scope and request-matched cleanup tests, MPP build, original 21.20.405 DEX inspection | Itemized smoke tests for the 3.0.1 cleanup, uncaught exceptions and full style parity remain open |
 | Signed YouTube requests | Replace only the actual `tlang` value; retain the rest of the opaque URL | Encoded key, fragment, duplicate, HTTPS/host tests | A valid URL is not proof of a nonempty server response |
 
 ## Source-of-truth architecture
@@ -51,8 +46,8 @@ ready for integration.
    caption selection.
 3. `EmptyTranslationFallback`: restore YouTube's actual menu row and missing
    translations only if there is a safe source and at least one target.
-4. `CaptionPenStyles` and `CaptionPenHooks`: the adapted #3837 implementation
-   owned by Universal Captions, not a separately duplicated upstream patch.
+4. `CaptionPenStyles` and `CaptionPenHooks`: the parser-scoped style fix
+   owned by Universal Captions, with separate network and cache contexts.
 5. `NativeTranslationBridge`: standalone extension entry point for locale and
    manager hooks. The separate `CaptionIntegration` native-coexistence adapter
    was removed from this 3.0 development branch because the Morphe port will
@@ -69,16 +64,16 @@ sent or was omitted. The native YouTube target metadata is read from a repeated
 list; therefore `null` versus `[]` from our Java adapter is **not proven**
 to correspond to Web's optional `translationLanguages` property. The
 compatibility snapshot remains available for both empty and missing native
-lists. The 3.0 developer build preserves nonempty native entries, but offers
+lists. The 3.0 runtime preserves nonempty native entries, but offers
 additional snapshot targets when the list contains a valid source-compatible
 target. These extras are explicitly best-effort and are not proof of server
-support. A native per-target eligibility bridge can further tighten this
-policy after it is structurally verified.
+support. The native current-audio eligible-source bridge restricts the
+original used for missing languages, but cannot prove backend availability.
 
 ### Selective creator styling versus a blanket pen reset
 
-The #3837 workaround intentionally discards **all** creator-defined pen IDs
-on translated documents. It solves the observed invisible-text problem but
+The current styling fix discards **all** creator-defined pen IDs on
+translated documents. It solves the observed invisible-text problem but
 cannot reproduce every styled YouTube Web translation: intentionally colored
 or emphasized translated words would also fall back to the user's default
 style. The proper target is to preserve valid translated styling where
@@ -127,11 +122,10 @@ or the last network request — those can differ from the user's actual choice.
 confirms that videos can offer multiple selectable audio tracks. The Android 21.20.405 DEX confirms that the native manager updates both its active audio entry and index upon an audio-change event. The Web
 captions player response keeps `audioTracks` and `defaultAudioTrackIndex`
 alongside `captionTracks`. An unordered or alphabetically first caption
-source is not necessarily the original/current audio. This code uses an
-exact native default match and rejects ambiguous mixed-language sources
-rather than silently translating the wrong dub. Full Web parity needs a
-verified mapping from the active audio-track index to its eligible
-caption tracks.
+source is not necessarily the original/current audio. This code now intersects the native active-audio caption indices with
+the eligible original source indices, rather than guessing from language
+order. The manually selected subtitle source can still differ from the
+active audio's default.
 
 ### 4. Native display names
 
@@ -140,9 +134,13 @@ The addon currently derives names with the app's `Locale`. This is sensible
 but not always guaranteed to match server-provided labels. Import native
 names only when the ABI can locate them without adding fragile guesses.
 
-## Morphe replacement (after this repository is reviewed)
+## Morphe integration
 
-- Port the implementation in this repository into Morphe's extension and
+The Morphe maintainers invited the author to integrate this standalone
+project into their patch set. The integration should use this code as the
+starting point, without keeping a second copy of the existing caption hooks.
+
+- Bring the implementation in this repository into Morphe's extension and
   bytecode patch packages with one code path.
 - Remove the old native `AutoTranslateCaptionsPatch` and
   `TranslatedCaptionPensPatch` implementations and their old dependency
@@ -157,7 +155,8 @@ names only when the ABI can locate them without adding fragile guesses.
 
 ## Validation status
 
-Code-level JVM tests and the Android patch *bundle* compile in CI. This is
-**not** YouTube runtime proof. Clean-target APK patch/app playback tests,
-cross-request concurrency verification, and full web parity comparisons are
-still open until the final integration phase.
+JVM tests and Android MPP packaging run in CI. APK-specific regressions need
+user-provided clean/patched YouTube files and are skipped on hosted CI. The
+3.0 development builds were manually tested on both declared versions,
+including real translated text. Itemized 3.0.1 on-device tests for the
+request-matched cleanup and unusual parser exceptions remain open.

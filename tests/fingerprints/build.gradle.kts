@@ -19,7 +19,7 @@ sourceSets.main {
 sourceSets.test {
     java.srcDir("../java")
     java.srcDir("../policy-upstream")
-
+    resources.srcDir("../fixtures")
 }
 tasks.test {
     useJUnitPlatform()

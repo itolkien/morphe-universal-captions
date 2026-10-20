@@ -38,22 +38,23 @@ class CaptionPenStylesTest {
         return new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.en.tr"));
     }
 
+    private static void within(Object request, Runnable test) {
+        CaptionPenStyles.beginCaption(request);
+        try {
+            test.run();
+        } finally {
+            CaptionPenStyles.endCaption(request);
+        }
+    }
+
     @Test void translatedAndOriginalStylesAreScopedToTheirOwnDocuments() {
         assertEquals(7, CaptionPenStyles.getPenId(7));
-        CaptionPenStyles.beginCaption(translated());
-        try {
+        within(translated(), () -> {
             assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(7));
             assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(0));
-        } finally {
-            CaptionPenStyles.endCaption();
-        }
+        });
         assertEquals(7, CaptionPenStyles.getPenId(7));
-        CaptionPenStyles.beginCaption(original());
-        try {
-            assertEquals(7, CaptionPenStyles.getPenId(7));
-        } finally {
-            CaptionPenStyles.endCaption();
-        }
+        within(original(), () -> assertEquals(7, CaptionPenStyles.getPenId(7)));
     }
 
     @Test void invalidOrAmbiguousTargetsKeepOriginalPenIds() {
@@ -65,42 +66,54 @@ class CaptionPenStylesTest {
                 ORIGINAL + "&tlang=bad%20value",
                 "https://youtube.com.evil.example/api/timedtext?v=PlsODqqqwFs&lang=en&tlang=tr"
         }) {
-            CaptionPenStyles.beginCaption(new Carrier(new Track("tr", url, "t.en.tr")));
-            try {
-                assertEquals(8, CaptionPenStyles.getPenId(8), url);
-            } finally {
-                CaptionPenStyles.endCaption();
-            }
+            within(new Carrier(new Track("tr", url, "t.en.tr")),
+                    () -> assertEquals(8, CaptionPenStyles.getPenId(8), url));
         }
         assertEquals(8, CaptionPenStyles.getPenId(8));
     }
 
     @Test void unknownContextNeverInheritsTranslatedStyle() {
-        CaptionPenStyles.beginCaption(translated());
-        try {
+        within(translated(), () -> {
             assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(3));
-            CaptionPenStyles.beginCaption(new Object());
-            try {
-                assertEquals(3, CaptionPenStyles.getPenId(3));
-            } finally {
-                CaptionPenStyles.endCaption();
-            }
+            within(new Object(), () -> assertEquals(3, CaptionPenStyles.getPenId(3)));
             assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(3));
-        } finally {
-            CaptionPenStyles.endCaption();
-        }
-        CaptionPenStyles.endCaption(); // extra cleanup is idempotent
+        });
         assertEquals(3, CaptionPenStyles.getPenId(3));
     }
 
+    @Test void staleExceptionHandlerCannotCloseAnUnrelatedScope() {
+        Carrier outer = translated();
+        Carrier inner = original();
+        within(outer, () -> {
+            CaptionPenStyles.endCaption(inner); // handler before inner begin
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(5));
+            within(inner, () -> {
+                CaptionPenStyles.endCaption(outer); // handler for the other request
+                assertEquals(5, CaptionPenStyles.getPenId(5));
+            });
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(5));
+        });
+        CaptionPenStyles.endCaption(outer); // repeated cleanup
+        assertEquals(5, CaptionPenStyles.getPenId(5));
+    }
+
+    @Test void exceptionExitRestoresTheOuterScope() {
+        Carrier outer = translated();
+        Carrier inner = original();
+        within(outer, () -> {
+            assertThrows(IllegalStateException.class, () ->
+                within(inner, () -> {
+                    assertEquals(11, CaptionPenStyles.getPenId(11));
+                    throw new IllegalStateException("parser failed");
+                }));
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(11));
+        });
+        assertEquals(11, CaptionPenStyles.getPenId(11));
+    }
+
     @Test void sourceAndTargetIdentitiesMustAgree() {
-        CaptionPenStyles.beginCaption(new Carrier(
-                new Track("tr", ORIGINAL + "&tlang=tr", "t.en.fr")));
-        try {
-            assertEquals(5, CaptionPenStyles.getPenId(5));
-        } finally {
-            CaptionPenStyles.endCaption();
-        }
+        within(new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.en.fr")),
+                () -> assertEquals(5, CaptionPenStyles.getPenId(5)));
     }
 
     @Test void concurrentOriginalAndTranslatedParsersDoNotBleedAcrossThreads() throws Exception {
@@ -108,21 +121,23 @@ class CaptionPenStylesTest {
         ExecutorService workers = Executors.newFixedThreadPool(2);
         try {
             Future<Integer> translated = workers.submit(() -> {
-                CaptionPenStyles.beginCaption(translated());
+                Carrier request = translated();
+                CaptionPenStyles.beginCaption(request);
                 try {
                     barrier.await(3, TimeUnit.SECONDS);
                     return CaptionPenStyles.getPenId(12);
                 } finally {
-                    CaptionPenStyles.endCaption();
+                    CaptionPenStyles.endCaption(request);
                 }
             });
             Future<Integer> original = workers.submit(() -> {
-                CaptionPenStyles.beginCaption(original());
+                Carrier request = original();
+                CaptionPenStyles.beginCaption(request);
                 try {
                     barrier.await(3, TimeUnit.SECONDS);
                     return CaptionPenStyles.getPenId(12);
                 } finally {
-                    CaptionPenStyles.endCaption();
+                    CaptionPenStyles.endCaption(request);
                 }
             });
             assertEquals(DEFAULT_PEN, translated.get(5, TimeUnit.SECONDS));
