@@ -63,7 +63,7 @@ public final class EmptyTranslationFallback {
         if (tracks == null) return null;
         OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
-        String video = null, firstVss = null;
+        String video = null, firstVss = null, firstUrl = null;
         boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
@@ -77,7 +77,9 @@ public final class EmptyTranslationFallback {
             if (first == null) {
                 first = original;
                 firstVss = vss;
-            } else if (!firstVss.equals(vss)) mixedSources = true;
+                firstUrl = track.universalCaptions_getCaptionUrl();
+            } else if (!firstVss.equals(vss)
+                    || !firstUrl.equals(track.universalCaptions_getCaptionUrl())) mixedSources = true;
             if (nativeDefault != null && matchedDefault == null
                     && vss.equals(nativeDefault.universalCaptions_getVssId())
                     && track.universalCaptions_getCaptionUrl().equals(nativeDefault.universalCaptions_getCaptionUrl())) {
