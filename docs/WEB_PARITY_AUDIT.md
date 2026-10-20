@@ -29,7 +29,7 @@ ready for integration.
 | --- | --- | --- | --- |
 | No original caption track | Do not fabricate transcription or expose a fake translation source | Empty / malformed original tests | Backend-specific exceptions cannot be proven offline |
 | Native translations exist | Keep native objects and add only missing, valid targets | Signed URL, dedup, alias and idempotence tests | Server availability can still vary per target |
-| Native per-video target metadata has codes | Use the declared codes and omit unsafe duplicates | Native/invalid catalog regressions | Some upstream builds may not expose metadata |
+| Native per-video target metadata has codes | Preserve native codes/tracks; add missing snapshot targets if the source has a compatible native target | Native 3/17-code catalog and self/invalid-code regressions | Added targets may have no server response |
 | Native target list empty or absent | Use the 156-code compatibility snapshot to restore missing menus | Empty and null metadata regressions | Repeated protobuf fields do not distinguish an unset field from an empty one |
 | Snapshot targets | Labels and URLs are generated locally only for a validated original source | 156×155 source/target cases, four UI locales | YouTube can reject entries independently of menus |
 | ASR vs uploaded/named tracks | Derive only from an identity-validated original timedtext track | ASR/manual/named, VSS, kind and URL tests | Whether an individual native track is translatable is not exposed |
@@ -68,11 +68,12 @@ states that repeated fields do not track whether an empty list was explicitly
 sent or was omitted. The native YouTube target metadata is read from a repeated
 list; therefore `null` versus `[]` from our Java adapter is **not proven**
 to correspond to Web's optional `translationLanguages` property. The
-compatibility snapshot intentionally remains available for both empty and
-missing native lists, preserving the original missing-menu behavior. When
-YouTube provides a nonempty list, its entries are authoritative. A dependable
-`isTranslatable` or presence signal would allow a stricter policy after
-native structure verification.
+compatibility snapshot remains available for both empty and missing native
+lists. The 3.0 developer build preserves nonempty native entries, but offers
+additional snapshot targets when the list contains a valid source-compatible
+target. These extras are explicitly best-effort and are not proof of server
+support. A native per-target eligibility bridge can further tighten this
+policy after it is structurally verified.
 
 ### Selective creator styling versus a blanket pen reset
 

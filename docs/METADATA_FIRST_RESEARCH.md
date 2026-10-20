@@ -44,9 +44,13 @@ list of target-language codes in the Android caption manager.
 
 The project repairs videos where native Android produces *no translated
 tracks/menu*. A missing native list may coexist with a working source and
-Web translation support. The existing runtime uses native target codes
-whenever provided, and a dated 156-code snapshot only for a missing or empty
-native list. Google's [Protobuf field-presence rules](https://protobuf.dev/programming-guides/field_presence/)
+Web translation support. The published 2.1.0 used native target codes
+whenever provided, and a dated 156-code snapshot only for an empty native list.
+An initial 21.20.405 device check of 3.0 showed ~17 native languages, because
+the patch treated a nonempty native list as complete. In 3.0 development,
+validated native choices are now preserved while the snapshot supplies
+missing options **only when a valid source-compatible native target exists**.
+Extra menu entries are best-effort and do not imply backend availability. Google's [Protobuf field-presence rules](https://protobuf.dev/programming-guides/field_presence/)
 confirm that a repeated list cannot distinguish omitted from explicitly
 empty. Removing fallback on this basis alone would reintroduce the bug.
 

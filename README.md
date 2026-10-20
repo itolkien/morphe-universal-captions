@@ -7,7 +7,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 ## Features
 
 - Uses YouTube's per-video target-language metadata; no video or source-language allowlist.
-- Uses a dated 156-language fallback catalog when the native target list is missing or empty. A nonempty per-video catalog takes precedence.
+- **3.0 dev:** Preserves YouTube's native languages and signed subtitle objects, then adds remaining choices from a 156-language compatibility catalog when a compatible native translation target is established. Missing/empty catalogs still use the snapshot. The published 2.1.0 behavior is unchanged.
 - Supports original automatic speech captions (ASR), uploaded/manual captions and named tracks.
 - Restores the native Auto-translate option when original captions exist but the translation menu is missing.
 - Preserves existing native translations and signed source URLs. With multiple originals, uses the current audio's native default; falls back to direct-list order only if the original language is unambiguous.
@@ -15,7 +15,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - No external translation service, overlay or separate caption preference UI.
 - In **3.0.0-dev.1**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
-Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video. This is still a development build, not a claim of complete YouTube Web parity.
+Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video. An initial 21.20.405 device test exposed an earlier 3.0 dev menu limited to ~17 native languages; the draft now has a regression-tested fix to broaden nonempty catalogs pending device confirmation. This is still a development build, not a claim of complete YouTube Web parity.
 
 ## Using it with Morphe
 
