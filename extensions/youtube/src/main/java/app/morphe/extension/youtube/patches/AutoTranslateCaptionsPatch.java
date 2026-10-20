@@ -87,27 +87,24 @@ public final class AutoTranslateCaptionsPatch {
 
     static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks,
                                                                Locale locale) {
-        if (tracks.isEmpty()) {
-            // Video has no auto-translation.
-            return tracks;
-        }
+        if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
 
-        // All tracks are translations of the same source track.
-        // Vss id is "t" + source vss id + "." + language code,
-        // and the url contains "&tlang=" + language code.
+        // Never infer a URL target from a signature, fragment, or opaque query value.
         CaptionTrackInterface template = tracks.get(0);
         String templateCode = template.patch_getLanguageCode();
-        String vssIdPrefix = removeSuffix(template.patch_getVssId(), templateCode.length());
+        String vss = template.patch_getVssId();
+        if (templateCode == null || !LANGUAGE_CODE_PATTERN.matcher(templateCode).matches()
+                || vss == null || !vss.startsWith("t") || !vss.endsWith("." + templateCode)) return tracks;
         String templateUrl = template.patch_getUrl();
-        String targetParameter = "&tlang=" + templateCode;
-        final int targetIndex = templateUrl.lastIndexOf(targetParameter);
+        int targetIndex = targetValueOffset(templateUrl, templateCode);
         if (targetIndex < 0) {
-            Logger.printDebug(() -> "Translation url has no target language: " + templateUrl);
+            // Signed timedtext URLs are sensitive and must never be logged in full.
+            Logger.printDebug(() -> "Translation URL has no unambiguous tlang parameter");
             return tracks;
         }
-        // Keep everything around the target language unchanged, including the signature.
-        String urlPrefix = templateUrl.substring(0, targetIndex + targetParameter.length() - templateCode.length());
-        String urlSuffix = templateUrl.substring(targetIndex + targetParameter.length());
+        String vssIdPrefix = removeSuffix(vss, templateCode.length());
+        String urlPrefix = templateUrl.substring(0, targetIndex);
+        String urlSuffix = templateUrl.substring(targetIndex + templateCode.length());
 
         Set<String> existingLanguages = new HashSet<>();
         for (CaptionTrackInterface track : tracks) {
@@ -266,6 +263,30 @@ public final class AutoTranslateCaptionsPatch {
     private static boolean originalVss(String value, String prefix) {
         return value != null && (value.equals(prefix) || value.startsWith(prefix + ".")
                 && VSS_ID_SUFFIX_PATTERN.matcher(value.substring(prefix.length() + 1)).matches());
+    }
+
+    /**
+     * Offset of the exact raw query target. An encoded value, duplicate key,
+     * signed token or fragment can never be used as a replacement site.
+     */
+    private static int targetValueOffset(String url, String language) {
+        if (url == null || language == null) return -1;
+        int question = url.indexOf('?');
+        if (question < 0) return -1;
+        int fragment = url.indexOf('#', question + 1);
+        int end = fragment < 0 ? url.length() : fragment;
+        int found = -1;
+        for (int offset = question + 1; offset < end; ) {
+            int next = url.indexOf('&', offset);
+            if (next < 0 || next > end) next = end;
+            String parameter = url.substring(offset, next);
+            if (parameter.startsWith("tlang=")) {
+                if (found >= 0 || !parameter.equals("tlang=" + language)) return -1;
+                found = offset + "tlang=".length();
+            }
+            offset = next + 1;
+        }
+        return found;
     }
 
     private static String removeSuffix(String value, int suffixLength) {

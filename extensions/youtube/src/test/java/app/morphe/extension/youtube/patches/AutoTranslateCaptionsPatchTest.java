@@ -86,6 +86,27 @@ public class AutoTranslateCaptionsPatchTest {
         assertEquals(URL + "&tlang=el&fmt=srv3#opaque", find(result, "el").patch_getUrl());
     }
 
+    @Test public void queryTargetMustNotComeFromFragmentOrOpaqueSignature() {
+        Track hidden = new Track("de", URL + "&opaque=%26tlang%3Dde#&tlang=de",
+                "ta.en.de", "German");
+        List<CaptionTrackInterface> input = List.of(hidden);
+        assertSame(input, add(input, Locale.ENGLISH));
+    }
+
+    @Test public void duplicateOrMismatchedQueryTargetsMustNotBeRewritten() {
+        for (String suffix : List.of("&tlang=de&tlang=de", "&tlang=fr&tlang=de")) {
+            Track malformed = new Track("de", URL + suffix, "ta.en.de", "German");
+            List<CaptionTrackInterface> input = List.of(malformed);
+            assertSame(input, add(input, Locale.ENGLISH));
+        }
+    }
+
+    @Test public void malformedTranslatedVssCannotBecomeATemplate() {
+        Track malformed = new Track("de", URL + "&tlang=de", "a.en.de", "German");
+        List<CaptionTrackInterface> input = List.of(malformed);
+        assertSame(input, add(input, Locale.ENGLISH));
+    }
+
     @Test public void keepsBrazilianAndEuropeanPortugueseSeparate() {
         List<CaptionTrackInterface> result = add(List.of(new Track("pt", "Portuguese")), Locale.ENGLISH);
 
