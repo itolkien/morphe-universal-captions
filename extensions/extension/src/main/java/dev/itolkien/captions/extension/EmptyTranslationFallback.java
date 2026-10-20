@@ -18,6 +18,7 @@ public final class EmptyTranslationFallback {
         CaptionTrack universalCaptions_autoTranslateOption();
         List<String> universalCaptions_targetLanguages(boolean bypassFallback);
         CaptionTrack universalCaptions_defaultSource(boolean bypassFallback);
+        CaptionTrack universalCaptions_eligibleSource(boolean bypassFallback);
     }
 
     public static List<CaptionTrack> direct(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
@@ -55,12 +56,19 @@ public final class EmptyTranslationFallback {
             if (!tracks.isEmpty()) {
                 List<CaptionTrack> augmented = CaptionTranslationList.augment(tracks, locale, nativeTargets);
                 if (augmented.size() > tracks.size()) return augmented;
-                // The native generator can choose a different original for each
-                // target; use the current audio's verified default for extras.
-                OriginalCaptionSource selected = candidate(
-                        source.universalCaptions_nativeDirect(true), source);
+                // YouTube's native general-source eligibility is based on
+                // caption indices intersected with the CURRENT audio's indices.
+                CaptionTrack eligibleSource = source.universalCaptions_eligibleSource(true);
+                OriginalCaptionSource selected = OriginalCaptionSource.from(eligibleSource);
+                if (eligibleSource != null && selected == null) {
+                    CaptionTranslationList.trace("mixed-resolution", "reason=invalid-eligible-source");
+                    return augmented;
+                }
+                if (eligibleSource == null) {
+                    selected = candidate(source.universalCaptions_nativeDirect(true), source);
+                }
                 if (selected == null) {
-                    CaptionTranslationList.trace("mixed-resolution", "reason=no-safe-default");
+                    CaptionTranslationList.trace("mixed-resolution", "reason=no-native-eligible-source");
                     return augmented;
                 }
                 return CaptionTranslationList.mergeFromSelectedSource(

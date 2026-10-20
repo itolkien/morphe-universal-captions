@@ -30,9 +30,10 @@ class EmptyTranslationFallbackTest {
                 new Track("ar", URL, "a.ar"));
         List<CaptionTrack> translations = List.of();
         List<String> targets; // null or empty: no target codes supplied by the native model
-        CaptionTrack preferred;
+        CaptionTrack preferred, eligible;
         public List<String> universalCaptions_targetLanguages(boolean unused) { return targets; }
         public CaptionTrack universalCaptions_defaultSource(boolean unused) { return preferred; }
+        public CaptionTrack universalCaptions_eligibleSource(boolean unused) { return eligible; }
         final CaptionTrack option = new Track("AUTO_TRANSLATE_CAPTIONS_OPTION", "", "");
         public List<CaptionTrack> universalCaptions_nativeDirect(boolean bypassFallback) { return direct; }
         public List<CaptionTrack> universalCaptions_nativeTranslated(boolean bypassFallback) { return translations; }
@@ -135,6 +136,48 @@ class EmptyTranslationFallbackTest {
         assertEquals(URL + "&tlang=tr", changedAudio.stream()
                 .filter(t -> "tr".equals(t.universalCaptions_getLanguageCode()))
                 .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
+    }
+
+    @Test void mixedNativeSourcesUseAudioEligibleOriginalWithoutDefault() {
+        Source source = new Source();
+        String englishUrl = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=y";
+        Track originalEnglish = new Track("en", englishUrl, ".en");
+        Track originalArabic = new Track("ar", URL, "a.ar");
+        source.direct = List.of(source.direct.get(0), originalArabic, originalEnglish);
+        source.translations = List.of(
+                new Track("de", URL + "&tlang=de", "ta.ar.de", "German"),
+                new Track("fr", englishUrl + "&tlang=fr", "t.en.fr", "French"));
+        source.targets = List.of("de", "fr", "tr");
+        source.preferred = null; // As observed on Waydroid: hasDefault=false.
+        source.eligible = originalEnglish;
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertTrue(result.size() > 100);
+        assertEquals(englishUrl + "&tlang=tr", result.stream()
+                .filter(t -> "tr".equals(t.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
+
+        // Audio has changed: no stale source is retained.
+        source.eligible = originalArabic;
+        result = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
+        assertEquals(URL + "&tlang=tr", result.stream()
+                .filter(t -> "tr".equals(t.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
+    }
+
+    @Test void invalidNativeEligibleOriginalFailsClosed() {
+        Source source = new Source();
+        String englishUrl = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=y";
+        source.direct = List.of(source.direct.get(0), source.direct.get(1),
+                new Track("en", englishUrl, ".en"));
+        source.translations = List.of(
+                new Track("de", URL + "&tlang=de", "ta.ar.de", "German"),
+                new Track("fr", englishUrl + "&tlang=fr", "t.en.fr", "French"));
+        source.eligible = new Track("en", "https://evil.example/api/timedtext?v=PlsODqqqwFs&lang=en", ".en");
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(source.translations.size(), result.size());
+        assertTrue(result.containsAll(source.translations));
     }
 
     @Test void mixedNativeSourcesWithoutNativeDefaultStayUntouched() {

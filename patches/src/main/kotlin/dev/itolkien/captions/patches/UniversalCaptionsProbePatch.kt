@@ -65,6 +65,8 @@ val universalCaptionsPatch = bytecodePatch(
             model.language, model.vss, ::classDefByOrNull)
         val autoOption = resolveNativeAutoOption(model, abi)
         val metadata = resolveCaptionMetadataAbi(model, abi, classDefBy(model.direct.definingClass))
+        val eligible = resolveCaptionEligibleSourceAbi(
+            model, metadata, classDefBy(model.direct.definingClass))
         // Resolve the srv3 pen hooks before changing any native code.
         val applyPenHooks = resolveCaptionPenHooks()
         for (method in listOf(model.direct, model.translated)) {
@@ -148,6 +150,53 @@ val universalCaptionsPatch = bytecodePatch(
             move-result-object v0
             return-object v0
         """)
+        // Reuse the same general-source / current-audio intersection as YouTube's
+        // native translation builder. Never choose an arbitrary caption language.
+        val eligibleSourceBody = if (eligible == null) """
+            const/4 v0, 0x0
+            return-object v0
+        """ else """
+            iget-object v0, p0, ${metadata.metadata}
+            if-eqz v0, :no_source
+            iget-object v1, p0, ${eligible.audio}
+            if-eqz v1, :no_source
+            iget-object v2, v0, ${eligible.generalSourceIndices}
+            iget-object v3, v1, ${eligible.audioCaptionIndices}
+            iget-object v4, v0, ${eligible.originals}
+            if-eqz v2, :no_source
+            if-eqz v3, :no_source
+            if-eqz v4, :no_source
+            invoke-interface { v2 }, Ljava/util/List;->iterator()Ljava/util/Iterator;
+            move-result-object v2
+            :next_index
+            invoke-interface { v2 }, Ljava/util/Iterator;->hasNext()Z
+            move-result v6
+            if-eqz v6, :no_source
+            invoke-interface { v2 }, Ljava/util/Iterator;->next()Ljava/lang/Object;
+            move-result-object v5
+            check-cast v5, Ljava/lang/Integer;
+            invoke-interface { v3, v5 }, Ljava/util/List;->contains(Ljava/lang/Object;)Z
+            move-result v6
+            if-eqz v6, :next_index
+            invoke-virtual { v5 }, Ljava/lang/Integer;->intValue()I
+            move-result v5
+            if-ltz v5, :next_index
+            invoke-interface { v4 }, Ljava/util/List;->size()I
+            move-result v6
+            if-ge v5, v6, :next_index
+            invoke-interface { v4, v5 }, Ljava/util/List;->get(I)Ljava/lang/Object;
+            move-result-object v5
+            check-cast v5, ${eligible.convertOriginal.parameterTypes.single()}
+            invoke-direct { p0, v5 }, ${eligible.convertOriginal}
+            move-result-object v0
+            return-object v0
+            :no_source
+            const/4 v0, 0x0
+            return-object v0
+        """
+        manager.addTranslationHelper(
+            "universalCaptions_eligibleSource", listOf("Z"), TRACK_INTERFACE, 7, eligibleSourceBody)
+
         manager.interfaces.add(SOURCE_INTERFACE)
         manager.methods.add(ImmutableMethod(manager.type, "universalCaptions_autoTranslateOption",
             emptyList(), TRACK_INTERFACE, AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,
