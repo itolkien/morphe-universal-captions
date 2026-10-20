@@ -12,49 +12,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Extends a native translation list without selecting a caption track or changing caption visibility. */
 public final class CaptionTranslationList {
     private CaptionTranslationList() { }
-
-    // Temporary 3.0.0-dev.5 runtime diagnostics. Never log signed URLs,
-    // caption labels, video IDs, cookies or subtitle content.
-    private static final AtomicInteger TRACE_COUNT = new AtomicInteger();
-
-    static void trace(String phase, String counts) {
-        if (TRACE_COUNT.getAndIncrement() >= 80) return;
-        try {
-            Class.forName("android.util.Log")
-                    .getMethod("i", String.class, String.class)
-                    .invoke(null, "UC3Probe", phase + " " + counts);
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
-            // Plain JVM unit tests have no Android logger.
-        }
-    }
-
-    private static String invalidPrototypeReason(CaptionTrack track) {
-        try {
-            String code = track.universalCaptions_getLanguageCode();
-            String vss = track.universalCaptions_getVssId();
-            if (!validLanguageCode(code)) return "language-code";
-            if (vss == null || !vss.startsWith("t") || !vss.endsWith("." + code))
-                return "vss-shape";
-            TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
-            if (url == null) return "url-shape";
-            if (!code.equals(url.field("tlang"))) return "target-param";
-            if (url.sourceIdentity(code) == null) return "target-offset";
-            String language = url.field("lang");
-            if (!validLanguageCode(language)) return "source-lang";
-            String originalVss = vss.substring(1, vss.length() - code.length() - 1);
-            if (!OriginalCaptionSource.originalVss(originalVss, "a." + language)
-                    && !OriginalCaptionSource.originalVss(originalVss, "." + language))
-                return "original-vss";
-            return "unknown";
-        } catch (RuntimeException | LinkageError ignored) {
-            return "diagnostic-failed";
-        }
-    }
 
     /** Implemented by the native track class at patch time. */
     public interface CaptionTrack {
@@ -68,7 +29,7 @@ public final class CaptionTranslationList {
     private static final Pattern LANGUAGE_CODE = Pattern.compile("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
 
     // YouTube player translationLanguages snapshot, 2026-10-16, video FlcePQVkmM4.
-    // Used only when native metadata is absent; runtime metadata takes precedence.
+    // Preserve native target entries; use snapshot codes only for compatible missing choices.
     static final String[] TARGETS = "ab aa af ak sq am ar hy as ay az bn ba eu be bho bs br bg my ca ceb zh-Hans zh-Hant co hr cs da dv nl dz en eo et ee fo fj fil fi fr gaa gl lg ka de el gn gu ht ha haw iw hi hmn hu is ig id iu ga it ja jv kl kn kk kha km rw ko kri ku ky lo la lv ln lt lua luo lb mk mg ms ml mt gv mi mr mn mfe ne new nso no ny oc or om os pam ps fa pl pt pt-PT pa qu ro rn ru sm sg sa gd sr crs sn sd si sk sl so st es su sw ss sv tg ta tt te th bo ti to ts tn tum tr tk uk ur ug uz ve vi war cy fy wo xh yi yo zu".split(" ");
 
     static boolean validLanguageCode(String code) {
@@ -114,21 +75,13 @@ public final class CaptionTranslationList {
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;
         String sourceIdentity = null;
-        int rejected = 0;
-        String firstRejection = "none";
         for (CaptionTrack track : tracks) {
             if (track == null) continue;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
             String identity = translationSourceIdentity(track);
-            if (identity == null) {
-                rejected++;
-                if ("none".equals(firstRejection)) firstRejection = invalidPrototypeReason(track);
-                continue;
-            }
+            if (identity == null) continue;
             if (prototype != null && !sourceIdentity.equals(identity)) {
                 // Two different source tracks or videos: do not pick one arbitrarily.
-                trace("augment", "native=" + tracks.size() + " result=" + result.size()
-                        + " reason=mixed-sources");
                 return sorted(result, locale);
             }
             if (prototype == null) {
@@ -145,10 +98,7 @@ public final class CaptionTranslationList {
             // Keep opaque/signed bytes untouched, replacing only the real query target.
             TimedTextUrl timedText = TimedTextUrl.parse(oldUrl);
             int targetAt = timedText == null ? -1 : timedText.targetValueOffset(oldLanguage);
-            if (targetAt < 0) {
-                trace("augment", "native=" + tracks.size() + " reason=target-offset");
-                return sorted(result, locale);
-            }
+            if (targetAt < 0) return sorted(result, locale);
             String urlPrefix = oldUrl.substring(0, targetAt);
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
             String sourceKey = languageKey(timedText.field("lang"));
@@ -163,9 +113,6 @@ public final class CaptionTranslationList {
                         code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
             }
         }
-        trace("augment", "native=" + tracks.size() + " result=" + result.size()
-                + " rejected=" + rejected + " first=" + firstRejection
-                + " prototype=" + (prototype != null));
         return sorted(result, locale);
     }
 
@@ -179,9 +126,8 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
-    /** On multi-source videos, keep YouTube's native target routing intact and
-     * synthesize only missing targets from its current-audio default source.
-     * Never mix cross-video native objects or unknown native track shapes.
+    /** Keep native per-target routing; fill missing targets from the verified
+     * current-audio eligible original, never from an arbitrary translated track.
      */
     static List<CaptionTrack> mergeFromSelectedSource(List<CaptionTrack> nativeTracks,
             OriginalCaptionSource selected, Locale locale, List<String> nativeTargets) {
@@ -189,16 +135,12 @@ public final class CaptionTranslationList {
             return nativeTracks;
         Set<String> represented = new HashSet<>();
         for (CaptionTrack track : nativeTracks) {
-            if (track == null || translationSourceIdentity(track) == null) {
-                trace("mixed-resolution", "reason=invalid-native-track");
+            if (track == null || translationSourceIdentity(track) == null)
                 return nativeTracks;
-            }
             TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
             if (url == null || url.field("v") != null
-                    && !selected.videoId().equals(url.field("v"))) {
-                trace("mixed-resolution", "reason=video-mismatch");
+                    && !selected.videoId().equals(url.field("v")))
                 return nativeTracks;
-            }
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
         }
 
@@ -212,8 +154,6 @@ public final class CaptionTranslationList {
                 represented.add(key);
             }
         }
-        trace("mixed-resolution", "native=" + nativeTracks.size()
-                + " result=" + result.size() + " reason=validated-original");
         return sorted(result, locale);
     }
 

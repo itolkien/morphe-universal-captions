@@ -33,7 +33,7 @@ jobs:
           mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
           cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
           # Use an updated bundle version so Manager can distinguish old incompatible artifacts.
-          sed -i 's/^version = .*/version = 3.0.0-dev.5/' template/gradle.properties
+          sed -i 's/^version = .*/version = 3.0.0-dev.6/' template/gradle.properties
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
@@ -63,7 +63,7 @@ jobs:
           python3 - <<'PYNOTICE'
           from pathlib import Path
           from zipfile import ZipFile
-          bundle = Path("patches/build/libs/patches-3.0.0-dev.5.mpp")
+          bundle = Path("patches/build/libs/patches-3.0.0-dev.6.mpp")
           notice = Path("../addon/NOTICE").read_bytes()
           with ZipFile(bundle, "a") as archive:
               if "NOTICE" in archive.namelist():
@@ -71,7 +71,7 @@ jobs:
               else:
                   archive.writestr("NOTICE", notice)
           PYNOTICE
-          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-3.0.0-dev.5.mpp
+          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-3.0.0-dev.6.mpp
           find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
       - name: Verify generated compatibility metadata
         run: |
@@ -79,7 +79,7 @@ jobs:
           import json
           from pathlib import Path
           data = json.loads(Path("template/patches-list.json").read_text())
-          assert data["version"] == "3.0.0-dev.5", data["version"]
+          assert data["version"] == "3.0.0-dev.6", data["version"]
           patches = [p for p in data["patches"] if p["name"].startswith("Universal Captions")]
           assert len(patches) == 1, patches
           packages = patches[0]["compatiblePackages"]
@@ -92,15 +92,15 @@ jobs:
       - name: Upload Morphe Manager MPP
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-3.0.0-dev.5-youtube-mpp
-          path: template/patches/build/libs/patches-3.0.0-dev.5.mpp
+          name: universal-captions-3.0.0-dev.6-youtube-mpp
+          path: template/patches/build/libs/patches-3.0.0-dev.6.mpp
           if-no-files-found: error
           retention-days: 14
 
       - name: Upload generated patch metadata
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-3.0.0-dev.5-metadata
+          name: universal-captions-3.0.0-dev.6-metadata
           path: template/patches-list.json
           if-no-files-found: error
           retention-days: 14

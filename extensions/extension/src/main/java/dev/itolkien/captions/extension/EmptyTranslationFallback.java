@@ -41,8 +41,7 @@ public final class EmptyTranslationFallback {
             List<CaptionTrack> result = new ArrayList<>(tracks);
             result.add(option);
             return result;
-        } catch (RuntimeException | LinkageError ex) {
-            CaptionTranslationList.trace("direct-error", ex.getClass().getSimpleName());
+        } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
     }
@@ -51,8 +50,6 @@ public final class EmptyTranslationFallback {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
             List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
-            CaptionTranslationList.trace("translated-meta", "native=" + tracks.size()
-                    + " targetCodes=" + (nativeTargets == null ? -1 : nativeTargets.size()));
             if (!tracks.isEmpty()) {
                 List<CaptionTrack> augmented = CaptionTranslationList.augment(tracks, locale, nativeTargets);
                 if (augmented.size() > tracks.size()) return augmented;
@@ -60,63 +57,37 @@ public final class EmptyTranslationFallback {
                 // caption indices intersected with the CURRENT audio's indices.
                 CaptionTrack eligibleSource = source.universalCaptions_eligibleSource(true);
                 OriginalCaptionSource selected = OriginalCaptionSource.from(eligibleSource);
-                if (eligibleSource != null && selected == null) {
-                    CaptionTranslationList.trace("mixed-resolution", "reason=invalid-eligible-source");
-                    return augmented;
-                }
+                if (eligibleSource != null && selected == null) return augmented;
                 if (eligibleSource == null) {
                     selected = candidate(source.universalCaptions_nativeDirect(true), source);
                 }
-                CaptionTranslationList.trace("mixed-source-pick",
-                        "eligible=" + (eligibleSource != null) +
-                        " selected=" + (selected != null));
-                if (selected == null) {
-                    CaptionTranslationList.trace("mixed-resolution", "reason=no-native-eligible-source");
-                    return augmented;
-                }
+                if (selected == null) return augmented;
                 return CaptionTranslationList.mergeFromSelectedSource(
                         augmented, selected, locale, nativeTargets);
             }
             OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
-            if (candidate == null) {
-                CaptionTranslationList.trace("translated-empty", "reason=no-safe-source");
-                return tracks;
-            }
+            if (candidate == null) return tracks;
             List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
-            CaptionTranslationList.trace("translated-empty", "generated=" + result.size());
             return result.isEmpty() ? tracks : result;
-        } catch (RuntimeException | LinkageError ex) {
-            CaptionTranslationList.trace("translated-error", ex.getClass().getSimpleName());
+        } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
     }
 
     private static OriginalCaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {
-        if (tracks == null) {
-            CaptionTranslationList.trace("candidate", "reason=no-direct-list");
-            return null;
-        }
+        if (tracks == null) return null;
         OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
         String video = null, firstVss = null, firstUrl = null;
         boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
-            if (track == null) {
-                CaptionTranslationList.trace("candidate", "reason=null-native-track");
-                return null;
-            }
+            if (track == null) return null;
             String language = track.universalCaptions_getLanguageCode();
             if ("DISABLE_CAPTIONS_OPTION".equals(language) || AUTO.equals(language)) continue;
             OriginalCaptionSource original =
                     OriginalCaptionSource.from(track);
-            if (original == null) {
-                CaptionTranslationList.trace("candidate", "reason=invalid-original");
+            if (original == null || video != null && !video.equals(original.videoId()))
                 return null;
-            }
-            if (video != null && !video.equals(original.videoId())) {
-                CaptionTranslationList.trace("candidate", "reason=cross-video");
-                return null;
-            }
             video = original.videoId();
             String vss = track.universalCaptions_getVssId();
             if (first == null) {
@@ -132,11 +103,6 @@ public final class EmptyTranslationFallback {
             }
         }
         // Native caption eligibility is track-specific, even within the same language.
-        OriginalCaptionSource chosen = matchedDefault != null ? matchedDefault : mixedSources ? null : first;
-        CaptionTranslationList.trace("candidate", "direct=" + tracks.size()
-                + " hasDefault=" + (nativeDefault != null) + " matchedDefault="
-                + (matchedDefault != null) + " mixed=" + mixedSources
-                + " selected=" + (chosen != null));
-        return chosen;
+        return matchedDefault != null ? matchedDefault : mixedSources ? null : first;
     }
 }
