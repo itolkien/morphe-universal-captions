@@ -18,7 +18,7 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
-private const val EXTENSION = "Ldev/itolkien/captions/extension/NativeTranslationBridge;"
+private const val EXTENSION = "Ldev/itolkien/captions/extension/EmptyTranslationFallback;"
 private const val TRACK_INTERFACE =
     $$"Ldev/itolkien/captions/extension/CaptionTranslationList$CaptionTrack;"
 private const val SOURCE_INTERFACE =
@@ -95,22 +95,18 @@ val universalCaptionsPatch = bytecodePatch(
 
         // Place field access in its owning class, including for private fields and old abstract getters.
         track.interfaces.add(TRACK_INTERFACE)
-        track.addTranslationHelper("universalCaptions_getLanguageCode", emptyList(), STRING, 1, """
-            ${readSmali(model.language)}
-            return-object v0
-        """)
-        track.addTranslationHelper("universalCaptions_getVssId", emptyList(), STRING, 1, """
-            ${readSmali(model.vss)}
-            return-object v0
-        """)
-        track.addTranslationHelper("universalCaptions_getCaptionUrl", emptyList(), STRING, 1, """
-            ${readSmali(abi.url)}
-            return-object v0
-        """)
-        track.addTranslationHelper("universalCaptions_getCaptionLabel", emptyList(), LABEL, 1, """
-            ${readSmali(abi.label)}
-            return-object v0
-        """)
+        // One accessor definition for each native track field or legacy getter.
+        for ((name, type, reference) in listOf(
+            Triple("getLanguageCode", STRING, model.language),
+            Triple("getVssId", STRING, model.vss),
+            Triple("getCaptionUrl", STRING, abi.url),
+            Triple("getCaptionLabel", LABEL, abi.label)
+        )) {
+            track.addTranslationHelper("universalCaptions_$name", emptyList(), type, 1, """
+                ${readSmali(reference)}
+                return-object v0
+            """)
+        }
         track.addTranslationHelper("universalCaptions_copyTranslation", listOf(STRING, STRING, STRING, LABEL), TRACK_INTERFACE, 1, """
             new-instance v0, ${abi.builder.type}
             invoke-direct { v0, p0 }, ${abi.copy}

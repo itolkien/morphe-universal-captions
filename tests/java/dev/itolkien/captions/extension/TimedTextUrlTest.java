@@ -27,6 +27,10 @@ class TimedTextUrlTest {
         }
     }
 
+    @Test void emptyRawQueryIsNotAValidTimedTextSource() {
+        assertNull(TimedTextUrl.parse("https://www.youtube.com/api/timedtext?"));
+    }
+
     @Test void onlyTrustsTheOfficialTimedtextHostAndPath() {
         assertNull(TimedTextUrl.parse(URL.replace("https:", "http:")));
         assertNull(TimedTextUrl.parse(URL.replace("www.youtube.com", "youtube.com.evil.example")));

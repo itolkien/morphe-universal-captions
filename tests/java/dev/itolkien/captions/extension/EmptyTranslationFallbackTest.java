@@ -39,6 +39,22 @@ class EmptyTranslationFallbackTest {
         public List<CaptionTrack> universalCaptions_nativeTranslated(boolean bypassFallback) { return translations; }
         public CaptionTrack universalCaptions_autoTranslateOption() { return option; }
     }
+    @Test void exportedMenuHooksPreserveTheNativeListsAndAppLocale() {
+        Source source = new Source();
+        List<CaptionTrack> direct = EmptyTranslationFallback.fallbackDirect(source.direct, source);
+        assertEquals(3, direct.size());
+        assertSame(source.option, direct.get(2));
+        assertEquals(2, source.direct.size());
+
+        List<CaptionTrack> translated = EmptyTranslationFallback.fallbackTranslated(source.translations, source);
+        CaptionTrack turkish = translated.stream()
+                .filter(track -> "tr".equals(track.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow();
+        assertEquals("Turkish", turkish.universalCaptions_getCaptionLabel());
+        assertEquals(URL + "&tlang=tr", turkish.universalCaptions_getCaptionUrl());
+        assertEquals(0, source.translations.size());
+    }
+
     @Test void menuRowDoesNotAllocateTranslatedTracks() {
         Source source = new Source();
         source.direct = List.of(new Track("ar", URL, "a.ar") {

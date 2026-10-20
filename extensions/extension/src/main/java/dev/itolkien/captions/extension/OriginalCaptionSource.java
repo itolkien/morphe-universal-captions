@@ -43,8 +43,7 @@ final class OriginalCaptionSource {
         try {
             String url = track.universalCaptions_getCaptionUrl();
             TimedTextUrl timedText = TimedTextUrl.parse(url);
-            if (timedText == null || !timedText.hasQueryContent()
-                    || timedText.field("tlang") != null) return null;
+            if (timedText == null || timedText.field("tlang") != null) return null;
             String video = timedText.field("v");
             String urlLanguage = timedText.field("lang");
             String kind = timedText.field("kind");

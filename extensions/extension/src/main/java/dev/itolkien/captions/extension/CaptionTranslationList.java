@@ -66,109 +66,87 @@ public final class CaptionTranslationList {
         return expanded;
     }
 
-    /** Select an alternate native audio-compatible original only when target cloning cannot extend the list. */
+    /**
+     * Expand both nonempty native translation lists and empty menus in one path.
+     * Prefer a validated native translation prototype; only consult the current
+     * audio's original source when it cannot add missing languages.
+     */
     static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets,
             Supplier<OriginalCaptionSource> nativeOriginal) {
-        if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
+        if (tracks == null || locale == null || (tracks.isEmpty() && nativeOriginal == null)) return tracks;
+
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;
         String sourceIdentity = null;
+        boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
             if (track == null) continue;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
             String identity = translationSourceIdentity(track);
             if (identity == null) continue;
-            if (prototype != null && !sourceIdentity.equals(identity)) {
-                // Preserve YouTube's target-specific native source objects. A native
-                // audio-compatible original may supply only the missing targets.
-                return unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
+            if (sourceIdentity != null && !sourceIdentity.equals(identity)) {
+                mixedSources = true;
+                break;
             }
             if (prototype == null) {
                 prototype = track;
                 sourceIdentity = identity;
             }
         }
-        if (prototype != null) {
+
+        if (!mixedSources && prototype != null) {
             String oldLanguage = prototype.universalCaptions_getLanguageCode();
             String oldUrl = prototype.universalCaptions_getCaptionUrl();
             String oldVss = prototype.universalCaptions_getVssId();
-            String vssPrefix = oldVss.substring(0, oldVss.length() - oldLanguage.length());
-
-            // Keep opaque/signed bytes untouched, replacing only the real query target.
-            TimedTextUrl timedText = TimedTextUrl.parse(oldUrl);
-            int targetAt = timedText == null ? -1 : timedText.targetValueOffset(oldLanguage);
-            if (targetAt < 0)
-                return unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
-            String urlPrefix = oldUrl.substring(0, targetAt);
-            String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
-            String sourceKey = languageKey(timedText.field("lang"));
-
-            for (String code : expandedTargets(nativeTargets,
-                    code -> !sourceKey.equals(languageKey(code)))) {
-                String key = languageKey(code);
-                if (sourceKey.equals(key) || !represented.add(key)) continue;
-                String name = Locale.forLanguageTag(code).getDisplayName(locale);
-                if (name.isEmpty()) name = code;
-                result.add(prototype.universalCaptions_copyTranslation(
-                        code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
+            TimedTextUrl url = TimedTextUrl.parse(oldUrl);
+            int targetAt = url == null ? -1 : url.targetValueOffset(oldLanguage);
+            if (targetAt >= 0) {
+                String urlPrefix = oldUrl.substring(0, targetAt);
+                String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
+                String vssPrefix = oldVss.substring(0, oldVss.length() - oldLanguage.length());
+                String sourceKey = languageKey(url.field("lang"));
+                for (String code : expandedTargets(nativeTargets,
+                        candidate -> !sourceKey.equals(languageKey(candidate)))) {
+                    String key = languageKey(code);
+                    if (sourceKey.equals(key) || !represented.add(key)) continue;
+                    String name = Locale.forLanguageTag(code).getDisplayName(locale);
+                    if (name.isEmpty()) name = code;
+                    result.add(prototype.universalCaptions_copyTranslation(
+                            code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
+                }
             }
         }
-        return result.size() > tracks.size() ? sorted(result, locale)
-                : unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
-    }
+        if (result.size() > tracks.size()) return sorted(result, locale);
+        if (nativeOriginal == null) return sorted(result, locale);
 
-    private static List<CaptionTrack> unresolved(List<CaptionTrack> original,
-            List<CaptionTrack> unchanged, Locale locale, List<String> nativeTargets,
-            Supplier<OriginalCaptionSource> nativeOriginal) {
-        if (nativeOriginal == null) return sorted(unchanged, locale);
-        return mergeFromSelectedSource(original, nativeOriginal.get(), locale, nativeTargets);
-    }
-
-    private static void appendFromSource(List<CaptionTrack> output, Set<String> represented,
-            OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
-        for (String target : expandedTargets(nativeTargets, source::canTranslate)) {
-            if (represented.contains(languageKey(target))) continue;
-            CaptionTrack translated = source.translate(target, locale);
-            if (translated != null) {
-                output.add(translated);
-                represented.add(languageKey(target));
-            }
-        }
-    }
-
-    static List<CaptionTrack> fromSource(OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
-        List<CaptionTrack> result = new ArrayList<>();
-        if (locale == null || source == null) return result;
-        appendFromSource(result, new HashSet<>(), source, locale, nativeTargets);
-        return sorted(result, locale);
-    }
-
-    /** Keep native per-target routing; fill missing targets from the verified
-     * current-audio eligible original, never from an arbitrary translated track.
-     */
-    static List<CaptionTrack> mergeFromSelectedSource(List<CaptionTrack> nativeTracks,
-            OriginalCaptionSource selected, Locale locale, List<String> nativeTargets) {
-        if (nativeTracks == null || nativeTracks.isEmpty() || selected == null || locale == null)
-            return nativeTracks;
-        Set<String> represented = new HashSet<>();
-        for (CaptionTrack track : nativeTracks) {
-            if (track == null || translationSourceIdentity(track) == null)
-                return nativeTracks;
+        // Preserve every native target and fail closed if a native track is
+        // malformed or comes from a different video than the selected original.
+        OriginalCaptionSource selected = nativeOriginal.get();
+        if (selected == null) return tracks;
+        represented.clear();
+        for (CaptionTrack track : tracks) {
+            if (track == null || translationSourceIdentity(track) == null) return tracks;
             TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
-            if (url == null || url.field("v") != null
-                    && !selected.videoId().equals(url.field("v")))
-                return nativeTracks;
+            if (url == null || url.field("v") != null && !selected.videoId().equals(url.field("v")))
+                return tracks;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
         }
 
-        List<CaptionTrack> result = new ArrayList<>(nativeTracks);
-        appendFromSource(result, represented, selected, locale, nativeTargets);
-        return sorted(result, locale);
+        for (String target : expandedTargets(nativeTargets, selected::canTranslate)) {
+            if (represented.contains(languageKey(target))) continue;
+            CaptionTrack translation = selected.translate(target, locale);
+            if (translation != null) {
+                result.add(translation);
+                represented.add(languageKey(target));
+            }
+        }
+        return result.isEmpty() ? tracks : sorted(result, locale);
     }
 
     /** Validate each native translated track and identify its original source and video. */
-    private static String translationSourceIdentity(CaptionTrack track) {
+    /** Shared with caption styling: malformed translated sources must never bypass native pens. */
+    static String translationSourceIdentity(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
         String vss = track.universalCaptions_getVssId();
         if (!validLanguageCode(code) || vss == null ||

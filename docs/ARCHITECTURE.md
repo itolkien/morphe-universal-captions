@@ -24,13 +24,14 @@ There is no diagnostic probe logger in the shipped extension.
 - `TimedTextUrl` validates signed YouTube timedtext URLs, preserving all
   unrelated query bytes.
 - `OriginalCaptionSource` holds one validated caption source and video.
-- `CaptionTranslationList` preserves native translated entries and fills
-  missing targets. Its fallback catalog is a dated YouTube player snapshot,
-  not proof that the server will serve each translation.
+- `CaptionTranslationList.augment` is the single expansion path for native
+  translated entries and an empty menu. It prefers a verified native prototype,
+  consulting the current-audio original only when necessary. The dated YouTube
+  player language snapshot is not proof of server-side translation availability.
 - `EmptyTranslationFallback` restores YouTube's native Auto-translate row
   where a safe original exists. It intersects the native current-audio caption
   indices with eligible source indices and rejects ambiguous fallback choices.
-- `NativeTranslationBridge` supplies the current app locale and menu hooks.
+- `EmptyTranslationFallback` handles the menu hooks and resolves the current app locale.
 
 No source URL is shared across caption managers or videos. The extension
 does not persist or change caption preferences, visibility or the selected
@@ -58,3 +59,25 @@ which does not include copyrighted app binaries.
 
 Earlier 2.x behavior is in the v2.1.0 tag and
 [historical fallback notes](EMPTY_TRANSLATION_EXPERIMENT.md).
+
+## Release acceptance gate
+
+The plugin must pass three separate checks before merging this draft into
+\`main\` or publishing a new binary:
+
+1. **JVM regressions:** Java menu, source identity, signed-URL and pen-scope
+   tests, plus structural Kotlin ABI tests. Do not delete failed assertions to
+   get a green run.
+2. **Android artifact:** Build the independently installable MPP against the
+   pinned template, verify DEX/NOTICE/version metadata and review the diff.
+   This demonstrates a valid artifact, **not** compatibility with a YouTube APK.
+3. **Clean-APK smoke tests:** Patch and run **both** YouTube 21.20.405 and
+   21.41.525 on Android, verifying direct subtitles, native translations,
+   newly synthesized targets, restored Auto-translate rows, cached and
+   concurrent caption parsing, original pen styling, captions-off and
+   multi-audio source selection. Capture the tested APK and MPP checksums.
+
+The structural Kotlin code resolves obfuscated fields, methods and register
+layouts. It is deliberately not replaced with Morphe-specific fingerprints:
+standalone hook installation still needs verified mappings. All mutations to
+this layer require new clean-APK patch and device evidence.

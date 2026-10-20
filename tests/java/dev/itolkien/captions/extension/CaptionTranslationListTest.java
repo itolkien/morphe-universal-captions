@@ -71,6 +71,51 @@ public class CaptionTranslationListTest {
         }
     }
 
+    @Test public void emptyNativeListUsesTheSameValidatedOriginalSource() {
+        String sourceUrl = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a%2Bb";
+        Track source = new Track("en", sourceUrl, ".en", "English");
+        List<CaptionTranslationList.CaptionTrack> empty = List.of();
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                empty, Locale.ENGLISH, List.of("de", "tr"), () -> OriginalCaptionSource.from(source));
+
+        assertTrue(result.size() > 100);
+        assertEquals(sourceUrl + "&tlang=tr", language(result, "tr").universalCaptions_getCaptionUrl());
+        assertFalse(result.stream().anyMatch(track ->
+                "en".equals(track.universalCaptions_getLanguageCode())));
+        assertTrue(empty.isEmpty());
+    }
+
+    @Test public void nativePrototypeDoesNotLookUpAnUnneededCurrentAudioSource() {
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                List.of(german()), Locale.ENGLISH, List.of("de", "tr"), () -> {
+                    fail("Current-audio source must remain lazy for a valid native prototype");
+                    return null;
+                });
+        assertTrue(result.size() > 100);
+    }
+
+    @Test public void malformedNativeTranslationDoesNotFallBackToAnUnrelatedSource() {
+        String sourceUrl = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en";
+        Track selected = new Track("en", sourceUrl, ".en", "English");
+        Track corrupt = new Track("de",
+                sourceUrl + "&tlang=de&tlang=de", "t.en.de", "German");
+        List<CaptionTranslationList.CaptionTrack> nativeList = List.of(corrupt);
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                nativeList, Locale.ENGLISH, List.of("tr"), () -> OriginalCaptionSource.from(selected));
+        assertSame(nativeList, result);
+    }
+
+    @Test public void mixedNativeSourcesKeepTheirNativeTracksAndDoNotGuess() {
+        Track english = german();
+        Track french = new Track("fr",
+                URL.replace("lang=en", "lang=fr").replace("tlang=de", "tlang=fr"),
+                "ta.fr.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeList = List.of(english, french);
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                nativeList, Locale.ENGLISH, List.of("tr"), () -> null);
+        assertSame(nativeList, result);
+    }
+
     @Test public void smallNativeCatalogStillOffersAdditionalTargetsWhenSourceIsKnown() {
         Track nativeGerman = german();
         List<CaptionTranslationList.CaptionTrack> expanded = augment(

@@ -27,7 +27,7 @@ class CaptionPenStylesTest {
         }
     }
 
-    static final class Carrier implements CaptionPenStyles.CaptionCarrier {
+    static class Carrier implements CaptionPenStyles.CaptionCarrier {
         final CaptionTrack track;
         Carrier(CaptionTrack track) { this.track = track; }
         public CaptionTrack universalCaptions_styleTrack() { return track; }
@@ -109,6 +109,36 @@ class CaptionPenStylesTest {
             assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(11));
         });
         assertEquals(11, CaptionPenStyles.getPenId(11));
+    }
+
+    @Test void parserIdentityGetterFailureKeepsTheOriginalPensAndRestoresOuterScope() {
+        Carrier broken = new Carrier(null) {
+            @Override public CaptionTrack universalCaptions_styleTrack() {
+                throw new IllegalStateException("Native request object changed");
+            }
+        };
+        within(translated(), () -> {
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(9));
+            within(broken, () -> assertEquals(9, CaptionPenStyles.getPenId(9)));
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(9));
+        });
+        assertEquals(9, CaptionPenStyles.getPenId(9));
+    }
+
+    @Test void parserIdentityGetterLinkageErrorKeepsTheOriginalPens() {
+        Carrier broken = new Carrier(null) {
+            @Override public CaptionTrack universalCaptions_styleTrack() {
+                throw new NoSuchMethodError("Version-dependent caption accessor");
+            }
+        };
+        within(broken, () -> assertEquals(9, CaptionPenStyles.getPenId(9)));
+        assertEquals(9, CaptionPenStyles.getPenId(9));
+    }
+
+    @Test void malformedNativeTranslationRetainsTheOriginalPen() {
+        within(new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.xx.tr")),
+                () -> assertEquals(7, CaptionPenStyles.getPenId(7)));
+        assertEquals(7, CaptionPenStyles.getPenId(7));
     }
 
     @Test void sourceAndTargetIdentitiesMustAgree() {

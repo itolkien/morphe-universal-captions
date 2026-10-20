@@ -10,12 +10,10 @@ import java.util.Map;
 /** Validates YouTube timedtext URLs without changing their signed query bytes. */
 final class TimedTextUrl {
     private final String url;
-    private final URI uri;
     private final Map<String, String> fields;
 
-    private TimedTextUrl(String url, URI uri, Map<String, String> fields) {
+    private TimedTextUrl(String url, Map<String, String> fields) {
         this.url = url;
-        this.uri = uri;
         this.fields = fields;
     }
 
@@ -37,10 +35,7 @@ final class TimedTextUrl {
 
     static TimedTextUrl parse(String url) {
         URI uri = trustedUri(url);
-        return uri == null ? null : parse(url, uri);
-    }
-
-    static TimedTextUrl parse(String url, URI uri) {
+        if (uri == null || uri.getRawQuery().isEmpty()) return null;
         try {
             Map<String, String> fields = new HashMap<>();
             for (String part : uri.getRawQuery().split("&", -1)) {
@@ -53,7 +48,7 @@ final class TimedTextUrl {
                 String rawValue = equals < 0 ? "" : part.substring(equals + 1);
                 fields.put(key, URLDecoder.decode(rawValue, "UTF-8"));
             }
-            return new TimedTextUrl(url, uri, fields);
+            return new TimedTextUrl(url, fields);
         } catch (IllegalArgumentException | NullPointerException | java.io.UnsupportedEncodingException ignored) {
             return null;
         }
@@ -61,10 +56,6 @@ final class TimedTextUrl {
 
     String field(String name) {
         return fields.get(name);
-    }
-
-    boolean hasQueryContent() {
-        return !uri.getRawQuery().isEmpty();
     }
 
     /** Stable source identity across different native tlang values; keep every other signed byte. */

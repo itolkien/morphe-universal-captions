@@ -9,6 +9,27 @@ import dev.itolkien.captions.extension.CaptionTranslationList.CaptionTrack;
 /** Per-manager, current-audio opt-in fallback. Never stores state or selects/enables a caption. */
 public final class EmptyTranslationFallback {
     private EmptyTranslationFallback() { }
+
+    private static Locale menuLocale() {
+        try {
+            // Resolve at runtime to avoid dependencies between independent patch bundles.
+            Object locale = Class.forName("app.morphe.extension.shared.requests.Requester")
+                    .getMethod("getAppLocale").invoke(null);
+            if (locale instanceof Locale) return (Locale) locale;
+        } catch (ReflectiveOperationException | LinkageError ignored) { }
+        return Locale.getDefault();
+    }
+
+    public static List<CaptionTrack> fallbackDirect(List<CaptionTrack> tracks,
+            EmptyTranslationFallback.CaptionSource source) {
+        return EmptyTranslationFallback.direct(tracks, source, menuLocale());
+    }
+
+    public static List<CaptionTrack> fallbackTranslated(List<CaptionTrack> tracks,
+            EmptyTranslationFallback.CaptionSource source) {
+        return EmptyTranslationFallback.translated(tracks, source, menuLocale());
+    }
+
     private static final String AUTO = "AUTO_TRANSLATE_CAPTIONS_OPTION";
 
     /** Implemented by the native list model; getters bypass the fallback hooks. */
@@ -49,15 +70,9 @@ public final class EmptyTranslationFallback {
     public static List<CaptionTrack> translated(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
-            List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
-            if (!tracks.isEmpty())
-                return CaptionTranslationList.augment(tracks, locale, nativeTargets,
-                        () -> selectSource(source.universalCaptions_nativeDirect(true), source));
-            OriginalCaptionSource candidate = selectSource(
-                    source.universalCaptions_nativeDirect(true), source);
-            if (candidate == null) return tracks;
-            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
-            return result.isEmpty() ? tracks : result;
+            return CaptionTranslationList.augment(tracks, locale,
+                    source.universalCaptions_targetLanguages(true),
+                    () -> selectSource(source.universalCaptions_nativeDirect(true), source));
         } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }

@@ -20,7 +20,7 @@ class CaptionNativeWiringTest {
         assertTrue(classes.any { nativeMarker in it.interfaces && addonMarker in it.interfaces },
             "The runtime marker must be on the actual addon caption track class")
         val nativeOwner = "Lapp/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch;"
-        val addonOwner = "Ldev/itolkien/captions/extension/NativeTranslationBridge;"
+        val addonOwner = "Ldev/itolkien/captions/extension/EmptyTranslationFallback;"
         assertTrue(classes.flatMap { it.methods }.any { method ->
             val calls = method.implementation?.instructions?.mapNotNull {
                 (it as? ReferenceInstruction)?.reference as? MethodReference

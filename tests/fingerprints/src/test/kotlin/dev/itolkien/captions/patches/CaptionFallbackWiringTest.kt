@@ -31,7 +31,7 @@ class CaptionFallbackWiringTest {
         assertEquals(clean.direct.name, discovered.direct.name)
         val model = patchedClasses.single { it.type == clean.translated.definingClass }
         val source = "Ldev/itolkien/captions/extension/EmptyTranslationFallback\$CaptionSource;"
-        val bridge = "Ldev/itolkien/captions/extension/NativeTranslationBridge;"
+        val bridge = "Ldev/itolkien/captions/extension/EmptyTranslationFallback;"
         assertTrue(source in model.interfaces, "The native manager must implement the raw-source bridge")
         val direct = clean.translated.definingClass.let { owner ->
             classes(baseline).single { it.type == owner }.methods.single { method ->
