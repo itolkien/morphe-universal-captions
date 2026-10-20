@@ -133,24 +133,20 @@ public final class CaptionTranslationList {
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
         }
 
-        appendFromSource(result, represented, selected, locale, nativeTargets);
-        return result.isEmpty() ? tracks : sorted(result, locale);
-    }
-
-    private static void appendFromSource(List<CaptionTrack> output, Set<String> represented,
-            OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
-        for (String target : expandedTargets(nativeTargets, source::canTranslate)) {
+        for (String target : expandedTargets(nativeTargets, selected::canTranslate)) {
             if (represented.contains(languageKey(target))) continue;
-            CaptionTrack translated = source.translate(target, locale);
-            if (translated != null) {
-                output.add(translated);
+            CaptionTrack translation = selected.translate(target, locale);
+            if (translation != null) {
+                result.add(translation);
                 represented.add(languageKey(target));
             }
         }
+        return result.isEmpty() ? tracks : sorted(result, locale);
     }
 
     /** Validate each native translated track and identify its original source and video. */
-    private static String translationSourceIdentity(CaptionTrack track) {
+    /** Shared with caption styling: malformed translated sources must never bypass native pens. */
+    static String translationSourceIdentity(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
         String vss = track.universalCaptions_getVssId();
         if (!validLanguageCode(code) || vss == null ||

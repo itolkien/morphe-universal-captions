@@ -39,13 +39,7 @@ public final class CaptionPenStyles {
             try {
                 CaptionTrack track = ((CaptionCarrier) request).universalCaptions_styleTrack();
                 if (track != null) {
-                    String code = track.universalCaptions_getLanguageCode();
-                    String vss = track.universalCaptions_getVssId();
-                    TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
-                    translated = CaptionTranslationList.validLanguageCode(code)
-                            && vss != null && vss.startsWith("t") && vss.endsWith("." + code)
-                            && url != null && code.equals(url.field("tlang"))
-                            && url.targetValueOffset(code) >= 0;
+                    translated = CaptionTranslationList.translationSourceIdentity(track) != null;
                 }
             } catch (RuntimeException | LinkageError ignored) {
                 // An unknown native track must never alter the original's creator styles.

@@ -135,6 +135,12 @@ class CaptionPenStylesTest {
         assertEquals(9, CaptionPenStyles.getPenId(9));
     }
 
+    @Test void malformedNativeTranslationRetainsTheOriginalPen() {
+        within(new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.xx.tr")),
+                () -> assertEquals(7, CaptionPenStyles.getPenId(7)));
+        assertEquals(7, CaptionPenStyles.getPenId(7));
+    }
+
     @Test void sourceAndTargetIdentitiesMustAgree() {
         within(new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.en.fr")),
                 () -> assertEquals(5, CaptionPenStyles.getPenId(5)));
