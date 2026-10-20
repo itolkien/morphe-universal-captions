@@ -2,7 +2,7 @@
 
 # Comprehensive translation menu experiment
 
-Version: **2.0.1-experiment.4**. Branch: `experiment/empty-translation-fallback`. [PR #5](https://github.com/itolkien/morphe-universal-captions/pull/5) remains draft.
+Version: **2.0.1-experiment.4**. Branch: `experiment/empty-translation-fallback`. [PR #5](https://github.com/itolkien/universal-captions/pull/5) remains draft.
 
 ## Scope and use
 

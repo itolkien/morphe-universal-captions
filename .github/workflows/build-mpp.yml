@@ -51,12 +51,12 @@ jobs:
           p=Path("template/patches/build.gradle.kts")
           s=p.read_text()
           s=s.replace('group = "app.template"', 'group = "dev.itolkien.captions"')
-          s=s.replace('name = "UserXYZ Patches"', 'name = "Morphe Universal Captions"')
+          s=s.replace('name = "UserXYZ Patches"', 'name = "Universal Captions"')
           s=s.replace('description = "Patches for apps I like"', 'description = "Native YouTube translation languages and missing menu fallback; caption preferences remain managed by Morphe."')
-          s=s.replace('source = "git@github.com:UserXYZ/morphe-patches.git"', 'source = "https://github.com/itolkien/morphe-universal-captions"')
+          s=s.replace('source = "git@github.com:UserXYZ/morphe-patches.git"', 'source = "https://github.com/itolkien/universal-captions"')
           s=s.replace('author = "Awesome dev"', 'author = "itolkien"')
-          s=s.replace('contact = "na"', 'contact = "https://github.com/itolkien/morphe-universal-captions/issues"')
-          s=s.replace('website = "na"', 'website = "https://github.com/itolkien/morphe-universal-captions"')
+          s=s.replace('contact = "na"', 'contact = "https://github.com/itolkien/universal-captions/issues"')
+          s=s.replace('website = "na"', 'website = "https://github.com/itolkien/universal-captions"')
           p.write_text(s)
           PY
       - uses: actions/setup-java@v4
@@ -118,7 +118,7 @@ jobs:
           version = os.environ["RELEASE_VERSION"]
           feed = json.loads(Path("addon/patches-bundle.json").read_text())
           assert feed["version"] == version, "Manager bundle version mismatch"
-          expected = (f"https://github.com/itolkien/morphe-universal-captions/"
+          expected = (f"https://github.com/itolkien/universal-captions/"
                       f"releases/download/v{version}/universal-captions-{version}.mpp")
           assert feed["download_url"] == expected, "Manager download URL mismatch"
           PYSOURCE
