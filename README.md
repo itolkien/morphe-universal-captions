@@ -4,7 +4,7 @@ YouTube on Android sometimes shows only a short Auto-translate language list, ev
 
 Universal Captions fixes those cases inside the YouTube app. It uses YouTube's own caption tracks and translation endpoint. No external translator, overlay or separate player.
 
-I developed Universal Captions independently as a standalone patch. The Morphe maintainers later asked me to integrate it into their patch set. This repository is the original project; Morphe Manager is one way to install it.
+I developed Universal Captions independently as a standalone patch. **This repository is the original project**, including its source code, tests and release history; Morphe Manager is one way to install it. The newer implementation is being adapted into Morphe's existing Captions feature through [Morphe PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891). That integration builds on my original work while also including substantial changes by Morphe maintainers. This repository remains the home of the original Universal Captions releases, not an alias for Morphe's patch.
 
 [Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Funiversal-captions&name=Universal%20Captions) · [Download 3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1) · [Issues](https://github.com/itolkien/universal-captions/issues)
 
