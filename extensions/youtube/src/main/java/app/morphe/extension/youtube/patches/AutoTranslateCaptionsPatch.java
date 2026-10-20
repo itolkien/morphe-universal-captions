@@ -287,6 +287,19 @@ public final class AutoTranslateCaptionsPatch {
                 ? video : null;
     }
 
+    /** A valid translated document needs a native target, not a clone-safe source. */
+    static boolean translatedCaptionStyles(CaptionTrackInterface track) {
+        if (track == null) return false;
+        String language = track.patch_getLanguageCode(), vss = track.patch_getVssId();
+        if (language == null || !LANGUAGE_CODE_PATTERN.matcher(language).matches()
+                || vss == null || !vss.startsWith("t") || !vss.endsWith("." + language))
+            return false;
+        String url = track.patch_getUrl();
+        Map<String, String> fields = captionParameters(url);
+        return fields != null && language.equals(fields.get("tlang"))
+                && targetValueOffset(url, language) >= 0;
+    }
+
     /** Reject target-specific source mixes even if their language labels match. */
     static String translationSourceIdentity(CaptionTrackInterface track) {
         if (track == null) return null;

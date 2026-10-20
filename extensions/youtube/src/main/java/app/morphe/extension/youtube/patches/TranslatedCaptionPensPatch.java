@@ -53,7 +53,7 @@ public class TranslatedCaptionPensPatch {
             try {
                 Object track = captionRequest.patch_getCaptionTrack();
                 translated = track instanceof AutoTranslateCaptionsPatch.CaptionTrackInterface caption
-                        && AutoTranslateCaptionsPatch.translationSourceIdentity(caption) != null;
+                        && AutoTranslateCaptionsPatch.translatedCaptionStyles(caption);
             } catch (RuntimeException | LinkageError ignored) {
                 // Unknown native layouts must not modify the original pen styling.
             }

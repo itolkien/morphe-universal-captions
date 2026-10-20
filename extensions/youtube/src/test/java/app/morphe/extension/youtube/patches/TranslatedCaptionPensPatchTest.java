@@ -85,6 +85,16 @@ public class TranslatedCaptionPensPatchTest {
                 () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
     }
 
+    @Test public void translatedPenRecognitionMatchesNativeTargetEvenWhenSourceCannotClone() {
+        // Original 3.0.1 styling detects the translated document separately from
+        // the stricter validation required to create additional translation tracks.
+        Track nativeTarget = new Track("tr", "ta.en.tr",
+                ORIGINAL.replace("lang=en", "lang=fr") + "&tlang=tr");
+        within(new Request(nativeTarget),
+                () -> assertEquals(DEFAULT_PEN, TranslatedCaptionPensPatch.getPenId(7)));
+        org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.translationSourceIdentity(nativeTarget));
+    }
+
     @Test public void failedNativeGettersFailClosed() {
         within(translated(), () -> {
             within((TranslatedCaptionPensPatch.CaptionRequestInterface) () -> {
