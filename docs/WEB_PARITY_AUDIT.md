@@ -134,9 +134,13 @@ The addon currently derives names with the app's `Locale`. This is sensible
 but not always guaranteed to match server-provided labels. Import native
 names only when the ABI can locate them without adding fragile guesses.
 
-## Morphe replacement (after this repository is reviewed)
+## Morphe integration
 
-- Port the implementation in this repository into Morphe's extension and
+The Morphe maintainers invited the author to integrate this standalone
+project into their patch set. The integration should use this code as the
+starting point, without keeping a second copy of the existing caption hooks.
+
+- Bring the implementation in this repository into Morphe's extension and
   bytecode patch packages with one code path.
 - Remove the old native `AutoTranslateCaptionsPatch` and
   `TranslatedCaptionPensPatch` implementations and their old dependency

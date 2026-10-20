@@ -2,7 +2,8 @@
 
 Universal Captions adds missing translation choices to YouTube's native caption
 model. It does not select the user's language, turn captions on or fetch text
-from another translation service.
+from another translation service. The project was developed independently
+by itolkien; Morphe's tooling is used to package and distribute the patch.
 
 ## Patch-time resolution
 
