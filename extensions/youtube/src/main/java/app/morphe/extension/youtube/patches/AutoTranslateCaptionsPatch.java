@@ -110,12 +110,12 @@ public final class AutoTranslateCaptionsPatch {
 
         Set<String> existingLanguages = new HashSet<>();
         for (CaptionTrackInterface track : tracks) {
-            existingLanguages.add(getLanguageKey(track.patch_getLanguageCode()));
+            existingLanguages.add(exactTargetKey(track.patch_getLanguageCode()));
         }
 
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
         for (String code : TRANSLATION_LANGUAGES) {
-            if (existingLanguages.add(getLanguageKey(code))) {
+            if (existingLanguages.add(exactTargetKey(code))) {
                 String name = Locale.forLanguageTag(code).getDisplayName(locale);
                 result.add(template.patch_copyTranslation(
                         code, urlPrefix + code + urlSuffix, vssIdPrefix + code, name));
@@ -175,14 +175,14 @@ public final class AutoTranslateCaptionsPatch {
             Map<String, String> fields = captionParameters(track.patch_getUrl());
             if (fields == null || fields.get("v") != null && !video.equals(fields.get("v")))
                 return tracks;
-            represented.add(getLanguageKey(track.patch_getLanguageCode()));
+            represented.add(exactTargetKey(track.patch_getLanguageCode()));
         }
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
         for (String language : TRANSLATION_LANGUAGES) {
-            if (represented.contains(getLanguageKey(language))) continue;
+            if (represented.contains(exactTargetKey(language))) continue;
             CaptionTrackInterface translated = createTranslation(source, language, locale);
             if (translated != null) {
-                represented.add(getLanguageKey(language));
+                represented.add(exactTargetKey(language));
                 result.add(translated);
             }
         }
@@ -233,7 +233,7 @@ public final class AutoTranslateCaptionsPatch {
     static CaptionTrackInterface createTranslation(CaptionTrackInterface source, String language, Locale locale) {
         if (source == null || language == null || !LANGUAGE_CODE_PATTERN.matcher(language).matches()
                 || originalVideoId(source) == null
-                || getLanguageKey(language).equals(getLanguageKey(source.patch_getLanguageCode()))) return null;
+                || exactTargetKey(language).equals(exactTargetKey(source.patch_getLanguageCode()))) return null;
         String url = source.patch_getUrl();
         int fragment = url.indexOf('#');
         if (fragment < 0) fragment = url.length();
@@ -245,6 +245,7 @@ public final class AutoTranslateCaptionsPatch {
 
     /** Shared validation for original and translated caption URLs. */
     private static Map<String, String> captionParameters(String url) {
+        if (url == null) return null;
         try {
             URI uri = URI.create(url);
             String host = uri.getHost();
@@ -345,6 +346,29 @@ public final class AutoTranslateCaptionsPatch {
 
     private static String removeSuffix(String value, int suffixLength) {
         return value.substring(0, value.length() - suffixLength);
+    }
+
+    /** Target identity must retain region/script distinctions when expanding native lists. */
+    private static String exactTargetKey(String raw) {
+        if (raw == null) return "";
+        String code = raw.trim().replace('_', '-').toLowerCase(Locale.ROOT);
+        int dash = code.indexOf('-');
+        String primary = dash < 0 ? code : code.substring(0, dash);
+        String region = dash < 0 ? "" : code.substring(dash);
+        switch (primary) {
+            case "iw": return "he" + region;
+            case "in": return "id" + region;
+            case "ji": return "yi" + region;
+            case "tl": return "fil" + region;
+            case "nb": return "no" + region;
+            case "zh":
+                if (code.contains("-hant") || code.endsWith("-tw") || code.endsWith("-hk"))
+                    return "zh-hant";
+                if (code.contains("-hans") || code.endsWith("-cn") || code.endsWith("-sg"))
+                    return "zh-hans";
+                return code;
+            default: return code;
+        }
     }
 
     /**

@@ -163,6 +163,21 @@ public class AutoTranslateCaptionsPatchTest {
                 empty, direct, null, Locale.ENGLISH));
     }
 
+    @Test public void targetIdentityPreservesNativeRegionalVariants() {
+        Track regional = new Track("en-US", URL.replace("lang=en", "lang=fr")
+                + "&tlang=en-US", "ta.fr.en-US", "English (US)");
+        var result = add(List.of(regional), Locale.ENGLISH);
+        assertSame(regional, find(result, "en-US"));
+        find(result, "en");
+
+        Track original = new Track("en-US",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en-US",
+                ".en-US", "Original");
+        var fallback = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                List.of(), List.of(original), null, Locale.ENGLISH);
+        find(fallback, "en");
+    }
+
     @Test public void keepsBrazilianAndEuropeanPortugueseSeparate() {
         List<CaptionTrackInterface> result = add(List.of(new Track("pt", "Portuguese")), Locale.ENGLISH);
 
