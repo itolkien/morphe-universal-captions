@@ -94,6 +94,28 @@ public class CaptionTranslationListTest {
         assertTrue(result.size() > 100);
     }
 
+    @Test public void malformedNativeTranslationDoesNotFallBackToAnUnrelatedSource() {
+        String sourceUrl = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en";
+        Track selected = new Track("en", sourceUrl, ".en", "English");
+        Track corrupt = new Track("de",
+                sourceUrl + "&tlang=de&tlang=de", "t.en.de", "German");
+        List<CaptionTranslationList.CaptionTrack> nativeList = List.of(corrupt);
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                nativeList, Locale.ENGLISH, List.of("tr"), () -> OriginalCaptionSource.from(selected));
+        assertSame(nativeList, result);
+    }
+
+    @Test public void mixedNativeSourcesKeepTheirNativeTracksAndDoNotGuess() {
+        Track english = german();
+        Track french = new Track("fr",
+                URL.replace("lang=en", "lang=fr").replace("tlang=de", "tlang=fr"),
+                "ta.fr.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeList = List.of(english, french);
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                nativeList, Locale.ENGLISH, List.of("tr"), () -> null);
+        assertSame(nativeList, result);
+    }
+
     @Test public void smallNativeCatalogStillOffersAdditionalTargetsWhenSourceIsKnown() {
         Track nativeGerman = german();
         List<CaptionTranslationList.CaptionTrack> expanded = augment(

@@ -111,6 +111,30 @@ class CaptionPenStylesTest {
         assertEquals(11, CaptionPenStyles.getPenId(11));
     }
 
+    @Test void parserIdentityGetterFailureKeepsTheOriginalPensAndRestoresOuterScope() {
+        Carrier broken = new Carrier(null) {
+            @Override public CaptionTrack universalCaptions_styleTrack() {
+                throw new IllegalStateException("Native request object changed");
+            }
+        };
+        within(translated(), () -> {
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(9));
+            within(broken, () -> assertEquals(9, CaptionPenStyles.getPenId(9)));
+            assertEquals(DEFAULT_PEN, CaptionPenStyles.getPenId(9));
+        });
+        assertEquals(9, CaptionPenStyles.getPenId(9));
+    }
+
+    @Test void parserIdentityGetterLinkageErrorKeepsTheOriginalPens() {
+        Carrier broken = new Carrier(null) {
+            @Override public CaptionTrack universalCaptions_styleTrack() {
+                throw new NoSuchMethodError("Version-dependent caption accessor");
+            }
+        };
+        within(broken, () -> assertEquals(9, CaptionPenStyles.getPenId(9)));
+        assertEquals(9, CaptionPenStyles.getPenId(9));
+    }
+
     @Test void sourceAndTargetIdentitiesMustAgree() {
         within(new Carrier(new Track("tr", ORIGINAL + "&tlang=tr", "t.en.fr")),
                 () -> assertEquals(5, CaptionPenStyles.getPenId(5)));
