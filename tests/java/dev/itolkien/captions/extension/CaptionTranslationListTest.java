@@ -57,8 +57,8 @@ public class CaptionTranslationListTest {
         List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
                 List.of(german()), Locale.ENGLISH, List.of("de", "en", "el"));
         assertTrue(result.size() > 100);
-        assertEquals("de", result.get(0).universalCaptions_getLanguageCode());
-        assertEquals("el", result.get(1).universalCaptions_getLanguageCode());
+        assertEquals("de", language(result, "de").universalCaptions_getLanguageCode());
+        assertEquals("el", language(result, "el").universalCaptions_getLanguageCode());
         assertFalse(result.stream().anyMatch(t -> "en".equals(t.universalCaptions_getLanguageCode())));
 
         // Legacy aliases must not generate a self-translation either.
