@@ -380,6 +380,46 @@ public class AutoTranslateCaptionsPatchTest {
                 new Track("AUTO_TRANSLATE_CAPTIONS_OPTION", "", "", "Auto-translate")), source));
     }
 
+    @Test public void autoTranslateRowUsesActiveAudioSourceWithoutGuessing() {
+        Track english = new Track("en",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a",
+                ".en", "English");
+        Track french = new Track("fr",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr&sig=b",
+                ".fr", "French");
+        List<CaptionTrackInterface> direct = List.of(english, french);
+
+        // No current-audio guidance: an ambiguous source must not produce a menu.
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(0, direct, null));
+        // The same list becomes eligible when YouTube identifies the active source.
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(0, direct, french));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(0, direct, english));
+        // Never modify an already valid native row count.
+        assertEquals(2, AutoTranslateCaptionsPatch.restoredMenuCount(2, direct, null));
+    }
+
+    @Test public void autoTranslateRowRejectsOtherVideoOrUntrustedNativeSource() {
+        Track english = new Track("en",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a",
+                ".en", "English");
+        Track french = new Track("fr",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr&sig=b",
+                ".fr", "French");
+        List<CaptionTrackInterface> direct = List.of(english, french);
+
+        for (Track invalid : List.of(
+                new Track("fr", french.url + "&name=other", french.vss, "Mismatch"),
+                new Track("fr", "https://www.youtube.com/api/timedtext?v=zzzzzzzzzzz&lang=fr",
+                        french.vss, "Other video"),
+                new Track("fr", "https://evil.example/api/timedtext?v=abcdefghijk&lang=fr",
+                        french.vss, "Unsafe host")
+        )) {
+            assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(0, direct, invalid));
+        }
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(0, List.of(), french));
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(0, null, french));
+    }
+
     @Test public void nativeTranslationsStayPreferredOverMultipleSourceSynthesis() {
         Track english = new Track("en", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");
         Track french = new Track("fr", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr", ".fr", "French");

@@ -18,6 +18,7 @@ import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
 import app.morphe.patches.youtube.misc.settings.settingsPatch
 import app.morphe.util.addInstructionsAtControlFlowLabel
 import app.morphe.util.findInstructionIndicesReversedOrThrow
+import app.morphe.util.getFreeRegisterProvider
 import app.morphe.util.getReference
 import app.morphe.util.matchAllMethodIndicesForEach
 import app.morphe.util.registersUsed
@@ -127,10 +128,17 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
             val countMatch = instructionMatches[1]
             val count = countMatch.getInstruction<OneRegisterInstruction>().registerA
             val result = instructionMatches.last().getInstruction<OneRegisterInstruction>().registerA
+            val sourceRegister = method.getFreeRegisterProvider(
+                countMatch.index + 1, 1
+            ).getFreeRegister4Bit()
             method.addInstructions(
                 countMatch.index + 1,
                 """
-                    invoke-static { v$count, v$result }, $EXTENSION_CLASS->getTranslationCount(ILjava/util/List;)I
+                    # Work with the native active-audio source, not the first arbitrary direct track.
+                    move-object/from16 v$sourceRegister, p0
+                    invoke-virtual { v$sourceRegister }, $translationSource
+                    move-result-object v$sourceRegister
+                    invoke-static { v$count, v$result, v$sourceRegister }, $EXTENSION_CLASS->getTranslationCount(ILjava/util/List;$PREFERRED_CAPTION_TRACK_INTERFACE)I
                     move-result v$count
                 """
             )

@@ -137,14 +137,22 @@ public final class AutoTranslateCaptionsPatch {
 
     /** Keep YouTube's native menu construction and its other availability checks. */
     public static int getTranslationCount(int nativeCount,
-            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks) {
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
+        if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return nativeCount;
         try {
-            return nativeCount > 0 || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
-                    || findFallbackSource(directTracks, null) == null ? nativeCount : 1;
-        } catch (Exception ex) {
-            Logger.printException(() -> "getTranslationCount failure", ex);
+            return restoredMenuCount(nativeCount, directTracks, audioSource);
+        } catch (RuntimeException | LinkageError ignored) {
             return nativeCount;
         }
+    }
+
+    /** Preserve YouTube's count unless an eligible, validated native source is available. */
+    static int restoredMenuCount(int nativeCount,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
+        if (nativeCount != 0) return nativeCount;
+        return findFallbackSource(directTracks, audioSource) == null ? 0 : 1;
     }
 
     /** Called by the manager adapter, not recursively from either native list getter. */
