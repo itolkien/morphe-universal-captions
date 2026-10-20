@@ -107,6 +107,62 @@ public class AutoTranslateCaptionsPatchTest {
         assertSame(input, add(input, Locale.ENGLISH));
     }
 
+    @Test public void encodedOrIncompleteTargetParametersAreRejected() {
+        for (String suffix : List.of("&tlang=de&%74lang=fr", "&tlang=de&tlang",
+                "&tlang=de&%74lang", "&%74lang=de")) {
+            Track track = new Track("de", URL + suffix, "ta.en.de", "German");
+            List<CaptionTrackInterface> nativeList = List.of(track);
+            assertSame(suffix, nativeList, add(nativeList, Locale.ENGLISH));
+        }
+    }
+
+    @Test public void nativeTracksFromDifferentSourcesAreNotClonedFromTheFirst() {
+        Track german = new Track("de", URL + "&tlang=de", "ta.en.de", "German");
+        Track french = new Track("fr", URL.replace("lang=en", "lang=es")
+                + "&tlang=fr", "ta.es.fr", "French");
+        List<CaptionTrackInterface> nativeList = List.of(german, french);
+        assertSame(nativeList, add(nativeList, Locale.ENGLISH));
+    }
+
+    @Test public void differentSignedUrlsOrVideosRemainUnchanged() {
+        Track german = new Track("de", URL + "&tlang=de", "ta.en.de", "German");
+        for (String frenchUrl : List.of(URL + "&name=other&tlang=fr",
+                URL.replace("v=video", "v=otherVideo") + "&tlang=fr")) {
+            Track french = new Track("fr", frenchUrl, "ta.en.fr", "French");
+            List<CaptionTrackInterface> nativeList = List.of(german, french);
+            assertSame(nativeList, add(nativeList, Locale.ENGLISH));
+        }
+    }
+
+    @Test public void verifiedAudioSourceFillsOnlyMissingMixedNativeTargets() {
+        Track arabic = new Track("ar", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=ar&kind=asr&sig=x", "a.ar", "Arabic");
+        Track english = new Track("en", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=y", ".en", "English");
+        Track german = new Track("de", arabic.url + "&tlang=de", "ta.ar.de", "German");
+        Track french = new Track("fr", english.url + "&tlang=fr", "t.en.fr", "French");
+        List<CaptionTrackInterface> nativeList = List.of(german, french);
+        assertSame(nativeList, add(nativeList, Locale.ENGLISH));
+        List<CaptionTrackInterface> merged = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                nativeList, List.of(arabic, english), english, Locale.ENGLISH);
+        assertSame(german, find(merged, "de"));
+        assertSame(french, find(merged, "fr"));
+        assertEquals(english.url + "&tlang=tr", find(merged, "tr").patch_getUrl());
+        List<CaptionTrackInterface> changedAudio = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                nativeList, List.of(arabic, english), arabic, Locale.ENGLISH);
+        assertEquals(arabic.url + "&tlang=tr", find(changedAudio, "tr").patch_getUrl());
+    }
+
+    @Test public void ambiguousSignedSourceSelectionRequiresNativeGuidance() {
+        String root = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=x";
+        Track first = new Track("en", root + "&name=first", ".en.same", "English");
+        Track second = new Track("en", root + "&name=second", ".en.same", "English");
+        List<CaptionTrackInterface> direct = List.of(first, second);
+        org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.findFallbackSource(direct, null));
+        assertSame(second, AutoTranslateCaptionsPatch.findFallbackSource(direct, second));
+        List<CaptionTrackInterface> empty = List.of();
+        assertSame(empty, AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                empty, direct, null, Locale.ENGLISH));
+    }
+
     @Test public void keepsBrazilianAndEuropeanPortugueseSeparate() {
         List<CaptionTrackInterface> result = add(List.of(new Track("pt", "Portuguese")), Locale.ENGLISH);
 
@@ -210,18 +266,17 @@ public class AutoTranslateCaptionsPatchTest {
         org.junit.Assert.assertNull(PreferredCaptionLanguagePatch.findAutoTranslatedTrack(List.of(source), List.of(), null, "qaa", Locale.ENGLISH));
     }
 
-    @Test public void multipleSourcesKeepCurrentAudioOrderWhenNoDefaultExists() {
+    @Test public void multipleSourcesWithoutNativeChoiceDoNotGuess() {
         Track english = new Track("en", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&name=English&sig=a%2Bb", ".en.named", "English");
         Track french = new Track("fr", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=fr&kind=asr", "a.fr", "French");
         List<CaptionTrackInterface> direct = List.of(english, french);
-        assertSame(english, AutoTranslateCaptionsPatch.findFallbackSource(direct, null));
-        var menu = AutoTranslateCaptionsPatch.restoreTranslationTracks(List.of(), direct, null, Locale.ENGLISH);
-        assertEquals("https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&name=English&sig=a%2Bb&tlang=bn", find(menu, "bn").patch_getUrl());
-        var preferred = PreferredCaptionLanguagePatch.findAutoTranslatedTrack(List.copyOf(direct), List.of(), null, "bn", Locale.ENGLISH);
-        assertEquals("t.en.named.bn", preferred.patch_getVssId());
-        assertEquals(find(menu, "bn").patch_getUrl(), ((CaptionTrackInterface) preferred).patch_getUrl());
-        // A new audio's direct list must be evaluated independently, without a cached source.
-        assertSame(french, AutoTranslateCaptionsPatch.findFallbackSource(List.of(french, english), null));
+        org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.findFallbackSource(direct, null));
+        List<CaptionTrackInterface> empty = List.of();
+        assertSame(empty, AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                empty, direct, null, Locale.ENGLISH));
+        org.junit.Assert.assertNull(PreferredCaptionLanguagePatch.findAutoTranslatedTrack(
+                direct, empty, null, "bn", Locale.ENGLISH));
+        assertSame(french, AutoTranslateCaptionsPatch.findFallbackSource(direct, french));
     }
 
     @Test public void mixedVideoAndMalformedSourceListsCannotProduceFallbacks() {
