@@ -29,4 +29,4 @@ A visible language choice is not a guarantee that YouTube's backend will transla
 
 The release contains the MPP bundle, generated `patches-list.json` and its SHA-256 checksum. No modified YouTube APKs or private device logs are distributed.
 
-The patch is built using Morphe's tooling. Upstream copyright and license notices are preserved in [NOTICE](https://github.com/itolkien/morphe-universal-captions/blob/main/NOTICE).
+The patch is built using Morphe's tooling. Upstream copyright and license notices are preserved in [NOTICE](https://github.com/itolkien/universal-captions/blob/main/NOTICE).

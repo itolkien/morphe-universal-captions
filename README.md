@@ -6,7 +6,7 @@ Universal Captions fixes those cases inside the YouTube app. It uses YouTube's o
 
 I developed Universal Captions independently as a standalone patch. The Morphe maintainers later asked me to integrate it into their patch set. This repository is the original project; Morphe Manager is one way to install it.
 
-[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download 3.0.1](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.1) · [Issues](https://github.com/itolkien/morphe-universal-captions/issues)
+[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Funiversal-captions&name=Universal%20Captions) · [Download 3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1) · [Issues](https://github.com/itolkien/universal-captions/issues)
 
 ## What changed in 3.0
 
@@ -40,7 +40,7 @@ Showing a language in the menu doesn't guarantee YouTube will return translated 
 
 ## Installation
 
-1. Install [Morphe Manager](https://morphe.software/) and add this repository as a custom patch source, or download `universal-captions-3.0.1.mpp` from the [3.0.1 release](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.1).
+1. Install [Morphe Manager](https://morphe.software/) and add this repository as a custom patch source, or download `universal-captions-3.0.1.mpp` from the [3.0.1 release](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1).
 2. Start with a clean YouTube **21.20.405** or **21.41.525** APK.
 3. Select **Universal Captions - additional translation languages** and patch the APK.
 4. Open a video with captions, then go to **Captions → Auto-translate**.
@@ -66,6 +66,6 @@ For the technical details, see the [native caption metadata notes](docs/NATIVE_M
 
 ## Feedback and license
 
-Please [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with the YouTube version, patch version and steps to reproduce. Remove personal details and signed caption URLs from logs before posting them.
+Please [open an issue](https://github.com/itolkien/universal-captions/issues) with the YouTube version, patch version and steps to reproduce. Remove personal details and signed caption URLs from logs before posting them.
 
 Licensed under [GPL-3.0-or-later](LICENSE). Upstream copyright and license notices are preserved in [NOTICE](NOTICE). This repository doesn't distribute patched YouTube APKs.
