@@ -49,9 +49,9 @@ same synchronous decoder call in which pen lookup executes.
   final validation should cover unexpected uncaught decoder exceptions.
 - This is a readability-first fix; it resets **all** translated creator pens,
   which does not recreate every colored or highlighted Web caption style.
-- Cross-version decoder structure on 21.41.525 needs patched-APK validation;
-  the original 21.20.405 DEX was separately checked for unique network/cache
-  method matches. The earlier dev.6 tests do not validate these *new* hooks.
+- The original 21.20.405 DEX was separately checked for unique network/cache
+  method matches. The owner reports successful dev.7 playback, but an itemized
+  per-APK test matrix for the new decoder hooks has not been recorded.
 - The upstream Morphe `TranslatedCaptionPensPatch` and our replacement must
   not run together. The integration PR should replace the old hooks, not stack
   two copies.
@@ -60,9 +60,10 @@ same synchronous decoder call in which pen lookup executes.
 
 JVM tests exercise original and translated documents, malformed URL/track
 identities, nested scopes, and concurrent worker threads with opposite caption
-types. Build CI verifies Kotlin and Android DEX packaging. Complete the
-following release smoke tests on **both** APK versions with only Universal
-Captions selected:
+types. Build CI verifies Kotlin and Android DEX packaging. The owner reports
+dev.7 working in a manual functional test. For the **public 3.0 release**,
+record explicit results for each of these cases on both supported APKs,
+with only Universal Captions selected:
 
 1. Translate creator-styled MrBeast `RE3_PGwDwhw` into Arabic, Persian or Hebrew
    and confirm words remain visible.
