@@ -66,14 +66,6 @@ public final class CaptionTranslationList {
         return expanded;
     }
 
-    public static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale) {
-        return augment(tracks, locale, null);
-    }
-
-    static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets) {
-        return augment(tracks, locale, nativeTargets, null);
-    }
-
     /** Select an alternate native audio-compatible original only when target cloning cannot extend the list. */
     static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets,
             Supplier<OriginalCaptionSource> nativeOriginal) {

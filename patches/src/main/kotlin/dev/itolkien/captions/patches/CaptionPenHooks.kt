@@ -71,7 +71,7 @@ private object NetworkParserFingerprint : Fingerprint(
 
 private fun Instruction.fieldRef() = (this as? ReferenceInstruction)?.reference as? FieldReference
 
-/** Begin on the actual decoder thread, then exit on return or native exception handlers. */
+/** Scope each decoder call by its request identity, including native exception exits. */
 private fun MutableMethod.scopeDecoder(invoke: Int, requestRegister: String) {
     val impl = implementation ?: error("Caption parser has no native implementation")
     val instructions = impl.instructions.toList()
@@ -90,9 +90,10 @@ private fun MutableMethod.scopeDecoder(invoke: Int, requestRegister: String) {
     }.distinct()
     check(catches.isNotEmpty()) { "Caption parser cannot guarantee exception cleanup" }
     check(catches.all { instructions[it].opcode == Opcode.MOVE_EXCEPTION })
-    val edits = catches.map { (it + 1) to "invoke-static { }, $STYLES->endCaption()V" } +
+    val edits = catches.map { (it + 1) to
+        "invoke-static { $requestRegister }, $STYLES->endCaption(Ljava/lang/Object;)V" } +
         listOf(
-            (invoke + 2) to "invoke-static { }, $STYLES->endCaption()V",
+            (invoke + 2) to "invoke-static { $requestRegister }, $STYLES->endCaption(Ljava/lang/Object;)V",
             invoke to "invoke-static { $requestRegister }, $STYLES->beginCaption(Ljava/lang/Object;)V"
         )
     edits.distinctBy { it.first }.sortedByDescending { it.first }.forEach { (i, smali) ->
