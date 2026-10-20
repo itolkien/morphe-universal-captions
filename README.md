@@ -66,4 +66,4 @@ For the technical details, see the [native caption metadata notes](docs/NATIVE_M
 
 Please [open an issue](https://github.com/itolkien/morphe-universal-captions/issues) with the YouTube version, patch version and steps to reproduce. Remove personal details and signed caption URLs from logs before posting them.
 
-Licensed under [GPL-3.0-or-later](LICENSE). The translated-caption styling work builds on [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837); the applicable notices are kept in [NOTICE](NOTICE). This repository doesn't distribute patched YouTube APKs.
+Licensed under [GPL-3.0-or-later](LICENSE). Upstream copyright and license notices are preserved in [NOTICE](NOTICE). This repository doesn't distribute patched YouTube APKs.

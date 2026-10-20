@@ -17,9 +17,6 @@ have been tested manually; full parity and backend coverage are not claimed.
 - [YTT/SRV3 format notes](https://github.com/FyraLabs/yttml/blob/main/crates/srv3-ttml/internals/srv3-format.md):
   `<pen>` styles are declared in the document header and referenced by
   paragraphs and spans. Translations can inherit incompatible pen references.
-- [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837):
-  confirmed Android rendering symptom, pen lookup strategy and original
-  author/source. Its global latest-request race is explicitly acknowledged.
 
 ## Runtime decisions
 
@@ -49,8 +46,8 @@ have been tested manually; full parity and backend coverage are not claimed.
    caption selection.
 3. `EmptyTranslationFallback`: restore YouTube's actual menu row and missing
    translations only if there is a safe source and at least one target.
-4. `CaptionPenStyles` and `CaptionPenHooks`: the adapted #3837 implementation
-   owned by Universal Captions, not a separately duplicated upstream patch.
+4. `CaptionPenStyles` and `CaptionPenHooks`: the parser-scoped style fix
+   owned by Universal Captions, with separate network and cache contexts.
 5. `NativeTranslationBridge`: standalone extension entry point for locale and
    manager hooks. The separate `CaptionIntegration` native-coexistence adapter
    was removed from this 3.0 development branch because the Morphe port will
@@ -75,8 +72,8 @@ original used for missing languages, but cannot prove backend availability.
 
 ### Selective creator styling versus a blanket pen reset
 
-The #3837 workaround intentionally discards **all** creator-defined pen IDs
-on translated documents. It solves the observed invisible-text problem but
+The current styling fix discards **all** creator-defined pen IDs on
+translated documents. It solves the observed invisible-text problem but
 cannot reproduce every styled YouTube Web translation: intentionally colored
 or emphasized translated words would also fall back to the user's default
 style. The proper target is to preserve valid translated styling where

@@ -1,9 +1,8 @@
 # Translated caption pen handling
 
-This part adapts the workaround from
-[Morphe PR #3837](https://github.com/MorpheApp/morphe-patches/pull/3837).
 Some translated srv3 documents inherit creator-defined pens that make
-the text invisible.
+the text invisible. Universal Captions handles this in the parser instead
+of trying to infer the selected track from the latest network request.
 
 ## Parser scope
 

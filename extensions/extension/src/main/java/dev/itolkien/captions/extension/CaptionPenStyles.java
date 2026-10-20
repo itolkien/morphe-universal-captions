@@ -1,6 +1,6 @@
 /*
- * Styled translated-caption fix adapted from Morphe PR #3837.
- * Copyright 2026 Morphe and itolkien. See NOTICE for GPLv3 Section 7 terms.
+ * Copyright 2026 Morphe and itolkien.
+ * GPL-3.0-or-later; see LICENSE and NOTICE.
  */
 package dev.itolkien.captions.extension;
 
