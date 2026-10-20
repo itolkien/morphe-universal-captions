@@ -3,6 +3,9 @@ on:
   push:
     branches: [refactor/morphe-native-source]
   workflow_dispatch:
+concurrency:
+  group: universal-captions-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
   packages: read

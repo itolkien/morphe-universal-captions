@@ -73,14 +73,14 @@ public final class AutoTranslateCaptionsPatch {
      * Injection point: Called after the auto-translated caption tracks are created.
      */
     public static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks) {
-        if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) {
-            return tracks;
-        }
-
         try {
+            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
             return addTranslationLanguages(tracks, Requester.getAppLocale());
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             Logger.printException(() -> "addTranslationLanguages failure", ex);
+            return tracks;
+        } catch (LinkageError ignored) {
+            // An obfuscated method or extension contract can change between APK versions.
             return tracks;
         }
     }
@@ -139,7 +139,18 @@ public final class AutoTranslateCaptionsPatch {
     public static int getTranslationCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
-        if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return nativeCount;
+        try {
+            return Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
+                    ? safeRestoredMenuCount(nativeCount, directTracks, audioSource)
+                    : nativeCount;
+        } catch (RuntimeException | LinkageError ignored) {
+            return nativeCount;
+        }
+    }
+
+    static int safeRestoredMenuCount(int nativeCount,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
         try {
             return restoredMenuCount(nativeCount, directTracks, audioSource);
         } catch (RuntimeException | LinkageError ignored) {
@@ -159,11 +170,13 @@ public final class AutoTranslateCaptionsPatch {
     public static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource) {
-        if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
         try {
+            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
             return restoreTranslationTracks(tracks, directTracks, defaultSource, Requester.getAppLocale());
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             Logger.printException(() -> "restoreTranslationTracks failure", ex);
+            return tracks;
+        } catch (LinkageError ignored) {
             return tracks;
         }
     }

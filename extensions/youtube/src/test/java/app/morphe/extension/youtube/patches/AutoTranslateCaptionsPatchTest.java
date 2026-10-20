@@ -398,6 +398,44 @@ public class AutoTranslateCaptionsPatchTest {
         assertEquals(2, AutoTranslateCaptionsPatch.restoredMenuCount(2, direct, null));
     }
 
+    @Test public void brokenNativeGetterDoesNotCrashMenuVisibility() {
+        CaptionTrackInterface incompatible = new CaptionTrackInterface() {
+            @Override public String patch_getLanguageCode() {
+                throw new NoSuchMethodError("Simulate an incompatible native caption getter");
+            }
+            @Override public String patch_getVssId() { return ".en"; }
+            @Override public String patch_getUrl() { return URL; }
+            @Override public CaptionTrackInterface patch_copyTranslation(
+                    String lang, String url, String vss, CharSequence label) {
+                return this;
+            }
+        };
+        assertEquals(0, AutoTranslateCaptionsPatch.safeRestoredMenuCount(
+                0, List.of(incompatible), incompatible));
+        assertEquals(3, AutoTranslateCaptionsPatch.safeRestoredMenuCount(
+                3, List.of(incompatible), incompatible));
+    }
+
+    @Test public void switchingVideosNeverReusesCaptionSources() {
+        java.util.stream.IntStream.range(0, 48).parallel().forEach(i -> {
+            String video = String.format(Locale.ROOT, "v%010d", i);
+            String code = i % 2 == 0 ? "ar" : "en";
+            String url = "https://www.youtube.com/api/timedtext?v=" + video
+                    + "&lang=" + code + "&sig=x%2By";
+            Track source = new Track(code, url, "." + code, "Original");
+            var list = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                    List.of(), List.of(source), source, Locale.forLanguageTag(
+                            i % 3 == 0 ? "tr" : i % 3 == 1 ? "de" : "en"));
+            CaptionTrackInterface selected = find(list, "fr");
+            assertEquals(url + "&tlang=fr", selected.patch_getUrl());
+            assertEquals("t." + code + ".fr", selected.patch_getVssId());
+            assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(
+                    0, List.of(source,
+                            new Track("fr", url.replace("lang=" + code, "lang=fr"),
+                                    ".fr", "Other source")), null));
+        });
+    }
+
     @Test public void autoTranslateRowRejectsOtherVideoOrUntrustedNativeSource() {
         Track english = new Track("en",
                 "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a",
