@@ -2,7 +2,6 @@ package dev.itolkien.captions.extension;
 
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
 import dev.itolkien.captions.extension.CaptionTranslationList.CaptionTrack;
 import static org.junit.jupiter.api.Assertions.*;
 
