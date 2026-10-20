@@ -18,6 +18,12 @@ def verify(root: Path, version: str) -> None:
     versions = {v["version"] for v in youtube["targets"]}
     assert {"21.20.405", "21.41.525"} <= versions, versions
 
+    parser = (root / "patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/TranslatedCaptionPensPatch.kt").read_text()
+    runtime = (root / "extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java").read_text()
+    assert "network.method.scopeDecoder(" in parser and "cache.method.scopeDecoder(" in parser
+    assert "beginCaption(Ljava/lang/Object;)" in parser and "endCaption(Ljava/lang/Object;)" in parser
+    assert "beginCaption(" in runtime and "endCaption(" in runtime
+    assert "setParsedRequest(" not in runtime, "Old unscoped parser state unexpectedly restored"
     path = root / "patches/build/libs" / f"patches-{version}.mpp"
     with ZipFile(path) as bundle:
         names = bundle.namelist()
