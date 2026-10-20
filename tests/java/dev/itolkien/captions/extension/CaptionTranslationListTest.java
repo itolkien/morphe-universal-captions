@@ -172,6 +172,28 @@ public class CaptionTranslationListTest {
                 CaptionTranslationList.augment(List.of(duplicate), Locale.ENGLISH));
     }
 
+    @Test public void sameVssAndVideoWithDifferentNativeBaseUrlsDoNotMixSources() {
+        Track german = german();
+        Track french = new Track("fr", URL.replace("tlang=de", "tlang=fr") + "&name=other",
+                "ta.en.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(german, french);
+        var result = CaptionTranslationList.augment(nativeTracks, Locale.ENGLISH, List.of("tr"));
+        assertEquals(2, result.size());
+        assertTrue(result.contains(german));
+        assertTrue(result.contains(french));
+    }
+
+    @Test public void nativeTargetsFromExactlyTheSameBaseUrlCanStillExpand() {
+        Track german = german();
+        Track french = new Track("fr", URL.replace("tlang=de", "tlang=fr"),
+                "ta.en.fr", "French");
+        var result = CaptionTranslationList.augment(
+                List.of(german, french), Locale.ENGLISH, List.of("tr"));
+        assertEquals(3, result.size());
+        assertEquals(URL.replace("tlang=de", "tlang=tr"),
+                language(result, "tr").universalCaptions_getCaptionUrl());
+    }
+
     @Test public void mixedNativeSourceLanguagesAreNotArbitrarilyExpanded() {
         Track englishSource = german();
         Track spanishSource = new Track("fr",
