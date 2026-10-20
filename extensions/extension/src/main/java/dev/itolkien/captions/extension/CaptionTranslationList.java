@@ -115,8 +115,9 @@ public final class CaptionTranslationList {
                 !vss.startsWith("t") || !vss.endsWith("." + code)) return null;
 
         TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
-        if (url == null || !code.equals(url.field("tlang")) ||
-                url.targetValueOffset(code) < 0) return null;
+        if (url == null || !code.equals(url.field("tlang"))) return null;
+        String sourceUrl = url.sourceIdentity(code);
+        if (sourceUrl == null) return null;
         String sourceLanguage = url.field("lang");
         if (!validLanguageCode(sourceLanguage)) return null;
         String video = url.field("v");
@@ -126,7 +127,7 @@ public final class CaptionTranslationList {
         if (!OriginalCaptionSource.originalVss(originalVss, "a." + sourceLanguage)
                 && !OriginalCaptionSource.originalVss(originalVss, "." + sourceLanguage))
             return null;
-        return vss.substring(0, vss.length() - code.length()) + "|" + (video == null ? "" : video);
+        return vss.substring(0, vss.length() - code.length()) + "|" + sourceUrl;
     }
 
     static String languageKey(String raw) {

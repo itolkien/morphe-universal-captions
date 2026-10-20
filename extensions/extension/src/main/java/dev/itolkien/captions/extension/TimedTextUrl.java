@@ -67,6 +67,13 @@ final class TimedTextUrl {
         return !uri.getRawQuery().isEmpty();
     }
 
+    /** Stable source identity across different native tlang values; keep every other signed byte. */
+    String sourceIdentity(String target) {
+        int offset = targetValueOffset(target);
+        return offset < 0 ? null : url.substring(0, offset) + '\0'
+                + url.substring(offset + target.length());
+    }
+
     /** Offset of the exact raw target value; never match opaque values or URL fragments. */
     int targetValueOffset(String expected) {
         int question = url.indexOf('?');
