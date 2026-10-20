@@ -61,7 +61,9 @@ public class CaptionTranslationListTest {
             String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             int at = json.indexOf("\"codes\"");
             assertTrue(at >= 0, "snapshot is missing the codes field");
-            var matcher = Pattern.compile("\"([A-Za-z][A-Za-z0-9-]*)\"").matcher(json.substring(at));
+            int firstCode = json.indexOf('[', at);
+            assertTrue(firstCode > at, "missing codes array");
+            var matcher = Pattern.compile("\"([A-Za-z][A-Za-z0-9-]*)\"").matcher(json.substring(firstCode));
             List<String> codes = new ArrayList<>();
             while (matcher.find()) codes.add(matcher.group(1));
             assertEquals(Arrays.asList(CaptionTranslationList.TARGETS), codes,
