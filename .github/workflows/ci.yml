@@ -1,27 +1,89 @@
-name: Caption regression tests
+name: Build maintained Universal Captions source with Morphe
 on:
   push:
-  pull_request:
+    branches: [refactor/morphe-native-source]
   workflow_dispatch:
 permissions:
   contents: read
+  packages: read
 jobs:
-  tests:
+  build:
     runs-on: ubuntu-latest
+    env:
+      MORPHE_BASE: 81a8567610c1b9cdcf3b3f3fe56c38cdcf97dc3c
+      TEST_VERSION: 3.1.0
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout original Universal Captions sources
+        uses: actions/checkout@v4
+        with:
+          path: addon
+      - name: Checkout audited Morphe adapter dependencies
+        uses: actions/checkout@v4
+        with:
+          repository: itolkien/morphe-patches
+          ref: 81a8567610c1b9cdcf3b3f3fe56c38cdcf97dc3c
+          path: morphe
+      - name: Install the actual maintained caption sources and regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C morphe rev-parse HEAD)" = "$MORPHE_BASE"
+          for file in \
+            patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt \
+            patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/TranslatedCaptionPensPatch.kt \
+            extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java \
+            extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java \
+            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatchTest.java \
+            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatchTest.java \
+            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/PreferredCaptionRoutingTest.java
+          do
+            test -s "addon/$file"
+            cp "addon/$file" "morphe/$file"
+            cmp "addon/$file" "morphe/$file"
+          done
+          sed -i "s/^version = .*/version = $TEST_VERSION/" morphe/gradle.properties
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+          java-version: '21'
+      - name: Test Kotlin adapter and owned Java caption implementation
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:test :extensions:youtube:testDebugUnitTest --no-daemon
+      - name: Generate complete Morphe patch metadata
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:generatePatchesList --no-daemon
+      - name: Build test-only Android MPP last
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:buildAndroid --no-daemon
+      - name: Verify extension, metadata and Morphe attribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          package = Path("morphe/patches/build/libs") / f"patches-{os.environ['TEST_VERSION']}.mpp"
+          notice = Path("morphe/NOTICE").read_bytes()
+          with ZipFile(package, "a") as archive:
+              if "NOTICE" in archive.namelist():
+                  assert archive.read("NOTICE") == notice
+              else:
+                  archive.writestr("NOTICE", notice)
+          PY
+          python3 addon/scripts/verify_morphe_bundle.py morphe "$TEST_VERSION"
+      - name: Save integration build for manual Android compatibility testing
+        uses: actions/upload-artifact@v4
         with:
-          gradle-version: '9.0.0'
-      - name: Test menu runtime and structural bytecode resolution
-        run: gradle -p tests/fingerprints test --no-daemon
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: fingerprint-test-results
-          path: tests/fingerprints/build/reports/tests/test
-          if-no-files-found: ignore
+          name: universal-captions-owned-code-test-build
+          path: |
+            morphe/patches/build/libs/patches-${{ env.TEST_VERSION }}.mpp
+            morphe/patches-list.json
+          if-no-files-found: error
+          retention-days: 14

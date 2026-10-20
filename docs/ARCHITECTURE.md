@@ -1,60 +1,31 @@
-# Architecture
+# Architecture: project-owned sources with Morphe adapters
 
-Universal Captions adds missing translation choices to YouTube's native caption
-model. It does not select the user's language, turn captions on or fetch text
-from another translation service. The project was developed independently
-by itolkien; Morphe's tooling is used to package and distribute the patch.
+**Canonical development source:** the Java runtime and Kotlin caption hooks
+under `extensions/youtube/src/main` and `patches/src/main` in *this repository*.
 
-## Patch-time resolution
+**Platform support:** a pinned Morphe patch fork supplies caption fingerprints,
+preferred-language routing, extension injection, settings, dependencies and
+native Android packaging. The adapter and other non-caption classes are
+not reimplemented here.
 
-`CaptionFingerprints.kt` locates the native caption track and menu getters.
-`CaptionTranslationAbi.kt`, `CaptionMetadataAbi.kt` and
-`CaptionFallbackAbi.kt` resolve the builder, original sources, target list
-and native Auto-translate row. These checks run before native bytecode is
-modified. Ambiguous layouts fail patching rather than guessing names.
+| Component | Maintained in this repository |
+| --- | --- |
+| Translation list, source fallback, URL handling | `AutoTranslateCaptionsPatch.java` |
+| Translated caption pen selection | `TranslatedCaptionPensPatch.java` |
+| Native translation hooks | `AutoTranslateCaptionsPatch.kt` |
+| Caption parser hooks | `TranslatedCaptionPensPatch.kt` |
+| Behavior contracts | three Java test files copied into the platform build |
 
-`UniversalCaptionsProbePatch.kt` is the production patch despite its old
-filename. It adds `universalCaptions_` accessors and hooks the direct and
-translated menu getters. The unused boolean on saved original getters is
-intentional: it keeps them out of upstream parameterless fingerprints.
-There is no diagnostic probe logger in the shipped extension.
+Unlike an alias-only experiment, these exact sources overwrite their Morphe
+integration counterparts before Gradle compiles and tests the combined
+implementation. The CI build is intentionally pinned to an audited fork commit;
+changes to Morphe's caption infrastructure require an explicit update.
 
-## Menu runtime
+A known trade-off: these Morphe-native Java sources are **not fully equivalent**
+to the standalone v3.0.1 implementation. In particular, current Morphe pen
+detection is thread-local rather than stack-scoped, and native target expansion
+assumes a common source for the list. Do not describe this branch as a completed
+behavior-preserving refactor without clean-APK parity checks.
 
-- `TimedTextUrl` validates signed YouTube timedtext URLs, preserving all
-  unrelated query bytes.
-- `OriginalCaptionSource` holds one validated caption source and video.
-- `CaptionTranslationList` preserves native translated entries and fills
-  missing targets. Its fallback catalog is a dated YouTube player snapshot,
-  not proof that the server will serve each translation.
-- `EmptyTranslationFallback` restores YouTube's native Auto-translate row
-  where a safe original exists. It intersects the native current-audio caption
-  indices with eligible source indices and rejects ambiguous fallback choices.
-- `NativeTranslationBridge` supplies the current app locale and menu hooks.
-
-No source URL is shared across caption managers or videos. The extension
-does not persist or change caption preferences, visibility or the selected
-subtitle track.
-
-## Caption styling
-
-Some translated srv3 documents carry creator-defined pens that make text
-invisible. `CaptionPenHooks.kt` finds synchronous parser calls in the network
-and file-cache paths. `CaptionPenStyles` tracks each parser in a nested
-thread-local scope; `endCaption(request)` only closes that request's scope.
-The original subtitle keeps its creator styling, while translated subtitles
-use the default pen for readability.
-
-See [caption pen handling](CAPTION_PEN_STYLES.md). This is not a claim of
-pixel-perfect Web-style reproduction.
-
-## Checks and history
-
-`scripts/test-core.sh` runs the Kotlin ABI and Java caption regressions.
-The MPP workflow compiles against a pinned Morphe template, then checks
-the Android DEX, embedded extension, NOTICE and release metadata.
-Some structural tests require local YouTube APKs and are skipped on CI,
-which does not include copyrighted app binaries.
-
-Earlier 2.x behavior is in the v2.1.0 tag and
-[historical fallback notes](EMPTY_TRANSLATION_EXPERIMENT.md).
+The stable pre-migration architecture and studies are recorded in
+[the v3.0.1 documentation](https://github.com/itolkien/universal-captions/blob/v3.0.1/docs/ARCHITECTURE.md).
