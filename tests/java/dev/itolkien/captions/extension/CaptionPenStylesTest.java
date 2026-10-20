@@ -27,7 +27,7 @@ class CaptionPenStylesTest {
         }
     }
 
-    static final class Carrier implements CaptionPenStyles.CaptionCarrier {
+    static class Carrier implements CaptionPenStyles.CaptionCarrier {
         final CaptionTrack track;
         Carrier(CaptionTrack track) { this.track = track; }
         public CaptionTrack universalCaptions_styleTrack() { return track; }
