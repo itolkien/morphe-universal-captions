@@ -50,14 +50,9 @@ public final class EmptyTranslationFallback {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
             List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
-            if (!tracks.isEmpty()) {
-                List<CaptionTrack> augmented = CaptionTranslationList.augment(tracks, locale, nativeTargets);
-                if (augmented.size() > tracks.size()) return augmented;
-                OriginalCaptionSource selected = selectSource(
-                        source.universalCaptions_nativeDirect(true), source);
-                return CaptionTranslationList.mergeFromSelectedSource(
-                        augmented, selected, locale, nativeTargets);
-            }
+            if (!tracks.isEmpty())
+                return CaptionTranslationList.augment(tracks, locale, nativeTargets,
+                        () -> selectSource(source.universalCaptions_nativeDirect(true), source));
             OriginalCaptionSource candidate = selectSource(
                     source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) return tracks;

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.function.Supplier;
 
 /** Extends a native translation list without selecting a caption track or changing caption visibility. */
 public final class CaptionTranslationList {
@@ -70,6 +71,12 @@ public final class CaptionTranslationList {
     }
 
     static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets) {
+        return augment(tracks, locale, nativeTargets, null);
+    }
+
+    /** Select an alternate native audio-compatible original only when target cloning cannot extend the list. */
+    static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale, List<String> nativeTargets,
+            Supplier<OriginalCaptionSource> nativeOriginal) {
         if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
         List<CaptionTrack> result = new ArrayList<>(tracks);
         Set<String> represented = new HashSet<>();
@@ -81,8 +88,9 @@ public final class CaptionTranslationList {
             String identity = translationSourceIdentity(track);
             if (identity == null) continue;
             if (prototype != null && !sourceIdentity.equals(identity)) {
-                // Two different source tracks or videos: do not pick one arbitrarily.
-                return sorted(result, locale);
+                // Preserve YouTube's target-specific native source objects. A native
+                // audio-compatible original may supply only the missing targets.
+                return unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
             }
             if (prototype == null) {
                 prototype = track;
@@ -98,7 +106,8 @@ public final class CaptionTranslationList {
             // Keep opaque/signed bytes untouched, replacing only the real query target.
             TimedTextUrl timedText = TimedTextUrl.parse(oldUrl);
             int targetAt = timedText == null ? -1 : timedText.targetValueOffset(oldLanguage);
-            if (targetAt < 0) return sorted(result, locale);
+            if (targetAt < 0)
+                return unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
             String urlPrefix = oldUrl.substring(0, targetAt);
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
             String sourceKey = languageKey(timedText.field("lang"));
@@ -113,7 +122,15 @@ public final class CaptionTranslationList {
                         code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
             }
         }
-        return sorted(result, locale);
+        return result.size() > tracks.size() ? sorted(result, locale)
+                : unresolved(tracks, result, locale, nativeTargets, nativeOriginal);
+    }
+
+    private static List<CaptionTrack> unresolved(List<CaptionTrack> original,
+            List<CaptionTrack> unchanged, Locale locale, List<String> nativeTargets,
+            Supplier<OriginalCaptionSource> nativeOriginal) {
+        if (nativeOriginal == null) return sorted(unchanged, locale);
+        return mergeFromSelectedSource(original, nativeOriginal.get(), locale, nativeTargets);
     }
 
     private static void appendFromSource(List<CaptionTrack> output, Set<String> represented,
