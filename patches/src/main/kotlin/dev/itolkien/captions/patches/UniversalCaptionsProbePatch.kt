@@ -67,6 +67,7 @@ val universalCaptionsPatch = bytecodePatch(
         val metadata = resolveCaptionMetadataAbi(model, abi, classDefBy(model.direct.definingClass))
         val eligible = resolveCaptionEligibleSourceAbi(
             model, metadata, classDefBy(model.direct.definingClass))
+            ?: error("Universal Captions: native audio-source routing is unsupported by this YouTube version")
         // Resolve the srv3 pen hooks before changing any native code.
         val applyPenHooks = resolveCaptionPenHooks()
         for (method in listOf(model.direct, model.translated)) {
@@ -152,10 +153,7 @@ val universalCaptionsPatch = bytecodePatch(
         """)
         // Reuse the same general-source / current-audio intersection as YouTube's
         // native translation builder. Never choose an arbitrary caption language.
-        val eligibleSourceBody = if (eligible == null) """
-            const/4 v0, 0x0
-            return-object v0
-        """ else """
+        val eligibleSourceBody = """
             iget-object v0, p0, ${metadata.metadata}
             if-eqz v0, :no_source
             iget-object v1, p0, ${eligible.audio}

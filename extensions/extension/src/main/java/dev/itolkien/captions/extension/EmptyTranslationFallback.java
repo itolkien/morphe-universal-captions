@@ -67,6 +67,9 @@ public final class EmptyTranslationFallback {
                 if (eligibleSource == null) {
                     selected = candidate(source.universalCaptions_nativeDirect(true), source);
                 }
+                CaptionTranslationList.trace("mixed-source-pick",
+                        "eligible=" + (eligibleSource != null) +
+                        " selected=" + (selected != null));
                 if (selected == null) {
                     CaptionTranslationList.trace("mixed-resolution", "reason=no-native-eligible-source");
                     return augmented;

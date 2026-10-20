@@ -13,7 +13,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - Preserves existing native translations and signed source URLs. With multiple originals, uses the current audio's native default; falls back to direct-list order only if the original language is unambiguous.
 - Localized alphabetical language ordering, including distinct regional targets.
 - No external translation service, overlay or separate caption preference UI.
-- In **3.0.0-dev.4**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
+- In **3.0.0-dev.5**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
 Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video. An initial 21.20.405 device test exposed an earlier 3.0 dev menu limited to ~17 native languages; the draft now has a regression-tested fix to broaden nonempty catalogs pending device confirmation. This is still a development build, not a claim of complete YouTube Web parity.
 
@@ -25,7 +25,7 @@ The released **2.1.0** addon works alongside Morphe's **Captions** patch, respec
 
 ### Caption styling
 
-The **3.0.0-dev.4** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
+The **3.0.0-dev.5** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
 
 This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the source-of-truth implementation for the planned Morphe port. The upstream port should **replace**, not retain alongside, Morphe's existing #3837 hooks. Running this development patch alongside a Morphe build that already includes #3837 is not yet device-verified for duplicate hooks. The latest-request flag can also misattribute overlapping caption requests; per-document correlation remains a known limitation. See [caption style design and verification](docs/CAPTION_PEN_STYLES.md).
 
@@ -39,10 +39,10 @@ This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the 
 Updating the patch source does not modify an already installed YouTube app; reapply the patches to use the new version.
 
 
-### 3.0.0-dev.4 diagnostic test (21.20.405)
+### 3.0.0-dev.5 diagnostic test (21.20.405)
 
 This build logs up to 80 small, metadata-only entries with tag `UC3Probe`
-whenever patched native caption-list getters run. The dev.4 test build
+whenever patched native caption-list getters run. The dev.5 test build
 also attempts safe fallback source selection when YouTube's native translated
 list contains different sources for different targets; it preserves the
 original translated objects, generates extras only from the current audio's
@@ -87,3 +87,28 @@ For the ongoing comparison with the YouTube Web player and outstanding behavior 
 ## License
 
 [GPL-3.0-or-later](LICENSE). Community project. This repository does not distribute modified YouTube APKs. Test-only upstream fixtures retain their own license and NOTICE files.
+
+
+### Waydroid native-source routing fix (dev.5)
+
+In actual 21.20.405 Waydroid tests, a 23-entry original caption menu
+and 17/18 native translated tracks produced `reason=mixed-sources` while
+`hasDefault=false`; another video's native 16 translated tracks expanded
+to 155 successfully. This is a *source selection* issue, not a failure to
+load the patch.
+
+The dev.5 bridge resolves, structurally, the native manager's general
+source indices and the current audio's caption indices, intersects them
+in YouTube's own order, and returns the matching original caption through
+YouTube's original track converter. That source is used only when the native
+translated tracks have different origins; native translated objects stay
+untouched and only missing target codes are generated. If there is no
+matching source, malformed originals, or mixed videos, no guess is made.
+The patch now fails during APK patching if it cannot uniquely resolve the
+underlying native source-routing ABI. It does not hardcode obfuscated
+field or class names.
+
+Test in the same Waydroid video, then inspect the `UC3Probe` log for
+`mixed-source-pick eligible=true` and `mixed-resolution result=...`.
+A broad menu still must be followed by actual subtitle-text testing;
+extra target codes are best-effort and not guaranteed by the backend.

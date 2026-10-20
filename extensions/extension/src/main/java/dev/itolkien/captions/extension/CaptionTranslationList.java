@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class CaptionTranslationList {
     private CaptionTranslationList() { }
 
-    // Temporary 3.0.0-dev.3 runtime diagnostics. Never log signed URLs,
+    // Temporary 3.0.0-dev.5 runtime diagnostics. Never log signed URLs,
     // caption labels, video IDs, cookies or subtitle content.
     private static final AtomicInteger TRACE_COUNT = new AtomicInteger();
 
@@ -213,7 +213,7 @@ public final class CaptionTranslationList {
             }
         }
         trace("mixed-resolution", "native=" + nativeTracks.size()
-                + " result=" + result.size() + " reason=verified-default");
+                + " result=" + result.size() + " reason=validated-original");
         return sorted(result, locale);
     }
 
