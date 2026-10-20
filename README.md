@@ -13,7 +13,7 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - Preserves existing native translations and signed source URLs. With multiple originals, uses the current audio's native default; falls back to direct-list order only if the original language is unambiguous.
 - Localized alphabetical language ordering, including distinct regional targets.
 - No external translation service, overlay or separate caption preference UI.
-- In **3.0.0-dev.3**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
+- In **3.0.0-dev.4**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
 Translation availability depends on the video, account and YouTube's backend. A language appearing in the menu does not guarantee translated text for every video. An initial 21.20.405 device test exposed an earlier 3.0 dev menu limited to ~17 native languages; the draft now has a regression-tested fix to broaden nonempty catalogs pending device confirmation. This is still a development build, not a claim of complete YouTube Web parity.
 
@@ -25,7 +25,7 @@ The released **2.1.0** addon works alongside Morphe's **Captions** patch, respec
 
 ### Caption styling
 
-The **3.0.0-dev.3** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
+The **3.0.0-dev.4** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
 
 This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the source-of-truth implementation for the planned Morphe port. The upstream port should **replace**, not retain alongside, Morphe's existing #3837 hooks. Running this development patch alongside a Morphe build that already includes #3837 is not yet device-verified for duplicate hooks. The latest-request flag can also misattribute overlapping caption requests; per-document correlation remains a known limitation. See [caption style design and verification](docs/CAPTION_PEN_STYLES.md).
 
@@ -39,16 +39,23 @@ This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the 
 Updating the patch source does not modify an already installed YouTube app; reapply the patches to use the new version.
 
 
-### 3.0.0-dev.3 diagnostic test (21.20.405)
+### 3.0.0-dev.4 diagnostic test (21.20.405)
 
 This build logs up to 80 small, metadata-only entries with tag `UC3Probe`
-whenever patched native caption-list getters run. It records **only**
+whenever patched native caption-list getters run. The dev.4 test build
+also attempts safe fallback source selection when YouTube's native translated
+list contains different sources for different targets; it preserves the
+original translated objects, generates extras only from the current audio's
+exact verified native default (or one unambiguous original), and declines
+cross-video or unknown track shapes. It records **only**
 list sizes, source-validation reason categories and exception class names.
 It does **not** log video IDs, URLs, signatures, cookies, subtitle text or
 creator captions. The previous dev.1/dev.2 runs displayed only the native
-~17 target languages; this diagnostic build is to identify *which execution
-path* prevents augmentation, not to claim that catalog widening alone fixes
-the player.
+~17 target languages. Dev.3 logs isolated the cause: some videos return
+mixed native source identities, so the original augmentation declines to
+select an arbitrary source. Dev.4 logs whether the current audio's
+native default can be matched safely; a generated menu is not a promise
+that every selected translation returns subtitle text.
 
 After opening the Auto-translate menu with this test build, capture
 `adb logcat -d -s UC3Probe:I AndroidRuntime:E` and share only the matching

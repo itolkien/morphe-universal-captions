@@ -81,18 +81,31 @@ public final class EmptyTranslationFallback {
     }
 
     private static OriginalCaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {
-        if (tracks == null) return null;
+        if (tracks == null) {
+            CaptionTranslationList.trace("candidate", "reason=no-direct-list");
+            return null;
+        }
         OriginalCaptionSource first = null, matchedDefault = null;
         CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
         String video = null, firstVss = null, firstUrl = null;
         boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
-            if (track == null) return null;
+            if (track == null) {
+                CaptionTranslationList.trace("candidate", "reason=null-native-track");
+                return null;
+            }
             String language = track.universalCaptions_getLanguageCode();
             if ("DISABLE_CAPTIONS_OPTION".equals(language) || AUTO.equals(language)) continue;
             OriginalCaptionSource original =
                     OriginalCaptionSource.from(track);
-            if (original == null || video != null && !video.equals(original.videoId())) return null;
+            if (original == null) {
+                CaptionTranslationList.trace("candidate", "reason=invalid-original");
+                return null;
+            }
+            if (video != null && !video.equals(original.videoId())) {
+                CaptionTranslationList.trace("candidate", "reason=cross-video");
+                return null;
+            }
             video = original.videoId();
             String vss = track.universalCaptions_getVssId();
             if (first == null) {
@@ -108,6 +121,11 @@ public final class EmptyTranslationFallback {
             }
         }
         // Native caption eligibility is track-specific, even within the same language.
-        return matchedDefault != null ? matchedDefault : mixedSources ? null : first;
+        OriginalCaptionSource chosen = matchedDefault != null ? matchedDefault : mixedSources ? null : first;
+        CaptionTranslationList.trace("candidate", "direct=" + tracks.size()
+                + " hasDefault=" + (nativeDefault != null) + " matchedDefault="
+                + (matchedDefault != null) + " mixed=" + mixedSources
+                + " selected=" + (chosen != null));
+        return chosen;
     }
 }
