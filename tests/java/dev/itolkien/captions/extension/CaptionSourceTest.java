@@ -104,8 +104,8 @@ class CaptionSourceTest {
             }
         }
         CountingTrack source = new CountingTrack();
-        var tracks = CaptionTranslationList.fromSource(OriginalCaptionSource.from(source), Locale.ENGLISH,
-                java.util.List.of("ar", "tr", "de", "fr"));
+        var tracks = CaptionTranslationList.augment(java.util.List.of(), Locale.ENGLISH,
+                java.util.List.of("ar", "tr", "de", "fr"), () -> OriginalCaptionSource.from(source));
         assertTrue(tracks.size() > 100);
         assertTrue(tracks.stream().anyMatch(track ->
                 "tr".equals(track.universalCaptions_getLanguageCode())));

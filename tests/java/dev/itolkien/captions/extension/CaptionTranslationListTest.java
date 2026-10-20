@@ -71,6 +71,29 @@ public class CaptionTranslationListTest {
         }
     }
 
+    @Test public void emptyNativeListUsesTheSameValidatedOriginalSource() {
+        String sourceUrl = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a%2Bb";
+        Track source = new Track("en", sourceUrl, ".en", "English");
+        List<CaptionTranslationList.CaptionTrack> empty = List.of();
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                empty, Locale.ENGLISH, List.of("de", "tr"), () -> OriginalCaptionSource.from(source));
+
+        assertTrue(result.size() > 100);
+        assertEquals(sourceUrl + "&tlang=tr", language(result, "tr").universalCaptions_getCaptionUrl());
+        assertFalse(result.stream().anyMatch(track ->
+                "en".equals(track.universalCaptions_getLanguageCode())));
+        assertTrue(empty.isEmpty());
+    }
+
+    @Test public void nativePrototypeDoesNotLookUpAnUnneededCurrentAudioSource() {
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                List.of(german()), Locale.ENGLISH, List.of("de", "tr"), () -> {
+                    fail("Current-audio source must remain lazy for a valid native prototype");
+                    return null;
+                });
+        assertTrue(result.size() > 100);
+    }
+
     @Test public void smallNativeCatalogStillOffersAdditionalTargetsWhenSourceIsKnown() {
         Track nativeGerman = german();
         List<CaptionTranslationList.CaptionTrack> expanded = augment(

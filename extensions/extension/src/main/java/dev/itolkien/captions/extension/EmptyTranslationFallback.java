@@ -70,15 +70,9 @@ public final class EmptyTranslationFallback {
     public static List<CaptionTrack> translated(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
-            List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
-            if (!tracks.isEmpty())
-                return CaptionTranslationList.augment(tracks, locale, nativeTargets,
-                        () -> selectSource(source.universalCaptions_nativeDirect(true), source));
-            OriginalCaptionSource candidate = selectSource(
-                    source.universalCaptions_nativeDirect(true), source);
-            if (candidate == null) return tracks;
-            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
-            return result.isEmpty() ? tracks : result;
+            return CaptionTranslationList.augment(tracks, locale,
+                    source.universalCaptions_targetLanguages(true),
+                    () -> selectSource(source.universalCaptions_nativeDirect(true), source));
         } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
