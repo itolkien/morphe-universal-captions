@@ -12,10 +12,49 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Extends a native translation list without selecting a caption track or changing caption visibility. */
 public final class CaptionTranslationList {
     private CaptionTranslationList() { }
+
+    // Temporary 3.0.0-dev.3 runtime diagnostics. Never log signed URLs,
+    // caption labels, video IDs, cookies or subtitle content.
+    private static final AtomicInteger TRACE_COUNT = new AtomicInteger();
+
+    static void trace(String phase, String counts) {
+        if (TRACE_COUNT.getAndIncrement() >= 80) return;
+        try {
+            Class.forName("android.util.Log")
+                    .getMethod("i", String.class, String.class)
+                    .invoke(null, "UC3Probe", phase + " " + counts);
+        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+            // Plain JVM unit tests have no Android logger.
+        }
+    }
+
+    private static String invalidPrototypeReason(CaptionTrack track) {
+        try {
+            String code = track.universalCaptions_getLanguageCode();
+            String vss = track.universalCaptions_getVssId();
+            if (!validLanguageCode(code)) return "language-code";
+            if (vss == null || !vss.startsWith("t") || !vss.endsWith("." + code))
+                return "vss-shape";
+            TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
+            if (url == null) return "url-shape";
+            if (!code.equals(url.field("tlang"))) return "target-param";
+            if (url.sourceIdentity(code) == null) return "target-offset";
+            String language = url.field("lang");
+            if (!validLanguageCode(language)) return "source-lang";
+            String originalVss = vss.substring(1, vss.length() - code.length() - 1);
+            if (!OriginalCaptionSource.originalVss(originalVss, "a." + language)
+                    && !OriginalCaptionSource.originalVss(originalVss, "." + language))
+                return "original-vss";
+            return "unknown";
+        } catch (RuntimeException | LinkageError ignored) {
+            return "diagnostic-failed";
+        }
+    }
 
     /** Implemented by the native track class at patch time. */
     public interface CaptionTrack {
@@ -75,13 +114,21 @@ public final class CaptionTranslationList {
         Set<String> represented = new HashSet<>();
         CaptionTrack prototype = null;
         String sourceIdentity = null;
+        int rejected = 0;
+        String firstRejection = "none";
         for (CaptionTrack track : tracks) {
             if (track == null) continue;
             represented.add(languageKey(track.universalCaptions_getLanguageCode()));
             String identity = translationSourceIdentity(track);
-            if (identity == null) continue;
+            if (identity == null) {
+                rejected++;
+                if ("none".equals(firstRejection)) firstRejection = invalidPrototypeReason(track);
+                continue;
+            }
             if (prototype != null && !sourceIdentity.equals(identity)) {
                 // Two different source tracks or videos: do not pick one arbitrarily.
+                trace("augment", "native=" + tracks.size() + " result=" + result.size()
+                        + " reason=mixed-sources");
                 return sorted(result, locale);
             }
             if (prototype == null) {
@@ -98,7 +145,10 @@ public final class CaptionTranslationList {
             // Keep opaque/signed bytes untouched, replacing only the real query target.
             TimedTextUrl timedText = TimedTextUrl.parse(oldUrl);
             int targetAt = timedText == null ? -1 : timedText.targetValueOffset(oldLanguage);
-            if (targetAt < 0) return sorted(result, locale);
+            if (targetAt < 0) {
+                trace("augment", "native=" + tracks.size() + " reason=target-offset");
+                return sorted(result, locale);
+            }
             String urlPrefix = oldUrl.substring(0, targetAt);
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
             String sourceKey = languageKey(timedText.field("lang"));
@@ -113,6 +163,9 @@ public final class CaptionTranslationList {
                         code, urlPrefix + code + urlSuffix, vssPrefix + code, name));
             }
         }
+        trace("augment", "native=" + tracks.size() + " result=" + result.size()
+                + " rejected=" + rejected + " first=" + firstRejection
+                + " prototype=" + (prototype != null));
         return sorted(result, locale);
     }
 

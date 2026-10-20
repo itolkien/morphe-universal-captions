@@ -40,7 +40,8 @@ public final class EmptyTranslationFallback {
             List<CaptionTrack> result = new ArrayList<>(tracks);
             result.add(option);
             return result;
-        } catch (RuntimeException | LinkageError ignored) {
+        } catch (RuntimeException | LinkageError ex) {
+            CaptionTranslationList.trace("direct-error", ex.getClass().getSimpleName());
             return tracks;
         }
     }
@@ -48,13 +49,20 @@ public final class EmptyTranslationFallback {
     public static List<CaptionTrack> translated(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
-            if (!tracks.isEmpty()) return CaptionTranslationList.augment(tracks, locale,
-                    source.universalCaptions_targetLanguages(true));
+            List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
+            CaptionTranslationList.trace("translated-meta", "native=" + tracks.size()
+                    + " targetCodes=" + (nativeTargets == null ? -1 : nativeTargets.size()));
+            if (!tracks.isEmpty()) return CaptionTranslationList.augment(tracks, locale, nativeTargets);
             OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
-            if (candidate == null) return tracks;
-            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, source.universalCaptions_targetLanguages(true));
+            if (candidate == null) {
+                CaptionTranslationList.trace("translated-empty", "reason=no-safe-source");
+                return tracks;
+            }
+            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
+            CaptionTranslationList.trace("translated-empty", "generated=" + result.size());
             return result.isEmpty() ? tracks : result;
-        } catch (RuntimeException | LinkageError ignored) {
+        } catch (RuntimeException | LinkageError ex) {
+            CaptionTranslationList.trace("translated-error", ex.getClass().getSimpleName());
             return tracks;
         }
     }

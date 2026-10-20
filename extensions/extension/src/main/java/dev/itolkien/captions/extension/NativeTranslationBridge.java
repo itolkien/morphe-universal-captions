@@ -20,12 +20,18 @@ public final class NativeTranslationBridge {
 
     public static List<CaptionTrack> fallbackDirect(List<CaptionTrack> tracks,
             EmptyTranslationFallback.CaptionSource source) {
-        return EmptyTranslationFallback.direct(tracks, source, menuLocale());
+        CaptionTranslationList.trace("hook-direct", "in=" + (tracks == null ? -1 : tracks.size()));
+        List<CaptionTrack> result = EmptyTranslationFallback.direct(tracks, source, menuLocale());
+        CaptionTranslationList.trace("hook-direct", "out=" + (result == null ? -1 : result.size()));
+        return result;
     }
 
     public static List<CaptionTrack> fallbackTranslated(List<CaptionTrack> tracks,
             EmptyTranslationFallback.CaptionSource source) {
-        return EmptyTranslationFallback.translated(tracks, source, menuLocale());
+        CaptionTranslationList.trace("hook-translated", "in=" + (tracks == null ? -1 : tracks.size()));
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(tracks, source, menuLocale());
+        CaptionTranslationList.trace("hook-translated", "out=" + (result == null ? -1 : result.size()));
+        return result;
     }
 
 }
