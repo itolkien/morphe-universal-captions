@@ -89,6 +89,17 @@ jobs:
           assert not targets["21.20.405"]["isExperimental"]
           assert not targets["21.41.525"]["isExperimental"]
           PYMETA
+      - name: Release preflight (metadata and bundle)
+        run: |
+          set -euo pipefail
+          # The main-branch publisher checks byte-for-byte metadata equality.
+          # Exercise that gate on pull requests instead of discovering a mismatch after merge.
+          cmp addon/patches-list.json template/patches-list.json
+          test -s addon/docs/RELEASE_3.0.0.md
+          test -s addon/NOTICE
+          python3 addon/scripts/verify_android_bundle.py template/patches/build/libs/patches-3.0.0.mpp
+          sha256sum template/patches/build/libs/patches-3.0.0.mpp
+
       - name: Upload Morphe Manager MPP
         uses: actions/upload-artifact@v4
         with:
