@@ -1,49 +1,28 @@
 # Universal Captions
 
-Universal Captions for YouTube on Android.
-Universal Captions extends the native Auto-translate language choices, recovers
-missing translation menus when YouTube exposes an eligible source, and improves
-the readability of translated subtitles.
+Caption translation enhancements for YouTube on Android, built with Morphe.
 
-## Development direction
+## Features
 
-This experimental branch contains the **real Morphe-ready caption implementation**
-in `patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/` and
-`extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/`.
-It is **not** a one-line dependency alias. Four production files are maintained
-here, with Java regression tests also stored here.
+- Restore the Auto-translate menu when YouTube exposes a usable original caption source.
+- Offer the 156 known translation language codes while preserving YouTube's native tracks and labels.
+- Prefer YouTube's active-audio caption source rather than guessing between several originals.
+- Keep signed timedtext URLs and regional language distinctions intact.
+- Restore readable translated subtitles without changing original caption styling or overriding explicit CC-off/manual choices.
 
-The much larger standalone implementation from 3.0.1 included its own DEX
-metadata resolvers, caption manager helpers and styling parser infrastructure.
-Those are not duplicated in this branch because Morphe already provides those
-interfaces, fingerprints, caption settings and Android extension infrastructure.
-The shared caption manager, preferred-language routing, fingerprints, settings
-and extension infrastructure are supplied by the pinned Morphe build.
+## Versions
 
-**This branch builds a complete replacement Morphe patch source**, not a small
-addon that can safely be stacked with the official Morphe bundle. Use only one
-source at patch time. A clean YouTube APK is required.
+- **3.0.1:** [stable standalone release](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1), with its source and tests on `main`.
+- **Next version (experimental):** `refactor/morphe-native-source`. The Java caption runtime, Kotlin hooks and regression tests are in this branch; shared caption fingerprints, preferences and extension infrastructure come from the Morphe revision pinned in [CI](.github/workflows/ci.yml).
 
-## Status and installation
+The experimental build produces a **full replacement Morphe MPP**, not an additional source to stack with the official Morphe patch bundle. Use a clean supported YouTube APK and only one Morphe source during patching.
 
-- **Stable standalone release:** [Universal Captions 3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1)
-  on `main`, with the original 12 production classes, regression tests and
-  documented clean-APK research preserved.
-- **Experimental Morphe-native source:** this branch. The CI workflow overlays
-  the four tracked production files and tracked JUnit regressions into a
-  **pinned** Morphe fork and compiles its full Android MPP, rather than
-  providing a second independent caption runtime.
-- **Prerequisites:** Java 21 for Morphe build, clean YouTube APK at a supported
-  version, Morphe Manager or equivalent patcher, and the "Captions" patch.
-  Enable additional auto-translate languages in Morphe's Captions settings.
+## Tests and release status
 
-CI checks builds and Java tests, but successful device behavior is *not* implied.
-Before releasing, verify original/manual subtitles, missing and normal translation
-menus, signed URLs, multiple audio/source tracks, native language preference,
-caption-off state, translated text, cached subtitles and concurrent pen parsing
-on YouTube 21.20.405 and 21.41.525.
+[GitHub Actions](https://github.com/itolkien/universal-captions/actions) runs the immutable 3.0.1 reference tests, the candidate's regression tests, patch metadata generation and Android MPP packaging. The build artifact is for testing only.
+
+**The next version is not released.** Green CI does not establish that native DEX hooks work on-device. Testing must cover both YouTube `21.20.405` and `21.41.525`, including switching audio tracks, missing/native translation menus, caption preferences, signed URLs, cached subtitles, concurrent parsing and fallback errors. See the [quality and compatibility checklist](docs/PARITY_VALIDATION.md).
 
 ## License
 
-Source file copyright headers and the Morphe NOTICE are retained.
-No patched YouTube APK is distributed.
+Source headers and the corresponding Morphe NOTICE are preserved. No patched YouTube APK is distributed.

@@ -1,4 +1,40 @@
-# Regression parity validation
+# Release quality and regression validation
+
+The next version must be **better than 3.0.1**, not merely equivalent. The
+release gates prioritize reliable caption discovery, fewer false menus or
+incorrect sources, faster recovery after video changes, safe failure modes,
+readable styling, compatibility and a maintainable codebase. Code size by
+itself is not a quality metric.
+
+## Improvements in the current experimental implementation
+
+- Use the native active-audio source for menu eligibility, including when
+  several original caption tracks exist (new Kotlin hook and menu tests).
+- Reject ambiguous source identities or cross-video native translations
+  without damaging the native list.
+- Avoid stale caption styling on nested, cached, exceptional or concurrent
+  native decoder calls.
+- Fail closed on broken native accessors instead of crashing YouTube.
+- Run video switching and multiple app-locale stress tests; preserve explicit
+  source, VSS and signed URL identity.
+- Keep GitHub Actions on the latest development commit; older queued builds
+  cannot obscure which version passed.
+
+These improvements are supported by source-level tests. They are **not**
+benchmarked speed improvements or proof of successful APK patching.
+
+## Remaining release blockers
+
+- Obtain and validate the native video-specific translation target catalog.
+  The current static 156-code fallback is not proof a given video supports
+  every target.
+- Verify that the new native menu-count hook and scoped pen decoder hook
+  work against real DEX layouts in both supported YouTube versions.
+- Perform regression comparisons on actual patched APKs, not just pure
+  Java/Kotlin tests. A source-level test does not verify YouTube UI behavior,
+  translation server availability or successful installation.
+
+
 
 Reference: the immutable `v3.0.1` tag. Candidate:
 `refactor/morphe-native-source`, built with the Morphe infrastructure pinned
@@ -38,11 +74,11 @@ before testing, metadata generation and Android MPP packaging.
    runtime. This can cause a different menu decision on videos where the
    native catalog contains only the source language or an invalid target.
    Byte-for-byte behavioral equivalence is **not** established for this case.
-3. **Audio routing in the native menu-count gate:** the candidate's
-   `getTranslationCount` gate is given direct tracks but not the eligible
-   source. If there are several valid direct originals, the candidate fails
-   closed without showing a new menu row, even though the later adapter can
-   resolve the eligible source. Actual app behavior requires verification.
+3. **Audio routing in the native menu-count gate:** the candidate
+   now passes the active-audio translation source into the menu count hook,
+   including ambiguous native lists. The Kotlin/Java build and JVM tests do
+   not establish that the injected registers and target method are correct
+   for the 21.20.405 and 21.41.525 DEX files. APK validation is mandatory.
 4. **YouTube translation backend:** selecting a language is not proof of
    successful translated text; backend availability is video-dependent.
 5. **Runtime integration:** preferred-language visibility, off/manual
@@ -71,7 +107,7 @@ For **each** of YouTube 21.20.405 and 21.41.525:
 - Confirm no crashes or subtitle style leakage after a failed caption
   request, interrupted network response or decoder error.
 
-**Release criterion:** keep the branch experimental until both APKs pass,
-and until the native target-catalog and menu-count differences are addressed
-or consciously accepted as behavior changes. Do not claim 100% feature parity
-based on code size, unit tests or a successful MPP build alone.
+**Release criterion:** keep the branch experimental until both APKs pass
+and the remaining native target-catalog and DEX hook questions are resolved.
+Do not claim performance, feature superiority or reliable Android compatibility
+based only on lines of code, JVM tests or a successful MPP build.
