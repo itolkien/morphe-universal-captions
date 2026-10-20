@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-- Universal Captions **3.0.1** (maintenance release candidate).
+- Universal Captions **3.0.1** (maintenance release).
 - YouTube **21.20.405** and **21.41.525**.
 - Android package: `com.google.android.youtube`.
 
