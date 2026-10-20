@@ -4,7 +4,7 @@ YouTube on Android sometimes shows only a short Auto-translate language list, ev
 
 Universal Captions fixes those cases inside the YouTube app. It uses YouTube's own caption tracks and translation endpoint. No external translator, overlay or separate player.
 
-[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download 3.0.0](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.0) · [Issues](https://github.com/itolkien/morphe-universal-captions/issues)
+[Add to Morphe Manager](https://morphe.software/add-source?github=itolkien%2Fmorphe-universal-captions&name=Universal%20Captions) · [Download 3.0.1](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.1) · [Issues](https://github.com/itolkien/morphe-universal-captions/issues)
 
 ## What changed in 3.0
 
@@ -17,6 +17,13 @@ The patch now follows that native source-selection path. It keeps YouTube's exis
 I also reworked translated subtitle styling. Some creators use custom caption pens that can make translated text invisible. The old workaround kept one global flag for the latest timedtext request, which wasn't safe when requests overlapped. In 3.0, styling is tied to the caption being parsed, including the network and cache paths. Original subtitles keep their original styling.
 
 The result is a much cleaner separation between YouTube's native caption decisions and the extra language choices we add. It also means we can stop guessing a source just because two tracks happen to have the same language.
+
+## 3.0.1 maintenance
+
+This update tightens caption parser cleanup when a native exception handler runs
+outside the matching decoder call. It also removes unused Android test wrappers
+and fixes the version and download metadata used by Morphe Manager.
+Source selection, translation language choices and caption visibility are unchanged.
 
 ## Features
 
@@ -31,7 +38,7 @@ Showing a language in the menu doesn't guarantee YouTube will return translated 
 
 ## Installation
 
-1. Install [Morphe Manager](https://morphe.software/) and add this repository as a custom patch source, or download `universal-captions-3.0.0.mpp` from the [3.0.0 release](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.0).
+1. Install [Morphe Manager](https://morphe.software/) and add this repository as a custom patch source, or download `universal-captions-3.0.1.mpp` from the [3.0.1 release](https://github.com/itolkien/morphe-universal-captions/releases/tag/v3.0.1).
 2. Start with a clean YouTube **21.20.405** or **21.41.525** APK.
 3. Select **Universal Captions - additional translation languages** and patch the APK.
 4. Open a video with captions, then go to **Captions → Auto-translate**.
@@ -44,7 +51,7 @@ The patch does not force captions on, change your selected language or provide a
 
 | | |
 | --- | --- |
-| Release | **3.0.0** |
+| Release | **3.0.1** |
 | YouTube targets | **21.20.405**, **21.41.525** |
 | Package | `com.google.android.youtube` |
 | Format | Morphe Manager `.mpp` |
@@ -53,7 +60,7 @@ Both declared APK versions were patched and tested manually with the 3.0 develop
 
 The patch intentionally leaves caption visibility and preferred-language policy to YouTube/Morphe. Matching every manually selected source track, automatic regional preference matching and backend language availability still have limitations.
 
-For the technical details, see the [native caption metadata notes](docs/NATIVE_METADATA_21_20_405.md), [caption style handling](docs/CAPTION_PEN_STYLES.md) and [3.0 release notes](docs/RELEASE_3.0.0.md).
+For the technical details, see the [native caption metadata notes](docs/NATIVE_METADATA_21_20_405.md), [caption style handling](docs/CAPTION_PEN_STYLES.md) and [3.0.1 release notes](docs/RELEASE_3.0.1.md).
 
 ## Feedback and license
 

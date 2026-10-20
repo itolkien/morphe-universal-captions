@@ -3,22 +3,35 @@ on:
   pull_request:
   workflow_dispatch:
   push:
-    branches: [main, experiment/empty-translation-fallback]
+    branches: [main]
     paths:
       - 'patches/**'
       - 'extensions/**'
       - '.github/workflows/build-mpp.yml'
+      - 'patches-list.json'
+      - 'patches-bundle.json'
+      - 'docs/RELEASE_*.md'
+      - 'NOTICE'
 permissions:
   contents: read
   packages: read
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
         with:
           path: addon
+      - name: Read release version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import json,re; v=json.load(open("addon/patches-list.json"))["version"]; assert re.fullmatch(r"[0-9]+[.][0-9]+[.][0-9]+", v), v; print(v)')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
       - name: Checkout Morphe official template
         uses: actions/checkout@v4
         with:
@@ -32,8 +45,7 @@ jobs:
           cp addon/patches/src/main/kotlin/dev/itolkien/captions/patches/*.kt template/patches/src/main/kotlin/dev/itolkien/captions/patches/
           mkdir -p template/extensions/extension/src/main/java/dev/itolkien/captions/extension
           cp addon/extensions/extension/src/main/java/dev/itolkien/captions/extension/*.java template/extensions/extension/src/main/java/dev/itolkien/captions/extension/
-          # Use an updated bundle version so Manager can distinguish old incompatible artifacts.
-          sed -i 's/^version = .*/version = 3.0.0/' template/gradle.properties
+          sed -i "s/^version = .*/version = $RELEASE_VERSION/" template/gradle.properties
           python3 - <<'PY'
           from pathlib import Path
           p=Path("template/patches/build.gradle.kts")
@@ -61,9 +73,10 @@ jobs:
           ./gradlew :patches:buildAndroid --no-daemon
           # Morphe's Section 7 notice must accompany redistributed derivative binaries.
           python3 - <<'PYNOTICE'
+          import os
           from pathlib import Path
           from zipfile import ZipFile
-          bundle = Path("patches/build/libs/patches-3.0.0.mpp")
+          bundle = Path("patches/build/libs") / f"patches-{os.environ['RELEASE_VERSION']}.mpp"
           notice = Path("../addon/NOTICE").read_bytes()
           with ZipFile(bundle, "a") as archive:
               if "NOTICE" in archive.namelist():
@@ -71,15 +84,16 @@ jobs:
               else:
                   archive.writestr("NOTICE", notice)
           PYNOTICE
-          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-3.0.0.mpp
+          python3 ../addon/scripts/verify_android_bundle.py patches/build/libs/patches-$RELEASE_VERSION.mpp
           find patches/build/libs -maxdepth 1 -name '*.mpp' -type f -printf '%f\n'
       - name: Verify generated compatibility metadata
         run: |
           python3 - <<'PYMETA'
           import json
+          import os
           from pathlib import Path
           data = json.loads(Path("template/patches-list.json").read_text())
-          assert data["version"] == "3.0.0", data["version"]
+          assert data["version"] == os.environ["RELEASE_VERSION"], data["version"]
           patches = [p for p in data["patches"] if p["name"].startswith("Universal Captions")]
           assert len(patches) == 1, patches
           packages = patches[0]["compatiblePackages"]
@@ -95,23 +109,34 @@ jobs:
           # The main-branch publisher checks byte-for-byte metadata equality.
           # Exercise that gate on pull requests instead of discovering a mismatch after merge.
           cmp addon/patches-list.json template/patches-list.json
-          test -s addon/docs/RELEASE_3.0.0.md
+          test -s "addon/docs/RELEASE_$RELEASE_VERSION.md"
           test -s addon/NOTICE
-          python3 addon/scripts/verify_android_bundle.py template/patches/build/libs/patches-3.0.0.mpp
-          sha256sum template/patches/build/libs/patches-3.0.0.mpp
+          python3 - <<'PYSOURCE'
+          import json
+          import os
+          from pathlib import Path
+          version = os.environ["RELEASE_VERSION"]
+          feed = json.loads(Path("addon/patches-bundle.json").read_text())
+          assert feed["version"] == version, "Manager bundle version mismatch"
+          expected = (f"https://github.com/itolkien/morphe-universal-captions/"
+                      f"releases/download/v{version}/universal-captions-{version}.mpp")
+          assert feed["download_url"] == expected, "Manager download URL mismatch"
+          PYSOURCE
+          python3 addon/scripts/verify_android_bundle.py "template/patches/build/libs/patches-$RELEASE_VERSION.mpp"
+          sha256sum "template/patches/build/libs/patches-$RELEASE_VERSION.mpp"
 
       - name: Upload Morphe Manager MPP
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-3.0.0-youtube-mpp
-          path: template/patches/build/libs/patches-3.0.0.mpp
+          name: universal-captions-${{ steps.version.outputs.version }}-youtube-mpp
+          path: template/patches/build/libs/patches-${{ steps.version.outputs.version }}.mpp
           if-no-files-found: error
           retention-days: 14
 
       - name: Upload generated patch metadata
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-3.0.0-metadata
+          name: universal-captions-${{ steps.version.outputs.version }}-metadata
           path: template/patches-list.json
           if-no-files-found: error
           retention-days: 14
@@ -124,34 +149,56 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.build.outputs.version }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
-      - name: Download the verified Android bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: universal-captions-3.0.0-youtube-mpp
-          path: dist
-      - name: Download generated patch metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: universal-captions-3.0.0-metadata
-          path: dist
-      - name: Verify release files and write checksum
-        run: |
-          set -euo pipefail
-          cmp patches-list.json dist/patches-list.json
-          test "$(python3 -c 'import json; print(json.load(open("dist/patches-list.json"))["version"])')" = "3.0.0"
-          mv dist/patches-3.0.0.mpp dist/universal-captions-3.0.0.mpp
-          python3 scripts/verify_android_bundle.py dist/universal-captions-3.0.0.mpp
-          (cd dist && sha256sum universal-captions-3.0.0.mpp > universal-captions-3.0.0.mpp.sha256)
-      - name: Publish version 3.0.0
+      - name: Check for an existing release
+        id: current
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view v3.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v3.0.0 already exists; refusing to overwrite release assets."
-            exit 1
+          if gh release view "v$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "v$RELEASE_VERSION is already published; leaving its assets unchanged."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-          gh release create v3.0.0             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --latest             --title "Universal Captions 3.0.0"             --notes-file docs/RELEASE_3.0.0.md             dist/universal-captions-3.0.0.mpp             dist/universal-captions-3.0.0.mpp.sha256             dist/patches-list.json
+      - name: Download the verified Android bundle
+        if: steps.current.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: universal-captions-${{ needs.build.outputs.version }}-youtube-mpp
+          path: dist
+      - name: Download generated patch metadata
+        if: steps.current.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: universal-captions-${{ needs.build.outputs.version }}-metadata
+          path: dist
+      - name: Verify release files and write checksum
+        if: steps.current.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          cmp patches-list.json dist/patches-list.json
+          test "$(python3 -c 'import json; print(json.load(open("dist/patches-list.json"))["version"])')" = "$RELEASE_VERSION"
+          mv "dist/patches-$RELEASE_VERSION.mpp" "dist/universal-captions-$RELEASE_VERSION.mpp"
+          python3 scripts/verify_android_bundle.py "dist/universal-captions-$RELEASE_VERSION.mpp"
+          (cd dist && sha256sum "universal-captions-$RELEASE_VERSION.mpp" > "universal-captions-$RELEASE_VERSION.mpp.sha256")
+      - name: Publish new version
+        if: steps.current.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "v$RELEASE_VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --latest \
+            --title "Universal Captions $RELEASE_VERSION" \
+            --notes-file "docs/RELEASE_$RELEASE_VERSION.md" \
+            "dist/universal-captions-$RELEASE_VERSION.mpp" \
+            "dist/universal-captions-$RELEASE_VERSION.mpp.sha256" \
+            dist/patches-list.json
