@@ -26,7 +26,7 @@ private const val SOURCE_INTERFACE =
 private const val STRING = "Ljava/lang/String;"
 private const val LABEL = "Ljava/lang/CharSequence;"
 
-private fun MutableClass.addTranslationHelper(
+internal fun MutableClass.addTranslationHelper(
     name: String, parameters: List<String>, returnType: String, locals: Int, body: String
 ) {
     methods.add(ImmutableMethod(type, name,
@@ -69,7 +69,7 @@ val universalCaptionsPatch = bytecodePatch(
             model, metadata, classDefBy(model.direct.definingClass))
             ?: error("Universal Captions: native audio-source routing is unsupported by this YouTube version")
         // Resolve the srv3 pen hooks before changing any native code.
-        val applyPenHooks = resolveCaptionPenHooks()
+        val applyPenHooks = resolveCaptionPenHooks(model.track.type)
         for (method in listOf(model.direct, model.translated)) {
             check(method.implementation!!.registerCount in 1..15 && method.parameterTypes.isEmpty() &&
                 !AccessFlags.STATIC.isSet(method.accessFlags)) { "Unsupported native menu register layout" }
