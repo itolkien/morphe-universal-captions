@@ -24,6 +24,11 @@ def verify(root: Path, version: str) -> None:
     assert "beginCaption(Ljava/lang/Object;)" in parser and "endCaption(Ljava/lang/Object;)" in parser
     assert "beginCaption(" in runtime and "endCaption(" in runtime
     assert "setParsedRequest(" not in runtime, "Old unscoped parser state unexpectedly restored"
+    patch = (root / "patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt").read_text()
+    assert "resolveNativeTargets(" in patch and "patch_getNativeTargetLanguages" in patch
+    assert "patch_getActiveTranslationSource" in patch
+    assert "getTranslationCount(ILjava/util/List;$CAPTION_MANAGER_INTERFACE)I" in patch
+    assert "findInstructionIndicesReversedOrThrow" not in patch, "Old duplicate native hook reintroduced"
     path = root / "patches/build/libs" / f"patches-{version}.mpp"
     with ZipFile(path) as bundle:
         names = bundle.namelist()

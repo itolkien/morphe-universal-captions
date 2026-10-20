@@ -15,6 +15,7 @@ import java.net.URLDecoder;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +45,12 @@ public final class AutoTranslateCaptionsPatch {
                                                     String vssId, CharSequence label);
     }
 
+    /** Manager-level accessors supplied by the pinned Morphe caption fingerprint. */
+    public interface CaptionManagerInterface {
+        List<String> patch_getNativeTargetLanguages();
+        PreferredCaptionLanguagePatch.CaptionTrackInterface patch_getActiveTranslationSource();
+    }
+
     private static final Pattern LANGUAGE_CODE_PATTERN = Pattern.compile("[a-z]{2,8}(-[A-Za-z0-9]{2,8})*");
     private static final Pattern VIDEO_ID_PATTERN = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Pattern VSS_ID_SUFFIX_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,128}");
@@ -69,27 +76,46 @@ public final class AutoTranslateCaptionsPatch {
             "zh-Hans", "zh-Hant", "zu"
     };
 
-    /**
-     * Injection point: Called after the auto-translated caption tracks are created.
-     */
-    public static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks) {
-        try {
-            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
-            return addTranslationLanguages(tracks, Requester.getAppLocale());
-        } catch (RuntimeException ex) {
-            Logger.printException(() -> "addTranslationLanguages failure", ex);
-            return tracks;
-        } catch (LinkageError ignored) {
-            // An obfuscated method or extension contract can change between APK versions.
-            return tracks;
+    /** Native target codes take priority; extend them only when a valid translation exists. */
+    static List<String> effectiveTargets(List<String> nativeTargets, String sourceLanguage) {
+        Map<String, String> available = new LinkedHashMap<>();
+        if (nativeTargets != null) {
+            for (String code : nativeTargets) {
+                if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()) {
+                    available.putIfAbsent(exactTargetKey(code), code);
+                }
+            }
         }
+        String source = exactTargetKey(sourceLanguage);
+        // A non-empty native catalog without another valid language is authoritative.
+        // An absent/empty catalog has no such evidence, so use the fallback snapshot.
+        boolean known = nativeTargets != null && !nativeTargets.isEmpty();
+        boolean alternative = available.keySet().stream().anyMatch(key -> !key.equals(source));
+        if (!known || alternative) {
+            for (String code : TRANSLATION_LANGUAGES) {
+                available.putIfAbsent(exactTargetKey(code), code);
+            }
+        }
+        return new ArrayList<>(available.values());
+    }
+
+    static boolean hasTranslationTarget(List<String> nativeTargets, String sourceLanguage) {
+        String source = exactTargetKey(sourceLanguage);
+        for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
+            if (!exactTargetKey(code).equals(source)) return true;
+        }
+        return false;
+    }
+
+    /** Extend the native list only when its translated tracks share one verified source. */
+    static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks,
+                                                               Locale locale) {
+        return addTranslationLanguages(tracks, locale, null);
     }
 
     static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks,
-                                                               Locale locale) {
+                                                               Locale locale, List<String> nativeTargets) {
         if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
-
-        // Never infer a URL target from a signature, fragment, or opaque query value.
         CaptionTrackInterface template = tracks.get(0);
         String templateCode = template.patch_getLanguageCode();
         String vss = template.patch_getVssId();
@@ -99,30 +125,28 @@ public final class AutoTranslateCaptionsPatch {
         int targetIndex = targetValueOffset(templateUrl, templateCode);
         String identity = translationSourceIdentity(template);
         if (targetIndex < 0 || identity == null) return tracks;
-        // YouTube may route different target languages through different native
-        // source captions. Never copy the first track across those sources.
         for (CaptionTrackInterface track : tracks) {
             if (!identity.equals(translationSourceIdentity(track))) return tracks;
         }
+        String sourceLanguage = captionParameters(templateUrl).get("lang");
         String vssIdPrefix = removeSuffix(vss, templateCode.length());
         String urlPrefix = templateUrl.substring(0, targetIndex);
         String urlSuffix = templateUrl.substring(targetIndex + templateCode.length());
 
-        Set<String> existingLanguages = new HashSet<>();
+        Set<String> existing = new HashSet<>();
         for (CaptionTrackInterface track : tracks) {
-            existingLanguages.add(exactTargetKey(track.patch_getLanguageCode()));
+            existing.add(exactTargetKey(track.patch_getLanguageCode()));
         }
-
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
-        for (String code : TRANSLATION_LANGUAGES) {
-            if (existingLanguages.add(exactTargetKey(code))) {
-                String name = Locale.forLanguageTag(code).getDisplayName(locale);
-                result.add(template.patch_copyTranslation(
-                        code, urlPrefix + code + urlSuffix, vssIdPrefix + code, name));
-            }
+        for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
+            String key = exactTargetKey(code);
+            if (key.equals(exactTargetKey(sourceLanguage)) || !existing.add(key)) continue;
+            String name = Locale.forLanguageTag(code).getDisplayName(locale);
+            result.add(template.patch_copyTranslation(
+                    code, urlPrefix + code + urlSuffix, vssIdPrefix + code,
+                    name.isEmpty() ? code : name));
         }
-
-        return sortTranslationTracks(result, locale);
+        return result.size() == tracks.size() ? tracks : sortTranslationTracks(result, locale);
     }
 
     private static List<CaptionTrackInterface> sortTranslationTracks(List<CaptionTrackInterface> result, Locale locale) {
@@ -135,14 +159,15 @@ public final class AutoTranslateCaptionsPatch {
         return result;
     }
 
-    /** Keep YouTube's native menu construction and its other availability checks. */
+    /** Preserve native menu rules, including YouTube's real per-video target catalog. */
     public static int getTranslationCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
+            CaptionManagerInterface manager) {
         try {
-            return Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
-                    ? safeRestoredMenuCount(nativeCount, directTracks, audioSource)
-                    : nativeCount;
+            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return nativeCount;
+            return safeRestoredMenuCount(nativeCount, directTracks,
+                    manager.patch_getActiveTranslationSource(),
+                    manager.patch_getNativeTargetLanguages());
         } catch (RuntimeException | LinkageError ignored) {
             return nativeCount;
         }
@@ -151,28 +176,45 @@ public final class AutoTranslateCaptionsPatch {
     static int safeRestoredMenuCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
+        return safeRestoredMenuCount(nativeCount, directTracks, audioSource, null);
+    }
+
+    static int safeRestoredMenuCount(int nativeCount,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource,
+            List<String> nativeTargets) {
         try {
-            return restoredMenuCount(nativeCount, directTracks, audioSource);
+            return restoredMenuCount(nativeCount, directTracks, audioSource, nativeTargets);
         } catch (RuntimeException | LinkageError ignored) {
             return nativeCount;
         }
     }
 
-    /** Preserve YouTube's count unless an eligible, validated native source is available. */
     static int restoredMenuCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
-        if (nativeCount != 0) return nativeCount;
-        return findFallbackSource(directTracks, audioSource) == null ? 0 : 1;
+        return restoredMenuCount(nativeCount, directTracks, audioSource, null);
     }
 
-    /** Called by the manager adapter, not recursively from either native list getter. */
+    static int restoredMenuCount(int nativeCount,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource,
+            List<String> nativeTargets) {
+        if (nativeCount != 0) return nativeCount;
+        CaptionTrackInterface source = findFallbackSource(directTracks, audioSource);
+        return source != null && hasTranslationTarget(nativeTargets, source.patch_getLanguageCode())
+                ? 1 : 0;
+    }
+
+    /** Called by the manager adapter without recursively invoking native getters. */
     public static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource) {
+            PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource,
+            List<String> nativeTargets) {
         try {
             if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
-            return restoreTranslationTracks(tracks, directTracks, defaultSource, Requester.getAppLocale());
+            return restoreTranslationTracks(tracks, directTracks, defaultSource,
+                    Requester.getAppLocale(), nativeTargets);
         } catch (RuntimeException ex) {
             Logger.printException(() -> "restoreTranslationTracks failure", ex);
             return tracks;
@@ -184,9 +226,18 @@ public final class AutoTranslateCaptionsPatch {
     static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource, Locale locale) {
+        return restoreTranslationTracks(tracks, directTracks, defaultSource, locale, null);
+    }
+
+    static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource, Locale locale,
+            List<String> nativeTargets) {
         if (tracks == null || locale == null) return tracks;
         CaptionTrackInterface source = findFallbackSource(directTracks, defaultSource);
-        if (source == null) return tracks;
+        // A native list with a consistent source is still extensible even without
+        // a verified original, but never mix native targets from distinct sources.
+        if (source == null) return addTranslationLanguages(tracks, locale, nativeTargets);
         String video = originalVideoId(source);
         // Existing target-specific native tracks are authoritative. Add only
         // missing choices from the source YouTube chose for the current audio.
@@ -199,7 +250,7 @@ public final class AutoTranslateCaptionsPatch {
             represented.add(exactTargetKey(track.patch_getLanguageCode()));
         }
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
-        for (String language : TRANSLATION_LANGUAGES) {
+        for (String language : effectiveTargets(nativeTargets, source.patch_getLanguageCode())) {
             if (represented.contains(exactTargetKey(language))) continue;
             CaptionTrackInterface translated = createTranslation(source, language, locale);
             if (translated != null) {

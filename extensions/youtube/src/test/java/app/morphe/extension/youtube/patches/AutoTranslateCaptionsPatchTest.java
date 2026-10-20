@@ -380,6 +380,56 @@ public class AutoTranslateCaptionsPatchTest {
                 new Track("AUTO_TRANSLATE_CAPTIONS_OPTION", "", "", "Auto-translate")), source));
     }
 
+    @Test public void nativeCatalogWithOnlySourceNeverForcesMenu() {
+        Track english = new Track("en",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(
+                0, List.of(english), english, List.of("en")));
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(
+                0, List.of(english), english, java.util.Arrays.asList("invalid token", "en", null)));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
+                0, List.of(english), english, List.of()));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
+                0, List.of(english), english, null));
+        assertEquals(2, AutoTranslateCaptionsPatch.restoredMenuCount(
+                2, List.of(english), english, List.of("en")));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
+                0, List.of(english), english, List.of("en", "tr")));
+    }
+
+    @Test public void nativeCatalogTargetsPrecedeSnapshotAndKeepUnknownNativeCodes() {
+        List<String> codes = AutoTranslateCaptionsPatch.effectiveTargets(
+                List.of("xxyy", "tr", "en", "tr", "???"), "en");
+        assertEquals("xxyy", codes.get(0));
+        assertEquals("tr", codes.get(1));
+        assertEquals("en", codes.get(2));
+        assertEquals(1, codes.stream().filter("tr"::equals).count());
+        org.junit.Assert.assertTrue(codes.size() > 150);
+        assertEquals(List.of("en"), AutoTranslateCaptionsPatch.effectiveTargets(
+                List.of("en", "??", "en"), "en"));
+    }
+
+    @Test public void nativeCatalogCannotGenerateFakeTranslationOptions() {
+        Track original = new Track("en",
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en",
+                ".en", "English");
+        List<CaptionTrackInterface> nativeEmpty = List.of();
+        assertSame(nativeEmpty, AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                nativeEmpty, List.of(original), original, Locale.ENGLISH, List.of("en")));
+        List<CaptionTrackInterface> restored = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                nativeEmpty, List.of(original), original, Locale.ENGLISH, List.of("en", "tr"));
+        find(restored, "tr");
+        find(restored, "fr"); // Extra snapshot targets are still best-effort.
+        Track german = new Track("de", "German");
+        var normalNative = AutoTranslateCaptionsPatch.addTranslationLanguages(
+                List.of(german), Locale.ENGLISH, List.of("en"));
+        assertEquals(1, normalNative.size());
+        var extended = AutoTranslateCaptionsPatch.addTranslationLanguages(
+                List.of(german), Locale.ENGLISH, List.of("en", "tr"));
+        find(extended, "tr");
+        find(extended, "pt-PT");
+    }
+
     @Test public void autoTranslateRowUsesActiveAudioSourceWithoutGuessing() {
         Track english = new Track("en",
                 "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=a",
