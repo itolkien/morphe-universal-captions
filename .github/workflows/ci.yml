@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      MORPHE_BASE: 81a8567610c1b9cdcf3b3f3fe56c38cdcf97dc3c
+      MORPHE_BASE: 74de25927da7e159db2501886a50b09964c425ca
       TEST_VERSION: 3.1.0
     steps:
       - name: Checkout original Universal Captions sources
@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: itolkien/morphe-patches
-          ref: 81a8567610c1b9cdcf3b3f3fe56c38cdcf97dc3c
+          ref: 74de25927da7e159db2501886a50b09964c425ca
           path: morphe
       - name: Install the actual maintained caption sources and regression tests
         shell: bash

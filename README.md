@@ -1,6 +1,6 @@
 # Universal Captions
 
-**Originally developed by [itolkien](https://github.com/itolkien) for YouTube on Android.**
+Universal Captions for YouTube on Android.
 Universal Captions extends the native Auto-translate language choices, recovers
 missing translation menus when YouTube exposes an eligible source, and improves
 the readability of translated subtitles.
@@ -17,9 +17,8 @@ The much larger standalone implementation from 3.0.1 included its own DEX
 metadata resolvers, caption manager helpers and styling parser infrastructure.
 Those are not duplicated in this branch because Morphe already provides those
 interfaces, fingerprints, caption settings and Android extension infrastructure.
-Morphe's upstream and maintainer contributions are credited in source headers
-and NOTICE; Universal Captions remains the origin of the project and this
-repository remains the development source.
+The shared caption manager, preferred-language routing, fingerprints, settings
+and extension infrastructure are supplied by the pinned Morphe build.
 
 **This branch builds a complete replacement Morphe patch source**, not a small
 addon that can safely be stacked with the official Morphe bundle. Use only one
@@ -44,10 +43,7 @@ menus, signed URLs, multiple audio/source tracks, native language preference,
 caption-off state, translated text, cached subtitles and concurrent pen parsing
 on YouTube 21.20.405 and 21.41.525.
 
-## Attribution and ownership
+## License
 
-The original [Universal Captions 3.0.1](https://github.com/itolkien/universal-captions/tree/v3.0.1)
-code, analysis and release history remain accessible unchanged in Git history.
-The Morphe-compatible implementation also includes code and review contributions
-from Morphe contributors; their copyright and Section 7 notices are preserved.
+Source file copyright headers and the Morphe NOTICE are retained.
 No patched YouTube APK is distributed.

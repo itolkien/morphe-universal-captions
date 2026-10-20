@@ -1,7 +1,7 @@
-# Architecture: project-owned sources with Morphe adapters
+# Architecture: Morphe-dependent caption implementation
 
-**Canonical development source:** the Java runtime and Kotlin caption hooks
-under `extensions/youtube/src/main` and `patches/src/main` in *this repository*.
+The experimental branch tracks caption runtime and hook sources under
+`extensions/youtube/src/main` and `patches/src/main`.
 
 **Platform support:** a pinned Morphe patch fork supplies caption fingerprints,
 preferred-language routing, extension injection, settings, dependencies and

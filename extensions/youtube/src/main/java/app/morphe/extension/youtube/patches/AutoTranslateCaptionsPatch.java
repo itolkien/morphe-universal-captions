@@ -1,8 +1,8 @@
 /*
  * Copyright 2026 Morphe.
- * Original Universal Captions project by itolkien:
- * https://github.com/itolkien/universal-captions
- * Earlier Morphe port: https://github.com/itolkien/morphe-universal-captions
+ * https://github.com/MorpheApp/morphe-patches/pull/3754
+ * https://github.com/MorpheApp/morphe-patches/pull/3891
+ * Adapted from https://github.com/itolkien/morphe-universal-captions
  *
  * See the included NOTICE file for GPLv3 Section 7 terms that apply to this code.
  */

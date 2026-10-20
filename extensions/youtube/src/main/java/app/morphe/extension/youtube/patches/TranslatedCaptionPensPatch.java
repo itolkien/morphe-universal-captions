@@ -1,8 +1,7 @@
 /*
  * Copyright 2026 Morphe.
- *
- * Translated-caption styling improvements informed by Universal Captions 3.0.1:
- * https://github.com/itolkien/universal-captions
+ * https://github.com/MorpheApp/morphe-patches/pull/3837
+ * https://github.com/MorpheApp/morphe-patches/pull/3891
  *
  * See the included NOTICE file for GPLv3 Section 7 terms that apply to this code.
  */
