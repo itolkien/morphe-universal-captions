@@ -317,8 +317,10 @@ public class AutoTranslateCaptionsPatchTest {
         List<CaptionTrackInterface> empty = List.of();
         assertSame(empty, AutoTranslateCaptionsPatch.restoreTranslationTracks(
                 empty, direct, null, Locale.ENGLISH));
+        List<PreferredCaptionLanguagePatch.CaptionTrackInterface> preferredDirect =
+                new java.util.ArrayList<>(direct);
         org.junit.Assert.assertNull(PreferredCaptionLanguagePatch.findAutoTranslatedTrack(
-                direct, empty, null, "bn", Locale.ENGLISH));
+                preferredDirect, List.of(), null, "bn", Locale.ENGLISH));
         assertSame(french, AutoTranslateCaptionsPatch.findFallbackSource(direct, french));
     }
 
