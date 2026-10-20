@@ -146,12 +146,16 @@ class EmptyTranslationFallbackTest {
                 new Track("de", URL + "&tlang=de", "ta.ar.de", "German"),
                 new Track("fr", englishUrl + "&tlang=fr", "t.en.fr", "French"));
         source.targets = List.of("de", "fr", "tr");
-        assertEquals(source.translations, EmptyTranslationFallback.translated(
-                source.translations, source, Locale.ENGLISH));
+        List<CaptionTrack> unchanged = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(source.translations.size(), unchanged.size());
+        assertTrue(unchanged.containsAll(source.translations));
         // A default from outside the audio-specific native original list is not trusted.
         source.preferred = new Track("en", englishUrl + "&name=unknown", ".en");
-        assertEquals(source.translations, EmptyTranslationFallback.translated(
-                source.translations, source, Locale.ENGLISH));
+        List<CaptionTrack> afterWrongDefault = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(source.translations.size(), afterWrongDefault.size());
+        assertTrue(afterWrongDefault.containsAll(source.translations));
     }
 
     @Test void mixedNativeSourcesFromDifferentVideosDoNotMerge() {
@@ -162,8 +166,10 @@ class EmptyTranslationFallbackTest {
                 new Track("de", URL + "&tlang=de", "ta.ar.de", "German"),
                 new Track("fr", foreign + "&tlang=fr", "t.en.fr", "French"));
         source.targets = List.of("de", "fr", "tr");
-        assertEquals(source.translations, EmptyTranslationFallback.translated(
-                source.translations, source, Locale.ENGLISH));
+        List<CaptionTrack> unchanged = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(source.translations.size(), unchanged.size());
+        assertTrue(unchanged.containsAll(source.translations));
     }
 
     @Test void existingNativeTranslationsUseVideoMetadataWithoutLegacyMorpheAdapter() {

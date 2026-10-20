@@ -52,7 +52,20 @@ public final class EmptyTranslationFallback {
             List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
             CaptionTranslationList.trace("translated-meta", "native=" + tracks.size()
                     + " targetCodes=" + (nativeTargets == null ? -1 : nativeTargets.size()));
-            if (!tracks.isEmpty()) return CaptionTranslationList.augment(tracks, locale, nativeTargets);
+            if (!tracks.isEmpty()) {
+                List<CaptionTrack> augmented = CaptionTranslationList.augment(tracks, locale, nativeTargets);
+                if (augmented.size() > tracks.size()) return augmented;
+                // The native generator can choose a different original for each
+                // target; use the current audio's verified default for extras.
+                OriginalCaptionSource selected = candidate(
+                        source.universalCaptions_nativeDirect(true), source);
+                if (selected == null) {
+                    CaptionTranslationList.trace("mixed-resolution", "reason=no-safe-default");
+                    return augmented;
+                }
+                return CaptionTranslationList.mergeFromSelectedSource(
+                        augmented, selected, locale, nativeTargets);
+            }
             OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) {
                 CaptionTranslationList.trace("translated-empty", "reason=no-safe-source");

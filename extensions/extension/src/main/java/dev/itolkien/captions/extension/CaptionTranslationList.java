@@ -179,6 +179,44 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
+    /** On multi-source videos, keep YouTube's native target routing intact and
+     * synthesize only missing targets from its current-audio default source.
+     * Never mix cross-video native objects or unknown native track shapes.
+     */
+    static List<CaptionTrack> mergeFromSelectedSource(List<CaptionTrack> nativeTracks,
+            OriginalCaptionSource selected, Locale locale, List<String> nativeTargets) {
+        if (nativeTracks == null || nativeTracks.isEmpty() || selected == null || locale == null)
+            return nativeTracks;
+        Set<String> represented = new HashSet<>();
+        for (CaptionTrack track : nativeTracks) {
+            if (track == null || translationSourceIdentity(track) == null) {
+                trace("mixed-resolution", "reason=invalid-native-track");
+                return nativeTracks;
+            }
+            TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
+            if (url == null || url.field("v") != null
+                    && !selected.videoId().equals(url.field("v"))) {
+                trace("mixed-resolution", "reason=video-mismatch");
+                return nativeTracks;
+            }
+            represented.add(languageKey(track.universalCaptions_getLanguageCode()));
+        }
+
+        List<CaptionTrack> result = new ArrayList<>(nativeTracks);
+        for (String target : expandedTargets(nativeTargets, selected::canTranslate)) {
+            String key = languageKey(target);
+            if (represented.contains(key)) continue;
+            CaptionTrack generated = selected.translate(target, locale);
+            if (generated != null) {
+                result.add(generated);
+                represented.add(key);
+            }
+        }
+        trace("mixed-resolution", "native=" + nativeTracks.size()
+                + " result=" + result.size() + " reason=verified-default");
+        return sorted(result, locale);
+    }
+
     /** Validate each native translated track and identify its original source and video. */
     private static String translationSourceIdentity(CaptionTrack track) {
         String code = track.universalCaptions_getLanguageCode();
