@@ -11,8 +11,6 @@ package app.morphe.extension.youtube.patches;
 
 import androidx.annotation.Nullable;
 
-import app.morphe.extension.shared.Logger;
-
 @SuppressWarnings("unused")
 public class TranslatedCaptionPensPatch {
 
@@ -55,10 +53,10 @@ public class TranslatedCaptionPensPatch {
                     && captionRequest.patch_getCaptionTrack() instanceof PreferredCaptionLanguagePatch.CaptionTrackInterface track
                     // Auto-translated vss ids are "t" + source vss id + "." + language code.
                     && track.patch_getVssId().startsWith("t");
-        } catch (Exception ex) {
-            Logger.printException(() -> "setParsedRequest failure", ex);
+        } catch (RuntimeException | LinkageError ignored) {
+            // An unrecognized native request must preserve the original caption pens.
         } finally {
-            // Do not inherit the previous translation if a native getter throws.
+            // Never carry the previous translation into this request after an error.
             isAutoTranslatedTrack.set(translated);
         }
     }
