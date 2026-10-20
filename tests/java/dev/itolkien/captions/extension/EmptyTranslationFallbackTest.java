@@ -165,6 +165,54 @@ class EmptyTranslationFallbackTest {
                 .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
     }
 
+    @Test void audioEligibleOriginalTakesPrecedenceOverDifferentNativeDefault() {
+        Source source = new Source();
+        String englishUrl = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=y";
+        Track originalEnglish = new Track("en", englishUrl, ".en");
+        source.direct = List.of(source.direct.get(0), source.direct.get(1), originalEnglish);
+        source.preferred = source.direct.get(1); // Native default does not imply target eligibility.
+        source.eligible = originalEnglish;
+        Track nativeGerman = new Track("de", URL + "&tlang=de", "ta.ar.de", "German");
+        Track nativeFrench = new Track("fr", englishUrl + "&tlang=fr", "t.en.fr", "French");
+        source.translations = List.of(nativeGerman, nativeFrench);
+        source.targets = List.of("de", "fr", "tr");
+
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertTrue(result.size() > 100);
+        assertEquals(englishUrl + "&tlang=tr", result.stream()
+                .filter(t -> "tr".equals(t.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
+        assertTrue(result.containsAll(source.translations));
+    }
+
+    @Test void repeatedMixedSourceMenusDoNotAccumulateOrMutateNativeTracks() {
+        Source source = new Source();
+        String englishUrl = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=y";
+        Track originalEnglish = new Track("en", englishUrl, ".en");
+        source.direct = List.of(source.direct.get(0), source.direct.get(1), originalEnglish);
+        source.eligible = originalEnglish;
+        source.targets = List.of("de", "fr", "tr");
+        source.translations = List.of(
+                new Track("de", URL + "&tlang=de", "ta.ar.de", "German"),
+                new Track("fr", englishUrl + "&tlang=fr", "t.en.fr", "French"));
+        List<CaptionTrack> nativeList = source.translations;
+
+        List<CaptionTrack> first = EmptyTranslationFallback.translated(
+                nativeList, source, Locale.ENGLISH);
+        List<CaptionTrack> second = EmptyTranslationFallback.translated(
+                nativeList, source, Locale.ENGLISH);
+        assertTrue(first.size() > 100);
+        assertEquals(first.size(), second.size());
+        assertEquals(first.stream().map(CaptionTrack::universalCaptions_getCaptionUrl).toList(),
+                second.stream().map(CaptionTrack::universalCaptions_getCaptionUrl).toList());
+        assertSame(nativeList, source.translations);
+        assertEquals(2, nativeList.size());
+        assertSame(nativeList.get(0), first.stream()
+                .filter(t -> "de".equals(t.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow());
+    }
+
     @Test void invalidNativeEligibleOriginalFailsClosed() {
         Source source = new Source();
         String englishUrl = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=y";
