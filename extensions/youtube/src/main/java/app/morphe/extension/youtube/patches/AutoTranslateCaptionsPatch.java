@@ -97,11 +97,8 @@ public final class AutoTranslateCaptionsPatch {
                 || vss == null || !vss.startsWith("t") || !vss.endsWith("." + templateCode)) return tracks;
         String templateUrl = template.patch_getUrl();
         int targetIndex = targetValueOffset(templateUrl, templateCode);
-        if (targetIndex < 0) {
-            // Signed timedtext URLs are sensitive and must never be logged in full.
-            Logger.printDebug(() -> "Translation URL has no unambiguous tlang parameter");
-            return tracks;
-        }
+        // Malformed native tracks are ignored rather than logging signed caption URLs.
+        if (targetIndex < 0) return tracks;
         String vssIdPrefix = removeSuffix(vss, templateCode.length());
         String urlPrefix = templateUrl.substring(0, targetIndex);
         String urlSuffix = templateUrl.substring(targetIndex + templateCode.length());
