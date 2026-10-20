@@ -1,27 +1,103 @@
-name: Caption regression tests
+name: Morphe-backed Universal Captions prototype
+
 on:
-  push:
   pull_request:
   workflow_dispatch:
+  push:
+    branches: [experiment/morphe-native-captions]
+
 permissions:
   contents: read
+  packages: read
+
 jobs:
-  tests:
+  integration:
     runs-on: ubuntu-latest
+    env:
+      UPSTREAM_SHA: 74de25927da7e159db2501886a50b09964c425ca
+      BUNDLE_VERSION: 3.1.0
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout Universal Captions integration
+        uses: actions/checkout@v4
+        with:
+          path: addon
+
+      - name: Checkout pinned Morphe fork containing PR 3891
+        uses: actions/checkout@v4
+        with:
+          repository: itolkien/morphe-patches
+          ref: 74de25927da7e159db2501886a50b09964c425ca
+          path: morphe
+
+      - name: Prepare exactly one Morphe-native caption entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C morphe rev-parse HEAD)" = "$UPSTREAM_SHA"
+          python3 addon/integration/verify.py source morphe "$UPSTREAM_SHA"
+          cp addon/integration/UniversalCaptionsMorphePatch.kt \
+            morphe/patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/
+          sed -i "s/^version = .*/version = $BUNDLE_VERSION/" morphe/gradle.properties
+          # This artifact contains Morphe's entire patch set; identify its origin.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("morphe/patches/build.gradle.kts")
+          content = path.read_text()
+          before = 'name = "Morphe Patches"'
+          assert content.count(before) == 1
+          path.write_text(content.replace(
+              before, 'name = "Morphe Patches + Universal Captions"'))
+          PY
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+          java-version: '21'
+
+      - name: Run upstream Kotlin and Android extension tests
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:test :extensions:youtube:testDebugUnitTest --no-daemon
+
+      - name: Generate complete Morphe metadata
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:generatePatchesList --no-daemon
+
+      # Android task rewrites the JVM archive in-place. Always build Android last.
+      - name: Build integrated Android MPP
+        working-directory: morphe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:buildAndroid --no-daemon
+
+      - name: Embed original Morphe notice and verify result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          bundle = Path("morphe/patches/build/libs") / f"patches-{os.environ['BUNDLE_VERSION']}.mpp"
+          notice = Path("morphe/NOTICE").read_bytes()
+          with ZipFile(bundle, "a") as z:
+              if "NOTICE" in z.namelist():
+                  assert z.read("NOTICE") == notice, "Morphe NOTICE mismatch"
+              else:
+                  z.writestr("NOTICE", notice)
+          PY
+          python3 addon/integration/verify.py bundle morphe "$BUNDLE_VERSION"
+
+      - name: Upload test-only integration artifacts
+        uses: actions/upload-artifact@v4
         with:
-          gradle-version: '9.0.0'
-      - name: Test menu runtime and structural bytecode resolution
-        run: gradle -p tests/fingerprints test --no-daemon
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: fingerprint-test-results
-          path: tests/fingerprints/build/reports/tests/test
-          if-no-files-found: ignore
+          name: universal-captions-morphe-integration
+          path: |
+            morphe/patches/build/libs/patches-${{ env.BUNDLE_VERSION }}.mpp
+            morphe/patches-list.json
+          if-no-files-found: error
+          retention-days: 14
