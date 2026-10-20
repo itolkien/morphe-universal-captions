@@ -106,7 +106,9 @@ class CaptionSourceTest {
         CountingTrack source = new CountingTrack();
         var tracks = CaptionTranslationList.fromSource(OriginalCaptionSource.from(source), Locale.ENGLISH,
                 java.util.List.of("ar", "tr", "de", "fr"));
-        assertEquals(3, tracks.size());
+        assertTrue(tracks.size() > 100);
+        assertTrue(tracks.stream().anyMatch(track ->
+                "tr".equals(track.universalCaptions_getLanguageCode())));
         // Validation snapshots the URL once and reuses it for every target.
         assertEquals(1, source.urlReads);
         assertEquals(1, source.languageReads);

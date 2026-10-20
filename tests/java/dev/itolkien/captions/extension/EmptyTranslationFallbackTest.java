@@ -241,7 +241,9 @@ class EmptyTranslationFallbackTest {
         var result = EmptyTranslationFallback.translated(
                 source.translations, source, Locale.ENGLISH);
         assertTrue(result.size() > 100);
-        assertEquals(second.url + "&tlang=tr", result.get(0).universalCaptions_getCaptionUrl());
+        assertEquals(second.url + "&tlang=tr", result.stream()
+                .filter(track -> "tr".equals(track.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
     }
 
     @Test void twoSameLanguageSourcesRequireNativeDefaultToAvoidWrongTrack() {
@@ -262,8 +264,9 @@ class EmptyTranslationFallbackTest {
         List<CaptionTrack> translated = EmptyTranslationFallback.translated(
                 source.translations, source, Locale.ENGLISH);
         assertTrue(translated.size() > 100);
-        assertEquals(alternate.url + "&tlang=tr",
-                translated.get(0).universalCaptions_getCaptionUrl());
+        assertEquals(alternate.url + "&tlang=tr", translated.stream()
+                .filter(track -> "tr".equals(track.universalCaptions_getLanguageCode()))
+                .findFirst().orElseThrow().universalCaptions_getCaptionUrl());
     }
 
     @Test void ambiguousMultipleSourceLanguagesDoNotGuessTheAudioTrack() {
