@@ -30,7 +30,7 @@ public final class EmptyTranslationFallback {
             // Only check whether a target exists; don't construct and sort 156 throwaway tracks.
             List<CaptionTrack> translated = source.universalCaptions_nativeTranslated(true);
             if (translated == null || !translated.isEmpty()) return tracks;
-            OriginalCaptionSource candidate = candidate(tracks, source);
+            OriginalCaptionSource candidate = selectSource(tracks, source);
             if (candidate == null) return tracks;
             boolean hasTarget = CaptionTranslationList.targets(source.universalCaptions_targetLanguages(true))
                     .stream().anyMatch(candidate::canTranslate);
@@ -53,25 +53,25 @@ public final class EmptyTranslationFallback {
             if (!tracks.isEmpty()) {
                 List<CaptionTrack> augmented = CaptionTranslationList.augment(tracks, locale, nativeTargets);
                 if (augmented.size() > tracks.size()) return augmented;
-                // YouTube's native general-source eligibility is based on
-                // caption indices intersected with the CURRENT audio's indices.
-                CaptionTrack eligibleSource = source.universalCaptions_eligibleSource(true);
-                OriginalCaptionSource selected = OriginalCaptionSource.from(eligibleSource);
-                if (eligibleSource != null && selected == null) return augmented;
-                if (eligibleSource == null) {
-                    selected = candidate(source.universalCaptions_nativeDirect(true), source);
-                }
-                if (selected == null) return augmented;
+                OriginalCaptionSource selected = selectSource(
+                        source.universalCaptions_nativeDirect(true), source);
                 return CaptionTranslationList.mergeFromSelectedSource(
                         augmented, selected, locale, nativeTargets);
             }
-            OriginalCaptionSource candidate = candidate(source.universalCaptions_nativeDirect(true), source);
+            OriginalCaptionSource candidate = selectSource(
+                    source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) return tracks;
             List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
             return result.isEmpty() ? tracks : result;
         } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
+    }
+
+    /** Audio-specific indices take precedence; an invalid native result is never guessed over. */
+    private static OriginalCaptionSource selectSource(List<CaptionTrack> direct, CaptionSource source) {
+        CaptionTrack eligible = source.universalCaptions_eligibleSource(true);
+        return eligible != null ? OriginalCaptionSource.from(eligible) : candidate(direct, source);
     }
 
     private static OriginalCaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {

@@ -116,13 +116,22 @@ public final class CaptionTranslationList {
         return sorted(result, locale);
     }
 
+    private static void appendFromSource(List<CaptionTrack> output, Set<String> represented,
+            OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
+        for (String target : expandedTargets(nativeTargets, source::canTranslate)) {
+            if (represented.contains(languageKey(target))) continue;
+            CaptionTrack translated = source.translate(target, locale);
+            if (translated != null) {
+                output.add(translated);
+                represented.add(languageKey(target));
+            }
+        }
+    }
+
     static List<CaptionTrack> fromSource(OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
         if (locale == null || source == null) return result;
-        for (String target : expandedTargets(nativeTargets, source::canTranslate)) {
-            CaptionTrack translated = source.translate(target, locale);
-            if (translated != null) result.add(translated);
-        }
+        appendFromSource(result, new HashSet<>(), source, locale, nativeTargets);
         return sorted(result, locale);
     }
 
@@ -145,15 +154,7 @@ public final class CaptionTranslationList {
         }
 
         List<CaptionTrack> result = new ArrayList<>(nativeTracks);
-        for (String target : expandedTargets(nativeTargets, selected::canTranslate)) {
-            String key = languageKey(target);
-            if (represented.contains(key)) continue;
-            CaptionTrack generated = selected.translate(target, locale);
-            if (generated != null) {
-                result.add(generated);
-                represented.add(key);
-            }
-        }
+        appendFromSource(result, represented, selected, locale, nativeTargets);
         return sorted(result, locale);
     }
 
