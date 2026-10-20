@@ -362,10 +362,10 @@ public final class AutoTranslateCaptionsPatch {
             case "tl": return "fil" + region;
             case "nb": return "no" + region;
             case "zh":
-                if (code.contains("-hant") || code.endsWith("-tw") || code.endsWith("-hk"))
-                    return "zh-hant";
-                if (code.contains("-hans") || code.endsWith("-cn") || code.endsWith("-sg"))
-                    return "zh-hans";
+                if (code.contains("-hant")) return "zh-hant";
+                if (code.contains("-hans")) return "zh-hans";
+                if (code.endsWith("-tw") || code.endsWith("-hk")) return "zh-hant";
+                if (code.endsWith("-cn") || code.endsWith("-sg")) return "zh-hans";
                 return code;
             default: return code;
         }
