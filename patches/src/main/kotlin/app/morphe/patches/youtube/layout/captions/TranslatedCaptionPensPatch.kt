@@ -20,7 +20,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch;"
 private const val EXTENSION_CAPTION_REQUEST_INTERFACE =
-    $"Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch$CaptionRequestInterface;"
+    $$"Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch$CaptionRequestInterface;"
 
 /** Wrap the decoder call, not request dispatch, so cached and nested parses have separate scopes. */
 private fun MutableMethod.scopeDecoder(invoke: Int, request: String) {
