@@ -52,6 +52,8 @@ def verify(path):
         names = bundle.namelist()
         if len(names) != len(set(names)) or bundle.testzip() is not None:
             raise ValueError("duplicate or corrupt ZIP entries")
+        if "NOTICE" not in names or not bundle.read("NOTICE").startswith(b"Morphe NOTICE\n"):
+            raise ValueError("missing original Morphe GPLv3 Section 7 user notice")
         if "classes.dex" not in names:
             raise ValueError("missing root classes.dex: this bundle cannot load patches on Android")
         dex = set()
@@ -68,10 +70,16 @@ def verify(path):
         missing = expected - dex
         if missing:
             raise ValueError(f"{len(missing)} JVM classes missing from Android DEX: {sorted(missing)[:5]}")
-        runtime = dex_classes(bundle.read("extensions/extension.mpe"))
-        required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack", "CaptionIntegration",
-                    "SourceTranslationExperiment", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
-                    "NativeTranslationBridge"}
+        extension = bundle.read("extensions/extension.mpe")
+        if b"UC3Probe" in extension or b"setTimedTextUrl" in extension:
+            raise ValueError("stale global caption request/diagnostic hook in Android extension")
+        if b"beginCaption" not in extension or b"endCaption" not in extension:
+            raise ValueError("missing scoped native caption decoder hooks")
+        runtime = dex_classes(extension)
+        required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack",
+                    "OriginalCaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
+                    "NativeTranslationBridge", "CaptionPenStyles",
+                    "CaptionPenStyles$CaptionCarrier", "TimedTextUrl"}
         missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
         if missing_runtime:
             raise ValueError(f"missing extension runtime classes: {sorted(missing_runtime)}")

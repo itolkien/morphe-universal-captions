@@ -18,6 +18,7 @@ public final class EmptyTranslationFallback {
         CaptionTrack universalCaptions_autoTranslateOption();
         List<String> universalCaptions_targetLanguages(boolean bypassFallback);
         CaptionTrack universalCaptions_defaultSource(boolean bypassFallback);
+        CaptionTrack universalCaptions_eligibleSource(boolean bypassFallback);
     }
 
     public static List<CaptionTrack> direct(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
@@ -26,11 +27,14 @@ public final class EmptyTranslationFallback {
             for (CaptionTrack track : tracks) {
                 if (track != null && AUTO.equals(track.universalCaptions_getLanguageCode())) return tracks;
             }
-            CaptionTrack candidate = candidate(tracks, source);
-            if (candidate == null || CaptionTranslationList.fromSource(candidate, locale,
-                    source.universalCaptions_targetLanguages(true)).isEmpty()) return tracks;
+            // Only check whether a target exists; don't construct and sort 156 throwaway tracks.
             List<CaptionTrack> translated = source.universalCaptions_nativeTranslated(true);
             if (translated == null || !translated.isEmpty()) return tracks;
+            OriginalCaptionSource candidate = selectSource(tracks, source);
+            if (candidate == null) return tracks;
+            boolean hasTarget = CaptionTranslationList.targets(source.universalCaptions_targetLanguages(true))
+                    .stream().anyMatch(candidate::canTranslate);
+            if (!hasTarget) return tracks;
             // Use YouTube's own localized menu row, including its native option flags.
             CaptionTrack option = source.universalCaptions_autoTranslateOption();
             if (option == null || !AUTO.equals(option.universalCaptions_getLanguageCode())) return tracks;
@@ -45,40 +49,55 @@ public final class EmptyTranslationFallback {
     public static List<CaptionTrack> translated(List<CaptionTrack> tracks, CaptionSource source, Locale locale) {
         if (tracks == null || source == null || locale == null) return tracks;
         try {
-            if (!tracks.isEmpty()) return CaptionIntegration.augmentMetadata(tracks, locale,
-                    source.universalCaptions_targetLanguages(true));
-            CaptionTrack candidate = candidate(source.universalCaptions_nativeDirect(true), source);
+            List<String> nativeTargets = source.universalCaptions_targetLanguages(true);
+            if (!tracks.isEmpty())
+                return CaptionTranslationList.augment(tracks, locale, nativeTargets,
+                        () -> selectSource(source.universalCaptions_nativeDirect(true), source));
+            OriginalCaptionSource candidate = selectSource(
+                    source.universalCaptions_nativeDirect(true), source);
             if (candidate == null) return tracks;
-            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, source.universalCaptions_targetLanguages(true));
+            List<CaptionTrack> result = CaptionTranslationList.fromSource(candidate, locale, nativeTargets);
             return result.isEmpty() ? tracks : result;
         } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
     }
 
-    private static CaptionTrack candidate(List<CaptionTrack> tracks, CaptionSource source) {
+    /** Audio-specific indices take precedence; an invalid native result is never guessed over. */
+    private static OriginalCaptionSource selectSource(List<CaptionTrack> direct, CaptionSource source) {
+        CaptionTrack eligible = source.universalCaptions_eligibleSource(true);
+        return eligible != null ? OriginalCaptionSource.from(eligible) : candidate(direct, source);
+    }
+
+    private static OriginalCaptionSource candidate(List<CaptionTrack> tracks, CaptionSource source) {
         if (tracks == null) return null;
-        List<CaptionTrack> originals = new ArrayList<>();
-        String video = null;
+        OriginalCaptionSource first = null, matchedDefault = null;
+        CaptionTrack nativeDefault = source.universalCaptions_defaultSource(true);
+        String video = null, firstVss = null, firstUrl = null;
+        boolean mixedSources = false;
         for (CaptionTrack track : tracks) {
             if (track == null) return null;
             String language = track.universalCaptions_getLanguageCode();
             if ("DISABLE_CAPTIONS_OPTION".equals(language) || AUTO.equals(language)) continue;
-            java.net.URI uri = SourceTranslationExperiment.originalUri(track);
-            if (uri == null) return null;
-            String identity = SourceTranslationExperiment.videoId(uri);
-            if (video != null && !video.equals(identity)) return null;
-            video = identity;
-            originals.add(track);
+            OriginalCaptionSource original =
+                    OriginalCaptionSource.from(track);
+            if (original == null || video != null && !video.equals(original.videoId()))
+                return null;
+            video = original.videoId();
+            String vss = track.universalCaptions_getVssId();
+            if (first == null) {
+                first = original;
+                firstVss = vss;
+                firstUrl = track.universalCaptions_getCaptionUrl();
+            } else if (!firstVss.equals(vss)
+                    || !firstUrl.equals(track.universalCaptions_getCaptionUrl())) mixedSources = true;
+            if (nativeDefault != null && matchedDefault == null
+                    && vss.equals(nativeDefault.universalCaptions_getVssId())
+                    && track.universalCaptions_getCaptionUrl().equals(nativeDefault.universalCaptions_getCaptionUrl())) {
+                matchedDefault = original;
+            }
         }
-        if (originals.isEmpty()) return null;
-        CaptionTrack preferred = source.universalCaptions_defaultSource(true);
-        if (preferred != null) for (CaptionTrack original : originals) {
-            if (original.universalCaptions_getVssId().equals(preferred.universalCaptions_getVssId())
-                    && original.universalCaptions_getCaptionUrl().equals(preferred.universalCaptions_getCaptionUrl())) return original;
-        }
-        // The native direct list already contains only the current audio's caption indices.
-        // Keep its order if YouTube declares no default; never import an unrelated source.
-        return originals.get(0);
+        // Native caption eligibility is track-specific, even within the same language.
+        return matchedDefault != null ? matchedDefault : mixedSources ? null : first;
     }
 }

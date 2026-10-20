@@ -1,6 +1,5 @@
 package dev.itolkien.captions.extension;
 
-import android.util.Log;
 import java.util.List;
 import java.util.Locale;
 import dev.itolkien.captions.extension.CaptionTranslationList.CaptionTrack;
@@ -29,12 +28,4 @@ public final class NativeTranslationBridge {
         return EmptyTranslationFallback.translated(tracks, source, menuLocale());
     }
 
-    public static List<CaptionTrack> augment(List<CaptionTrack> tracks) {
-        try {
-            return CaptionIntegration.augment(tracks, menuLocale());
-        } catch (Exception ex) {
-            Log.w("MorpheUniversalCaptions", "Could not extend translation language menu", ex);
-            return tracks;
-        }
-    }
 }

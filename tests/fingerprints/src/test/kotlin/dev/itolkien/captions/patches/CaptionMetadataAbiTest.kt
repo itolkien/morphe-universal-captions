@@ -14,6 +14,7 @@ class CaptionMetadataAbiTest {
         val data = ImmutableFieldReference("LManager;", "randomData", "LData;")
         val targets = ImmutableFieldReference("LData;", "randomTargets", "LList;")
         val code = ImmutableFieldReference("LTarget;", "randomCode", "Ljava/lang/String;")
+        val labelField = ImmutableFieldReference("LBuilder;", "captionLabel", "Ljava/lang/CharSequence;")
         fun method(owner: String, name: String, params: List<String>, result: String,
                    instructions: List<com.android.tools.smali.dexlib2.iface.instruction.Instruction> = emptyList()) =
             ImmutableMethod(owner, name, params.map { ImmutableMethodParameter(it, emptySet(), null) }, result,
@@ -31,8 +32,8 @@ class CaptionMetadataAbiTest {
                 ImmutableMethodReference("Ljava/util/Iterator;", "next", emptyList(), "Ljava/lang/Object;")),
             ImmutableInstruction11x(Opcode.MOVE_RESULT_OBJECT, 3),
             ImmutableInstruction21c(Opcode.CHECK_CAST, 3, ImmutableTypeReference("LTarget;")),
-            ImmutableInstruction22c(Opcode.IGET_OBJECT, 3, 3, code),
-            ImmutableInstruction35c(Opcode.INVOKE_VIRTUAL, 2, 4, 3, 0, 0, 0,
+            ImmutableInstruction22c(Opcode.IGET_OBJECT, 4, 3, code),
+            ImmutableInstruction35c(Opcode.INVOKE_VIRTUAL, 2, 5, 4, 0, 0, 0,
                 if (wrongSetter) ImmutableMethodReference("LBuilder;", "other", listOf("Ljava/lang/String;"), "V") else setter),
             ImmutableInstruction11x(Opcode.RETURN_OBJECT, 0)))
         val default = method("LManager;", "originalDefault", emptyList(), "LTrack;")
@@ -41,15 +42,17 @@ class CaptionMetadataAbiTest {
             listOf(ImmutableField(data.definingClass, data.name, data.type, flags, null, emptySet(), emptySet())))
         val track = clazz("LTrack;", emptyList())
         val abi = CaptionTranslationAbi(data, data, clazz("LBuilder;", emptyList()), setter, setter, setter,
-            setter, code, setter)
+            setter, labelField, setter)
         return resolveCaptionMetadataAbi(CaptionTranslationModel(track, translated, translated, code, code), abi, manager)
     }
+
     @Test fun `catalog discovery follows data flow regardless of obfuscated field names`() {
         val metadata = resolve()
         assertEquals("randomTargets", metadata.targets.name)
         assertEquals("randomCode", metadata.targetCode.name)
         assertEquals("originalDefault", metadata.defaultSource.name)
     }
+
     @Test fun `ambiguous defaults and unrecognized setter flows fail closed`() {
         assertThrows(IllegalStateException::class.java) { resolve(ambiguous = true) }
         assertThrows(IllegalStateException::class.java) { resolve(wrongSetter = true) }

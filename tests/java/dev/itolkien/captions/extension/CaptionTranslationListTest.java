@@ -40,6 +40,36 @@ public class CaptionTranslationListTest {
                 .findFirst().orElseThrow(AssertionError::new);
     }
 
+    @Test public void smallNativeCatalogStillOffersAdditionalTargetsWhenSourceIsKnown() {
+        Track nativeGerman = german();
+        List<CaptionTranslationList.CaptionTrack> expanded = CaptionTranslationList.augment(
+                List.of(nativeGerman), Locale.ENGLISH, List.of("de", "fr", "ru"));
+        assertTrue(expanded.size() > 100, "Native 3-language catalog must not cap user-enabled addon");
+        assertSame(nativeGerman, language(expanded, "de"));
+        assertEquals("Turkish", language(expanded, "tr").universalCaptions_getCaptionLabel());
+        assertFalse(expanded.stream().anyMatch(track ->
+                "en".equals(track.universalCaptions_getLanguageCode())));
+    }
+
+    @Test public void neverReusesTheOriginalLanguageAsATranslationTarget() {
+        // The native list is translated from English to German; the available
+        // target catalog also contains English, which must remain an original.
+        List<CaptionTranslationList.CaptionTrack> result = CaptionTranslationList.augment(
+                List.of(german()), Locale.ENGLISH, List.of("de", "en", "el"));
+        assertTrue(result.size() > 100);
+        assertEquals("de", language(result, "de").universalCaptions_getLanguageCode());
+        assertEquals("el", language(result, "el").universalCaptions_getLanguageCode());
+        assertFalse(result.stream().anyMatch(t -> "en".equals(t.universalCaptions_getLanguageCode())));
+
+        // Legacy aliases must not generate a self-translation either.
+        Track fromLegacyHebrew = new Track("tr", URL.replace("lang=en", "lang=iw").replace("tlang=de", "tlang=tr"),
+                "ta.iw.tr", "Turkish");
+        var aliasResult = CaptionTranslationList.augment(
+                List.of(fromLegacyHebrew), Locale.ENGLISH, List.of("he", "tr", "fr"));
+        assertTrue(aliasResult.size() > 100);
+        assertFalse(aliasResult.stream().anyMatch(t -> "he".equals(t.universalCaptions_getLanguageCode())));
+    }
+
     @Test public void addsGreekUsingTheSameSignedSourceAndKeepsNativeObjects() {
         Track nativeGerman = german();
         List<CaptionTranslationList.CaptionTrack> input = List.of(nativeGerman);
@@ -50,6 +80,17 @@ public class CaptionTranslationListTest {
         assertEquals("Greek", greek.universalCaptions_getCaptionLabel());
         assertSame(nativeGerman, language(result, "de"));
         assertEquals(List.of(nativeGerman), input);
+    }
+
+    @Test public void legacyLanguageAliasesPreserveRegionalSubtags() {
+        assertEquals("he", CaptionTranslationList.languageKey("iw"));
+        assertEquals("he-il", CaptionTranslationList.languageKey("iw-IL"));
+        assertEquals("id-id", CaptionTranslationList.languageKey("in-ID"));
+        assertEquals("yi-001", CaptionTranslationList.languageKey("ji-001"));
+        assertEquals("fil-ph", CaptionTranslationList.languageKey("tl-PH"));
+        assertEquals("no-no", CaptionTranslationList.languageKey("nb-NO"));
+        assertNotEquals(CaptionTranslationList.languageKey("iw-IL"),
+                CaptionTranslationList.languageKey("iw-US"));
     }
 
     @Test public void doesNotDuplicateAliasesOrCollapseChineseScripts() {
@@ -91,6 +132,26 @@ public class CaptionTranslationListTest {
         assertEquals(direct, CaptionTranslationList.augment(direct, Locale.ENGLISH));
     }
 
+    @Test public void absentOrEmptyProtoCatalogUsesTheCompatibilitySnapshot() {
+        assertEquals(156, CaptionTranslationList.targets(null).size());
+        assertEquals(156, CaptionTranslationList.targets(List.of()).size());
+
+        List<CaptionTranslationList.CaptionTrack> input = List.of(german());
+        assertTrue(CaptionTranslationList.augment(input, Locale.ENGLISH, List.of()).size() > 100);
+        assertTrue(CaptionTranslationList.augment(input, Locale.ENGLISH, null).size() > 100);
+        assertTrue(CaptionTranslationList.targets(List.of("invalid&code")).isEmpty());
+    }
+
+    @Test public void translatedPrototypeMustMatchItsOriginalSourceLanguage() {
+        Track mismatched = new Track("de", URL.replace("lang=en", "lang=fr"), "ta.en.de", "German");
+        assertEquals(List.of(mismatched),
+                CaptionTranslationList.augment(List.of(mismatched), Locale.ENGLISH));
+
+        Track duplicate = new Track("de", URL + "&lang=fr", "ta.en.de", "German");
+        assertEquals(List.of(duplicate),
+                CaptionTranslationList.augment(List.of(duplicate), Locale.ENGLISH));
+    }
+
     @Test public void rejectsUntrustedUrlsAndInconsistentTrackIdentities() {
         for (String url : List.of(URL.replace("https:", "http:"),
                 URL.replace("www.youtube.com", "youtube.com.evil.test"),
@@ -101,6 +162,76 @@ public class CaptionTranslationListTest {
         }
         Track wrongVss = new Track("de", URL, ".en", "German");
         assertEquals(List.of(wrongVss), CaptionTranslationList.augment(List.of(wrongVss), Locale.ENGLISH));
+    }
+
+    @Test public void nativeTranslationsFromDifferentVideosAreNotMixed() {
+        Track first = german();
+        Track second = new Track("fr",
+                URL.replace("v=video", "v=otherVideo").replace("tlang=de", "tlang=fr"),
+                "ta.en.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(second, first);
+        List<CaptionTranslationList.CaptionTrack> result =
+                CaptionTranslationList.augment(nativeTracks, Locale.ENGLISH, List.of("el"));
+        assertEquals(2, result.size());
+        assertTrue(result.contains(first));
+        assertTrue(result.contains(second));
+    }
+
+    @Test public void duplicateNativeVideoKeysAreNotSafePrototypes() {
+        Track duplicate = new Track("de", URL + "&v=secondVideo", "ta.en.de", "German");
+        assertEquals(List.of(duplicate),
+                CaptionTranslationList.augment(List.of(duplicate), Locale.ENGLISH));
+    }
+
+    @Test public void sameVssAndVideoWithDifferentNativeBaseUrlsDoNotMixSources() {
+        Track german = german();
+        Track french = new Track("fr", URL.replace("tlang=de", "tlang=fr") + "&name=other",
+                "ta.en.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(german, french);
+        var result = CaptionTranslationList.augment(nativeTracks, Locale.ENGLISH, List.of("tr"));
+        assertEquals(2, result.size());
+        assertTrue(result.contains(german));
+        assertTrue(result.contains(french));
+    }
+
+    @Test public void nativeTargetsFromExactlyTheSameBaseUrlCanStillExpand() {
+        Track german = german();
+        Track french = new Track("fr", URL.replace("tlang=de", "tlang=fr"),
+                "ta.en.fr", "French");
+        var result = CaptionTranslationList.augment(
+                List.of(german, french), Locale.ENGLISH, List.of("tr"));
+        assertTrue(result.size() > 100);
+        assertEquals(URL.replace("tlang=de", "tlang=tr"),
+                language(result, "tr").universalCaptions_getCaptionUrl());
+    }
+
+    @Test public void mixedNativeSourceLanguagesAreNotArbitrarilyExpanded() {
+        Track englishSource = german();
+        Track spanishSource = new Track("fr",
+                URL.replace("lang=en", "lang=es").replace("tlang=de", "tlang=fr"),
+                "ta.es.fr", "French");
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(spanishSource, englishSource);
+        List<CaptionTranslationList.CaptionTrack> result =
+                CaptionTranslationList.augment(nativeTracks, Locale.ENGLISH, List.of("el"));
+        assertEquals(2, result.size());
+        assertTrue(result.contains(englishSource));
+        assertTrue(result.contains(spanishSource));
+    }
+
+    @Test public void nullLocaleKeepsNativeTracksUntouched() {
+        List<CaptionTranslationList.CaptionTrack> nativeTracks = List.of(german());
+        assertSame(nativeTracks, CaptionTranslationList.augment(nativeTracks, null));
+    }
+
+    @Test public void rejectsEncodedOrMalformedDuplicateTranslationParameters() {
+        // URI.getRawQuery() preserves encoded keys. An additional encoded tlang must
+        // not be overlooked when we clone an otherwise valid native translation.
+        for (String suffix : List.of("&%74lang=fr", "&tlang", "&%74lang")) {
+            Track track = new Track("de", URL + suffix, "ta.en.de", "German");
+            List<CaptionTranslationList.CaptionTrack> input = List.of(track);
+            assertEquals(input, CaptionTranslationList.augment(input, Locale.ENGLISH),
+                    "unexpectedly augmented: " + suffix);
+        }
     }
 
     @Test public void expandingTwiceDoesNotAddDuplicatesOrChangeNativeIdentities() {
