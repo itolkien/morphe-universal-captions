@@ -206,6 +206,27 @@ class EmptyTranslationFallbackTest {
         assertEquals(3, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
     }
 
+    @Test void sameVssWithDifferentSignedSourceUrlsMustNotGuess() {
+        Source source = new Source();
+        String base = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=x";
+        Track first = new Track("en", base + "&name=first", ".en.same");
+        Track second = new Track("en", base + "&name=second", ".en.same");
+        source.direct = List.of(first, second);
+        source.targets = List.of("tr");
+
+        // VSS alone does not establish that two signed caption URLs are identical.
+        assertSame(source.direct, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH));
+        assertSame(source.translations, EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH));
+
+        // A matching native default resolves the ambiguity without guessing.
+        source.preferred = second;
+        var result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertEquals(1, result.size());
+        assertEquals(second.url + "&tlang=tr", result.get(0).universalCaptions_getCaptionUrl());
+    }
+
     @Test void twoSameLanguageSourcesRequireNativeDefaultToAvoidWrongTrack() {
         Source source = new Source();
         String root = "https://www.youtube.com/api/timedtext?v=PlsODqqqwFs&lang=en&sig=x";
