@@ -40,6 +40,17 @@ public class CaptionTranslationListTest {
                 .findFirst().orElseThrow(AssertionError::new);
     }
 
+    @Test public void smallNativeCatalogStillOffersAdditionalTargetsWhenSourceIsKnown() {
+        Track nativeGerman = german();
+        List<CaptionTranslationList.CaptionTrack> expanded = CaptionTranslationList.augment(
+                List.of(nativeGerman), Locale.ENGLISH, List.of("de", "fr", "ru"));
+        assertTrue(expanded.size() > 100, "Native 3-language catalog must not cap user-enabled addon");
+        assertSame(nativeGerman, language(expanded, "de"));
+        assertEquals("Turkish", language(expanded, "tr").universalCaptions_getCaptionLabel());
+        assertFalse(expanded.stream().anyMatch(track ->
+                "en".equals(track.universalCaptions_getLanguageCode())));
+    }
+
     @Test public void neverReusesTheOriginalLanguageAsATranslationTarget() {
         // The native list is translated from English to German; the available
         // target catalog also contains English, which must remain an original.

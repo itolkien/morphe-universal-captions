@@ -173,6 +173,19 @@ class EmptyTranslationFallbackTest {
         assertTrue(first.stream().noneMatch(t -> t.universalCaptions_getCaptionUrl().contains("FlcePQVkmM4")));
     }
 
+    @Test void nativeNonemptyCatalogIsNotAnArtificialSeventeenLanguageLimit() {
+        Source source = new Source();
+        source.targets = List.of("en", "de", "fr", "ru", "ar", "tr", "ja",
+                "ko", "es", "pt", "it", "hi", "id", "nl", "th", "uk", "vi");
+        List<CaptionTrack> result = EmptyTranslationFallback.translated(
+                source.translations, source, Locale.ENGLISH);
+        assertTrue(result.size() > 100, "The enabled addon should offer additional targets");
+        assertTrue(result.stream().anyMatch(track ->
+                "el".equals(track.universalCaptions_getLanguageCode())));
+        assertFalse(result.stream().anyMatch(track ->
+                "ar".equals(track.universalCaptions_getLanguageCode())));
+    }
+
     @Test void nativeTargetCatalogIncludesNewAndRegionalCodesWithoutAnAllowlist() {
         Source source = new Source();
         source.targets = List.of("gaa", "pt", "pt-PT", "zh-Hans", "zh-Hant", "iw", "he", "bad&x=1");
