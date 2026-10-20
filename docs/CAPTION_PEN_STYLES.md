@@ -1,64 +1,74 @@
-# Styled auto-translated captions (3.0.0 development)
+# Translated caption pen handling (3.0.0-dev.7)
 
-This repository is the development source for Universal Captions, including the
-styled-caption fix first merged as [Morphe PR #3837](https://github.com/MorpheApp/morphe-patches/pull/3837).
+The styling fix from [Morphe PR #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)
+avoids invisible translated text caused by original creator-defined srv3 pens.
+The prior version remembered the **last dispatched timedtext URL** in one
+process-wide boolean. It could apply another video's style during concurrent
+network or cached requests.
 
-## Problem
+## Per-document decoder scope
 
-Some YouTube channels use styled subtitle pen IDs for invisible padding.
-YouTube auto-translation can move those IDs onto visible words, making translated
-text black or invisible even though its caption data is present.
+Original YouTube 21.20.405 `classes2.dex` identifies two synchronous parsing
+paths with access to the matching native caption request:
 
-## Implementation
+- **Network:** an asynchronous response handler's `run()` retains its original
+  caption request while it invokes the response decoder. The decoder then reads
+  the XML input stream on that same worker thread.
+- **File cache:** the cached caption handler retains that same request while it
+  opens a local caption file and parses the buffered input stream.
 
-- `CaptionPenHooks.kt` independently resolves the Cronet timedtext URL builder
-  and the srv3 segment parser's shared pen-lookup method. Both hooks are
-  resolved before patching so an incompatible host layout fails visibly.
-- `CaptionPenStyles.java` remembers whether the most recent valid YouTube
-  timedtext request has a raw `tlang=` query parameter; it does not store
-  or log signed URLs.
-- For auto-translated tracks the shared pen lookup receives an undeclared ID
-  (`Integer.MIN_VALUE`), yielding YouTube's default caption pen. Original
-  caption tracks retain their native creator-defined pen IDs.
-- The fix is independent of Morphe's own extension class. When porting it to
-  Morphe, remove the old `TranslatedCaptionPensPatch` hooks rather than
-  applying both copies.
+The patch finds both native decoder calls from **instruction structure**, not
+hardcoded obfuscated class names. The request wrapper implements
+`CaptionPenStyles.CaptionCarrier`, exposing its original caption track.
+The network callback implements the same interface by retrieving its matching
+request wrapper. Hooks call `beginCaption(context)` immediately before each
+synchronous parser invocation and `endCaption()` immediately after and on
+the native caught-exception paths.
 
-## Web-style behavior versus this fallback
+`CaptionPenStyles` reads the **actual parsed track**, validating its VSS
+target suffix and exact signed YouTube `tlang` query parameter, then stores the
+result only in a **thread-local nested parse scope**. Original captions retain
+creator styles; translated segments use the undeclared
+`Integer.MIN_VALUE` pen ID, selecting YouTube's default caption style.
+Nested decoder calls restore the outer context. Concurrent decoder workers do
+not share or overwrite state. No raw URL, caption text or video ID is logged
+or retained in process-global request state.
 
-Web can apply or adapt styling for the translated caption document. Our
-current workaround returns a default pen ID for **all** translated styles,
-which fixes invisible subtitles but may also discard legitimate highlighting
-or creator colors on translated words. Restoring those styles accurately
-requires reading each document's pen definitions and associating them with
-its translated segments. Numeric pen IDs are scoped to the document, so a
-global "bad pen id" list would be incorrect.
+This is deliberately **not** a ThreadLocal at request construction: dispatch
+and parsing can run on different threads. Source identity is obtained in the
+same synchronous decoder call in which pen lookup executes.
 
-## Safety and limitations
+## Safeguards and remaining limitations
 
-The request URL and the srv3 XML parser do not share a demonstrated per-document
-identifier at these hook points. Consequently a process-wide volatile flag
-matches Morphe #3837's proven behavior but **is not concurrency-safe**:
-overlapping requests or cached captions may cause the last request's style
-decision to be applied to a different document. `ThreadLocal` is not a fix,
-because the network builder and parser may run on different threads.
+- The native request wrapper must expose exactly one original caption-track
+  field; ambiguous resolution fails during APK patching.
+- Both parser fingerprints and the shared pen lookup must match the host
+  version uniquely; do not silently fall back to a global request flag.
+- A malformed/unknown caption request uses original pen IDs (fail closed).
+- The native compiler's exception handlers are also hooked for cleanup;
+  final validation should cover unexpected uncaught decoder exceptions.
+- This is a readability-first fix; it resets **all** translated creator pens,
+  which does not recreate every colored or highlighted Web caption style.
+- Cross-version decoder structure on 21.41.525 needs patched-APK validation;
+  the original 21.20.405 DEX was separately checked for unique network/cache
+  method matches. The earlier dev.6 tests do not validate these *new* hooks.
+- The upstream Morphe `TranslatedCaptionPensPatch` and our replacement must
+  not run together. The integration PR should replace the old hooks, not stack
+  two copies.
 
-The helper ignores unrelated URLs and accepts only the YouTube HTTPS timedtext
-endpoint. It inspects the raw query, not fragments or opaque values, and
-does not rewrite the signed URL.
+## Validation
 
-## Verification
+JVM tests exercise original and translated documents, malformed URL/track
+identities, nested scopes, and concurrent worker threads with opposite caption
+types. Build CI verifies Kotlin and Android DEX packaging. Complete the
+following release smoke tests on **both** APK versions with only Universal
+Captions selected:
 
-The JVM tests in `CaptionPenStylesTest` cover translated/original pen behavior,
-query and fragment handling, unrelated requests and resets. The Android MPP
-build checks hook compilation and inclusion of the new runtime class.
+1. Translate creator-styled MrBeast `RE3_PGwDwhw` into Arabic, Persian or Hebrew
+   and confirm words remain visible.
+2. Switch back to original English and verify its creator styling remains.
+3. Switch videos and languages rapidly and confirm no style inheritance.
+4. Reopen a previously played track from cache, confirm it is styled correctly.
+5. Test Off/on, alternate audio, and the large Auto-translate menu.
 
-Still required before an upstream replacement or release:
-
-1. Patch clean target APKs (21.20.405 and 21.41.525), validate DEX and confirm both fingerprints resolve.
-2. On device, test MrBeast video `RE3_PGwDwhw` translated into Hebrew,
-   Arabic and Persian, then switch back to original styled English captions.
-3. Test rapid video, language and source switching and overlapping requests.
-4. Validate the planned **clean replacement** that removes the old Morphe
-   auto-translate and #3837 hooks. Running both owners together is unsupported
-   in the 3.0 development branch.
+No proprietary YouTube APK or DEX is committed to this repository.

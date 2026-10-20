@@ -71,12 +71,15 @@ def verify(path):
         if missing:
             raise ValueError(f"{len(missing)} JVM classes missing from Android DEX: {sorted(missing)[:5]}")
         extension = bundle.read("extensions/extension.mpe")
-        if b"UC3Probe" in extension:
-            raise ValueError("temporary caption diagnostics found in release-bound Android extension")
+        if b"UC3Probe" in extension or b"setTimedTextUrl" in extension:
+            raise ValueError("stale global caption request/diagnostic hook in Android extension")
+        if b"beginCaption" not in extension or b"endCaption" not in extension:
+            raise ValueError("missing scoped native caption decoder hooks")
         runtime = dex_classes(extension)
         required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack",
                     "OriginalCaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
-                    "NativeTranslationBridge", "CaptionPenStyles", "TimedTextUrl"}
+                    "NativeTranslationBridge", "CaptionPenStyles",
+                    "CaptionPenStyles$CaptionCarrier", "TimedTextUrl"}
         missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
         if missing_runtime:
             raise ValueError(f"missing extension runtime classes: {sorted(missing_runtime)}")

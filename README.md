@@ -13,9 +13,9 @@ Restores missing YouTube **Auto-translate** menus and offers translation languag
 - Preserves native translations and signed URLs; with multiple originals, uses YouTube's current-audio caption-index eligibility before considering a verified native default or an unambiguous source.
 - Localized alphabetical language ordering, including distinct regional targets.
 - No external translation service, overlay or separate caption preference UI.
-- In **3.0.0-dev.6**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
+- In **3.0.0-dev.7**: restores visible auto-translated text for channels with incompatible custom caption pens, while preserving the original track's creator styling ([Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837)).
 
-Translation availability depends on the video, account and YouTube's backend; a menu entry is not a guarantee of text on every video. The owner has manually verified the expanded menu and translated subtitles on YouTube 21.20.405 and 21.41.525 using dev.5. The dev.6 refactor retains that behavior but still needs a final smoke test. This is not yet a claim of complete Web parity.
+Translation availability depends on the video, account and YouTube's backend; a menu entry is not a guarantee of text on every video. The owner has manually verified the expanded menu and translated subtitles on YouTube 21.20.405 and 21.41.525 using dev.5. The owner confirmed dev.6 remains functional on both YouTube versions. Dev.7 rewires caption pen handling and consolidates native source fallback; this new candidate needs its own smoke test. This is not yet a claim of complete Web parity.
 
 ## Using it with Morphe
 
@@ -25,9 +25,9 @@ The released **2.1.0** addon works alongside Morphe's **Captions** patch, respec
 
 ### Caption styling
 
-The **3.0.0-dev.6** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's timedtext requests and the shared srv3 pen lookup, using the default pen for auto-translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
+The **3.0.0-dev.7** development patch includes the translated-caption pen fix from [Morphe #3837](https://github.com/MorpheApp/morphe-patches/pull/3837) **inside Universal Captions itself**. The addon hooks YouTube's native network/cache XML decoders and shared srv3 pen lookup, using an identity-validated **per-parser** style scope for translated tracks. Original tracks keep their creator-defined styles. The published **2.1.0** release does not contain this change.
 
-This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the source-of-truth implementation for the planned Morphe port. The upstream port should **replace**, not retain alongside, Morphe's existing #3837 hooks. Running this development patch alongside a Morphe build that already includes #3837 is not yet device-verified for duplicate hooks. The latest-request flag can also misattribute overlapping caption requests; per-document correlation remains a known limitation. See [caption style design and verification](docs/CAPTION_PEN_STYLES.md).
+This adapted fix retains Morphe's [GPLv3 additional terms](NOTICE). This is the source-of-truth implementation for the planned Morphe port. The upstream port should **replace**, not retain alongside, Morphe's existing #3837 hooks. Running this development patch alongside a Morphe build that already includes #3837 is not yet device-verified for duplicate hooks. The previous global latest-request flag is removed; decoder-local track identity now prevents different in-flight caption requests from sharing style state. Both-APK playback validation of these new hooks remains a release requirement. See [caption style design and verification](docs/CAPTION_PEN_STYLES.md).
 
 ## Installation
 
@@ -45,9 +45,12 @@ The dev.5 patch was tested on both original YouTube 21.20.405 and
 21.41.525 APKs, including the previously limited 17-language menu.
 The verified native caption source comes from the *current* audio
 entry's eligible-caption indices; existing native translations are preserved.
-Dev.6 removes temporary `UC3Probe` instrumentation without changing
-the source-selection policy. The complete subtitle styling request/parser
-correlation is still under review.
+Dev.6 removed temporary `UC3Probe` diagnostics without changing
+the source-selection policy, and the owner successfully tested that release.
+Dev.7 consolidates fallback selection into a lazy augmentation pass and replaces
+the prior process-wide caption style flag with parser-scoped native track
+association for both network and cache paths. Run new smoke tests on both APKs
+before merging or releasing.
 
 ## Compatibility and validation
 

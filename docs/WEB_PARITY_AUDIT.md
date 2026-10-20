@@ -38,7 +38,7 @@ ready for integration.
 | Web's active target ordering | Preserve native selection; sort translated language choices alphabetically | Sort, stable labels and pseudo-option tests | Web can pin the currently selected target above the sorted list; we do not have a native selected-track getter in this addon |
 | Dubbed audio tracks | Prefer an exact current-audio/default caption source rather than the alphabetically first language | Default source, mixed-language, cross-video tests | Without audioTracks[].captionTrackIndices/defaultAudioTrackIndex we cannot prove a precise match for every dub |
 | Selected track, CC Off/On and preferences | Never force CC visibility, overwrite manual selection or auto-enable tracks | Preferred policy and Off/integration tests | Morphe preference patch has its own regional matching |
-| Styled translations | Replace incompatible pen IDs with a default for translated srv3; preserve creator style for originals | Unit tests, MPP compilation and embedded class check | **Request/parser concurrency is not correctly correlated yet** |
+| Styled translations | Scope creator-pen reset to the native track being decoded (network and cached paths), not the latest request | Cross-thread/nested scope unit tests, MPP build, original 21.20.405 DEX inspection | New parser hooks need both-APK smoke tests; rare uncaught exceptions and full style parity still unproven |
 | Signed YouTube requests | Replace only the actual `tlang` value; retain the rest of the opaque URL | Encoded key, fragment, duplicate, HTTPS/host tests | A valid URL is not proof of a nonempty server response |
 
 ## Source-of-truth architecture
@@ -93,19 +93,17 @@ to individual timedtext documents.
 
 ### 1. Request-to-document association for styled captions
 
-A raw `/api/timedtext?tlang=...` URL is known when the network request is
-built, but the pen lookup receives an integer ID **without the request URL**.
-The existing process-wide flag can be overwritten by a different request
-before the parser handles this document. `volatile`, `ThreadLocal`, a
-time window, or a FIFO alone cannot guarantee request/response pairing.
-
-**Required proper fix:** trace the Cronet callback or XML parser creation to
-find an object shared across the request and parsed document. Bind translated
-status to that object (e.g. a field or weak-key association), then read it
-using the parser's own identity. This requires bytecode structure inspection
-and fixture-based integration tests; we must not claim it is solved before
-those hooks are demonstrated. Until then, malformed/ambiguous URL requests
-are handled conservatively but overlapping valid requests remain a risk.
+The dev.7 patch no longer infers the parser's identity from the process's
+last Cronet request. Structural hooks at the **actual decoder invocation**
+(network callback and file cache) expose that callback's original native
+caption track. A ThreadLocal scope is opened and closed **on the synchronous
+parser thread**, not at asynchronous network request construction. This
+isolates simultaneous caption documents and preserves original styles.
+The original YouTube 21.20.405 DEX contained exactly one matching method for
+each parser route; Java concurrency tests cover overlapping originals and
+translations. Separate patched-APK testing is still required on both declared
+YouTube versions, including unexpected parser exceptions. More precise Web-
+compatible creator styles remain future work.
 
 ### 2. Per-track translatability and server errors
 
