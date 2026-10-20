@@ -4,36 +4,63 @@
  */
 package dev.itolkien.captions.extension;
 
-import java.net.URI;
+import java.util.ArrayDeque;
+import dev.itolkien.captions.extension.CaptionTranslationList.CaptionTrack;
 
 /**
- * Prevents translated srv3 caption text from inheriting invisible creator-defined pens.
- * Original captions keep their creator styles.
+ * Caption styles belong to the document being parsed, not the most recent URL
+ * requested by the player. Native parser hooks enter and exit on that parser's
+ * own thread, including cached captions and concurrent requests.
  */
 public final class CaptionPenStyles {
     private CaptionPenStyles() { }
 
-    private static final int DEFAULT_PEN = Integer.MIN_VALUE;
-
-    // A timedtext request can be dispatched on a different thread from the srv3 parser.
-    // The latest-request state is therefore process-wide; concurrent requests remain
-    // a known limitation until request/parser identities can be paired.
-    private static volatile boolean translated;
-
-    /** Called before YouTube constructs a timedtext network request. */
-    public static void setTimedTextUrl(String url) {
-        if (url == null || !url.contains("/api/timedtext?")) return;
-        URI uri = TimedTextUrl.trustedUri(url);
-        if (uri == null) return;
-        TimedTextUrl timedText = TimedTextUrl.parse(url, uri);
-        // Malformed, encoded or duplicated targets never override the user's caption style.
-        translated = timedText != null
-                && CaptionTranslationList.validLanguageCode(timedText.field("tlang"))
-                && timedText.targetValueOffset(timedText.field("tlang")) >= 0;
+    public interface CaptionCarrier {
+        CaptionTrack universalCaptions_styleTrack();
     }
 
-    /** Called at the shared srv3 pen lookup, for pen/paragraph/segment styles. */
+    private static final int DEFAULT_PEN = Integer.MIN_VALUE;
+    private static final ThreadLocal<ArrayDeque<Boolean>> SCOPES = new ThreadLocal<>();
+
+    /** Called at a synchronous caption parser invocation, never at request dispatch. */
+    public static void beginCaption(Object request) {
+        boolean translated = false;
+        if (request instanceof CaptionCarrier) {
+            try {
+                CaptionTrack track = ((CaptionCarrier) request).universalCaptions_styleTrack();
+                if (track != null) {
+                    String code = track.universalCaptions_getLanguageCode();
+                    String vss = track.universalCaptions_getVssId();
+                    TimedTextUrl url = TimedTextUrl.parse(track.universalCaptions_getCaptionUrl());
+                    translated = CaptionTranslationList.validLanguageCode(code)
+                            && vss != null && vss.startsWith("t") && vss.endsWith("." + code)
+                            && url != null && code.equals(url.field("tlang"))
+                            && url.targetValueOffset(code) >= 0;
+                }
+            } catch (RuntimeException | LinkageError ignored) {
+                // An unknown native track must never alter the original's creator styles.
+            }
+        }
+        ArrayDeque<Boolean> scopes = SCOPES.get();
+        if (scopes == null) {
+            scopes = new ArrayDeque<>();
+            SCOPES.set(scopes);
+        }
+        scopes.push(translated);
+    }
+
+    /** Called on parser success and exception exits. */
+    public static void endCaption() {
+        ArrayDeque<Boolean> scopes = SCOPES.get();
+        if (scopes == null || scopes.isEmpty()) return;
+        scopes.pop();
+        if (scopes.isEmpty()) SCOPES.remove();
+    }
+
+    /** Native pen lookup can occur during a translated or original document parse. */
     public static int getPenId(int penId) {
-        return translated ? DEFAULT_PEN : penId;
+        ArrayDeque<Boolean> scopes = SCOPES.get();
+        return scopes != null && !scopes.isEmpty() && scopes.peek()
+                ? DEFAULT_PEN : penId;
     }
 }
