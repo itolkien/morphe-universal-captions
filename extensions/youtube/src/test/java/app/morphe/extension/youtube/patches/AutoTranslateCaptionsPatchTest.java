@@ -190,6 +190,34 @@ public class AutoTranslateCaptionsPatchTest {
         }
     }
 
+    @Test public void exactlyAllSnapshotLanguagesAreAvailable() {
+        try {
+            var field = AutoTranslateCaptionsPatch.class.getDeclaredField("TRANSLATION_LANGUAGES");
+            field.setAccessible(true);
+            String[] catalog = (String[]) field.get(null);
+            assertEquals(156, catalog.length);
+            assertEquals(156, new java.util.HashSet<>(List.of(catalog)).size());
+            for (String original : catalog) {
+                for (boolean asr : List.of(false, true)) {
+                    String url = "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=" + original
+                            + (asr ? "&kind=asr" : "") + "&sig=a%2Bb";
+                    String vss = (asr ? "a." : ".") + original;
+                    Track source = new Track(original, url, vss, "Original");
+                    var translations = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                            List.of(), List.of(source), null, Locale.ENGLISH);
+                    assertEquals(original, 155, translations.size());
+                    for (var target : translations) {
+                        assertEquals(original, url + "&tlang=" + target.patch_getLanguageCode(), target.patch_getUrl());
+                        assertEquals(original, "t" + vss + "." + target.patch_getLanguageCode(), target.patch_getVssId());
+                        org.junit.Assert.assertFalse(target.toString().isBlank());
+                    }
+                }
+            }
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("No complete translation catalog", ex);
+        }
+    }
+
     @Test public void emptyListIsUnchanged() {
         List<CaptionTrackInterface> empty = List.of();
         assertSame(empty, add(empty, Locale.ENGLISH));
@@ -314,10 +342,10 @@ public class AutoTranslateCaptionsPatchTest {
                 new Track("fr", french.url + "&name=other", french.vss, "Different URL"),
                 new Track("fr", french.url, ".fr.other", "Different VSS"),
                 new Track("de", "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=de", ".de", "Other audio"))) {
-            assertSame(english, AutoTranslateCaptionsPatch.findFallbackSource(direct, absentDefault));
+            org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.findFallbackSource(direct, absentDefault));
         }
-        assertSame(french, AutoTranslateCaptionsPatch.findFallbackSource(List.of(french, english), null));
-        assertSame(english, AutoTranslateCaptionsPatch.findFallbackSource(direct, null));
+        org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.findFallbackSource(List.of(french, english), null));
+        org.junit.Assert.assertNull(AutoTranslateCaptionsPatch.findFallbackSource(direct, null));
     }
 
     @Test public void defaultCannotBypassValidationOfTheRestOfTheSourceList() {
