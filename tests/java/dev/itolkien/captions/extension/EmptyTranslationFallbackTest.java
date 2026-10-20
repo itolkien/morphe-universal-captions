@@ -115,7 +115,7 @@ class EmptyTranslationFallbackTest {
 
         List<CaptionTrack> result = EmptyTranslationFallback.translated(
                 source.translations, source, Locale.ENGLISH);
-        assertEquals(2, result.size());
+        assertTrue(result.size() > 100);
         assertTrue(result.stream().anyMatch(track -> track == nativeGerman));
         assertEquals(URL + "&tlang=tr", result.stream()
                 .filter(track -> "tr".equals(track.universalCaptions_getLanguageCode()))
@@ -190,8 +190,12 @@ class EmptyTranslationFallbackTest {
         Source source = new Source();
         source.targets = List.of("gaa", "pt", "pt-PT", "zh-Hans", "zh-Hant", "iw", "he", "bad&x=1");
         List<CaptionTrack> result = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
-        assertEquals(Set.of("gaa", "pt", "pt-PT", "zh-Hans", "zh-Hant", "iw"),
-                result.stream().map(CaptionTrack::universalCaptions_getLanguageCode).collect(java.util.stream.Collectors.toSet()));
+        var codes = result.stream().map(CaptionTrack::universalCaptions_getLanguageCode)
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(codes.containsAll(Set.of("gaa", "pt", "pt-PT", "zh-Hans", "zh-Hant", "iw", "tr")));
+        assertFalse(codes.contains("he")); // Native 'iw' wins over its deprecated alias.
+        assertFalse(codes.contains("bad&x=1"));
+        assertTrue(result.size() > 100);
     }
     @Test void multipleSourcesUseNativeDefaultAndRemainBoundToTheCurrentAudio() {
         Source source = new Source();
@@ -200,7 +204,7 @@ class EmptyTranslationFallbackTest {
         source.preferred = english;
         source.targets = List.of("tr", "ja");
         List<CaptionTrack> result = EmptyTranslationFallback.translated(source.translations, source, Locale.ENGLISH);
-        assertEquals(2, result.size());
+        assertTrue(result.size() > 100);
         assertTrue(result.stream().allMatch(t -> t.universalCaptions_getCaptionUrl().contains("lang=en&")));
         assertEquals(4, EmptyTranslationFallback.direct(source.direct, source, Locale.ENGLISH).size());
         source.preferred = new Track("de", URL.replace("lang=ar", "lang=de"), "a.de");
@@ -236,7 +240,7 @@ class EmptyTranslationFallbackTest {
         source.preferred = second;
         var result = EmptyTranslationFallback.translated(
                 source.translations, source, Locale.ENGLISH);
-        assertEquals(1, result.size());
+        assertTrue(result.size() > 100);
         assertEquals(second.url + "&tlang=tr", result.get(0).universalCaptions_getCaptionUrl());
     }
 
@@ -257,7 +261,7 @@ class EmptyTranslationFallbackTest {
         source.preferred = alternate;
         List<CaptionTrack> translated = EmptyTranslationFallback.translated(
                 source.translations, source, Locale.ENGLISH);
-        assertEquals(1, translated.size());
+        assertTrue(translated.size() > 100);
         assertEquals(alternate.url + "&tlang=tr",
                 translated.get(0).universalCaptions_getCaptionUrl());
     }

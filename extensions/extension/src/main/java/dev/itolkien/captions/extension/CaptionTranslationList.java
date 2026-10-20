@@ -43,8 +43,26 @@ public final class CaptionTranslationList {
         for (String code : nativeTargets) {
             if (validLanguageCode(code) && seen.add(languageKey(code))) result.add(code);
         }
-        // Native nonempty metadata is authoritative; protobuf empty and absent lists look alike.
+        // Keep the native catalog as the first source of valid target codes.
         return result;
+    }
+
+    /** Widen a proven source-compatible native catalog without replacing its native tracks.
+     * Extra snapshot targets are best-effort: the server may reject an unsupported tlang.
+     */
+    static List<String> expandedTargets(List<String> nativeTargets,
+            java.util.function.Predicate<String> sourceAllows) {
+        List<String> nativeCodes = targets(nativeTargets);
+        if (nativeTargets == null || nativeTargets.isEmpty() ||
+                nativeCodes.stream().noneMatch(sourceAllows)) return nativeCodes;
+
+        List<String> expanded = new ArrayList<>(nativeCodes);
+        Set<String> seen = new HashSet<>();
+        for (String code : nativeCodes) seen.add(languageKey(code));
+        for (String code : TARGETS) {
+            if (seen.add(languageKey(code))) expanded.add(code);
+        }
+        return expanded;
     }
 
     public static List<CaptionTrack> augment(List<CaptionTrack> tracks, Locale locale) {
@@ -85,7 +103,8 @@ public final class CaptionTranslationList {
             String urlSuffix = oldUrl.substring(targetAt + oldLanguage.length());
             String sourceKey = languageKey(timedText.field("lang"));
 
-            for (String code : targets(nativeTargets)) {
+            for (String code : expandedTargets(nativeTargets,
+                    code -> !sourceKey.equals(languageKey(code)))) {
                 String key = languageKey(code);
                 if (sourceKey.equals(key) || !represented.add(key)) continue;
                 String name = Locale.forLanguageTag(code).getDisplayName(locale);
@@ -100,7 +119,7 @@ public final class CaptionTranslationList {
     static List<CaptionTrack> fromSource(OriginalCaptionSource source, Locale locale, List<String> nativeTargets) {
         List<CaptionTrack> result = new ArrayList<>();
         if (locale == null || source == null) return result;
-        for (String target : targets(nativeTargets)) {
+        for (String target : expandedTargets(nativeTargets, source::canTranslate)) {
             CaptionTrack translated = source.translate(target, locale);
             if (translated != null) result.add(translated);
         }
