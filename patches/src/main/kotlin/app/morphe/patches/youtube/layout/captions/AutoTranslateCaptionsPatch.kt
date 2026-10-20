@@ -219,7 +219,7 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
                 move-result-object v2
                 invoke-virtual { p0 }, $targetsGetter
                 move-result-object v3
-                invoke-static { v0, v1, v2, v3 }, $EXTENSION_CLASS->restoreTranslationTracks(Ljava/util/List;Ljava/util/List;$PREFERRED_CAPTION_TRACK_INTERFACELjava/util/List;)Ljava/util/List;
+                invoke-static { v0, v1, v2, v3 }, $EXTENSION_CLASS->restoreTranslationTracks(Ljava/util/List;Ljava/util/List;${PREFERRED_CAPTION_TRACK_INTERFACE}Ljava/util/List;)Ljava/util/List;
                 move-result-object v0
                 return-object v0
             """
