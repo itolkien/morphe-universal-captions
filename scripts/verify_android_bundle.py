@@ -78,7 +78,7 @@ def verify(path):
         runtime = dex_classes(extension)
         required = {"CaptionTranslationList", "CaptionTranslationList$CaptionTrack",
                     "OriginalCaptionSource", "EmptyTranslationFallback", "EmptyTranslationFallback$CaptionSource",
-                    "NativeTranslationBridge", "CaptionPenStyles",
+                    "CaptionPenStyles",
                     "CaptionPenStyles$CaptionCarrier", "TimedTextUrl"}
         missing_runtime = {"dev/itolkien/captions/extension/" + name for name in required} - runtime
         if missing_runtime:

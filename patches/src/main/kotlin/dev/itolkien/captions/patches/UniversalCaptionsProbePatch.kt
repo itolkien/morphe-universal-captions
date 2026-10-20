@@ -18,7 +18,7 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
-private const val EXTENSION = "Ldev/itolkien/captions/extension/NativeTranslationBridge;"
+private const val EXTENSION = "Ldev/itolkien/captions/extension/EmptyTranslationFallback;"
 private const val TRACK_INTERFACE =
     $$"Ldev/itolkien/captions/extension/CaptionTranslationList$CaptionTrack;"
 private const val SOURCE_INTERFACE =

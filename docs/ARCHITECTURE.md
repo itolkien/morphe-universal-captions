@@ -30,7 +30,7 @@ There is no diagnostic probe logger in the shipped extension.
 - `EmptyTranslationFallback` restores YouTube's native Auto-translate row
   where a safe original exists. It intersects the native current-audio caption
   indices with eligible source indices and rejects ambiguous fallback choices.
-- `NativeTranslationBridge` supplies the current app locale and menu hooks.
+- `EmptyTranslationFallback` handles the menu hooks and resolves the current app locale.
 
 No source URL is shared across caption managers or videos. The extension
 does not persist or change caption preferences, visibility or the selected
