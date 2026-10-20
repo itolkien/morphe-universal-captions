@@ -9,18 +9,53 @@
 
 package app.morphe.patches.youtube.layout.captions
 
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import com.android.tools.smali.dexlib2.Opcode
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
 import app.morphe.util.getReference
-import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch;"
 private const val EXTENSION_CAPTION_REQUEST_INTERFACE =
-    $$"Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch$CaptionRequestInterface;"
+    $"Lapp/morphe/extension/youtube/patches/TranslatedCaptionPensPatch$CaptionRequestInterface;"
+
+/** Wrap the decoder call, not request dispatch, so cached and nested parses have separate scopes. */
+private fun MutableMethod.scopeDecoder(invoke: Int, request: String) {
+    val impl = implementation ?: error("Missing caption parser bytecode")
+    val instructions = impl.instructions.toList()
+    check(instructions.getOrNull(invoke + 1)?.opcode == Opcode.MOVE_RESULT_OBJECT) {
+        "Unexpected caption parser invocation"
+    }
+
+    var address = 0
+    val indices = mutableMapOf<Int, Int>()
+    instructions.forEachIndexed { index, instruction ->
+        indices[address] = index
+        address += instruction.codeUnits
+    }
+    val start = indices.entries.single { it.value == invoke }.key
+    val catches = impl.tryBlocks.filter {
+        start >= it.startCodeAddress && start < it.startCodeAddress + it.codeUnitCount
+    }.flatMap { it.exceptionHandlers }.map {
+        indices[it.handlerCodeAddress] ?: error("Missing caption exception handler")
+    }.distinct()
+    check(catches.isNotEmpty() && catches.all { instructions[it].opcode == Opcode.MOVE_EXCEPTION }) {
+        "Caption parser exception cleanup cannot be guaranteed"
+    }
+    val edits = catches.map { (it + 1) to
+            "invoke-static { $request }, $EXTENSION_CLASS->endCaption(Ljava/lang/Object;)V" } +
+        listOf(
+            (invoke + 2) to "invoke-static { $request }, $EXTENSION_CLASS->endCaption(Ljava/lang/Object;)V",
+            invoke to "invoke-static { $request }, $EXTENSION_CLASS->beginCaption(Ljava/lang/Object;)V"
+        )
+    edits.distinctBy { it.first }.sortedByDescending { it.first }.forEach { (index, smali) ->
+        addInstructions(index, smali)
+    }
+}
+
 
 /**
  * Auto-translated captions keep the pen (text style) ids of the original track, but the translated
@@ -37,46 +72,44 @@ internal val translatedCaptionPensPatch = bytecodePatch(
     dependsOn(sharedExtensionPatch, preferredCaptionLanguagePatch)
 
     execute {
-        // Track whether the caption track that is parsed is auto-translated.
-        // The track is set from the request being parsed and not from the last requested url,
-        // because cached tracks are parsed without a new request.
-        CaptionFileParserFingerprint.let {
-            val trackField = it.instructionMatches[1].instruction.getReference<FieldReference>()!!
+        val cache = CaptionFileParserFingerprint
+        val network = RequestResponseParserFingerprint
+        val trackField = cache.instructionMatches[1].instruction.getReference<FieldReference>()!!
+        val requestClass = mutableClassDefBy(trackField.definingClass)
+        requestClass.interfaces.add(EXTENSION_CAPTION_REQUEST_INTERFACE)
+        requestClass.addHelperMethod(
+            "patch_getCaptionTrack", "Ljava/lang/Object;",
+            smali = """
+                iget-object v0, p0, $trackField
+                return-object v0
+            """
+        )
 
-            mutableClassDefBy(trackField.definingClass).apply {
-                interfaces.add(EXTENSION_CAPTION_REQUEST_INTERFACE)
+        val callbackField = network.instructionMatches[2].instruction.getReference<FieldReference>()!!
+        val callbackClass = mutableClassDefBy(callbackField.definingClass)
+        callbackClass.interfaces.add(EXTENSION_CAPTION_REQUEST_INTERFACE)
+        callbackClass.addHelperMethod(
+            "patch_getCaptionTrack", "Ljava/lang/Object;", freeRegisters = 2,
+            smali = """
+                iget-object v0, p0, $callbackField
+                instance-of v1, v0, ${requestClass.type}
+                if-eqz v1, :unknown
+                check-cast v0, ${requestClass.type}
+                invoke-virtual { v0 }, ${requestClass.type}->patch_getCaptionTrack()Ljava/lang/Object;
+                move-result-object v0
+                return-object v0
+                :unknown
+                const/4 v0, 0x0
+                return-object v0
+            """
+        )
 
-                addHelperMethod(
-                    "patch_getCaptionTrack",
-                    "Ljava/lang/Object;",
-                    smali = """
-                        iget-object v0, p0, $trackField
-                        return-object v0
-                    """
-                )
-            }
+        // Request identity is visible in both the network callback and cached parser.
+        // The try-handler cleanup protects native exceptions; the Java scope checks
+        // the request identity if an earlier native catch runs before beginCaption.
+        network.method.scopeDecoder(network.instructionMatches[0].index, "p0")
+        cache.method.scopeDecoder(cache.instructionMatches[4].index, "p1")
 
-            it.method.addInstruction(
-                0,
-                "invoke-static { p1 }, $EXTENSION_CLASS->setParsedRequest(Ljava/lang/Object;)V"
-            )
-        }
-
-        RequestResponseParserFingerprint.let {
-            val requestMatch = it.instructionMatches[2]
-            // Register is first written after the method start.
-            val register = requestMatch.getInstruction<TwoRegisterInstruction>().registerA
-
-            it.method.addInstructions(
-                0,
-                """
-                    iget-object v$register, p0, ${requestMatch.instruction.getReference<FieldReference>()}
-                    invoke-static { v$register }, $EXTENSION_CLASS->setParsedRequest(Ljava/lang/Object;)V
-                """
-            )
-        }
-
-        // Every pen lookup of the timed text parser (<pen>, <p> and <s> elements) uses the same method.
         TimedTextSegmentElementFingerprint.instructionMatches[2].getMethodCalled().addInstructions(
             0,
             """

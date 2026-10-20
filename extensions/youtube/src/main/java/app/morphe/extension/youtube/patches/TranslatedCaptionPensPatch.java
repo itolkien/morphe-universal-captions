@@ -10,6 +10,8 @@ package app.morphe.extension.youtube.patches;
 
 import androidx.annotation.Nullable;
 
+import java.util.ArrayDeque;
+
 @SuppressWarnings("unused")
 public class TranslatedCaptionPensPatch {
 
@@ -32,32 +34,44 @@ public class TranslatedCaptionPensPatch {
      */
     private static final int DEFAULT_PEN_ID = Integer.MIN_VALUE;
 
-    /**
-     * If the caption track parsed on the current thread is auto-translated.
-     * Caption tracks are parsed on background threads, and different tracks can be parsed at the same time.
-     */
-    private static final ThreadLocal<Boolean> isAutoTranslatedTrack = new ThreadLocal<>();
+    private static final class Scope {
+        final Object request;
+        final boolean translated;
 
-    /**
-     * Injection point.
-     *
-     * Called before a request response or a cached caption file is parsed.
-     *
-     * @param request Caption request, or any other request handled by the same code.
-     */
-    public static void setParsedRequest(@Nullable Object request) {
-        boolean translated = false;
-        try {
-            translated = request instanceof CaptionRequestInterface captionRequest
-                    && captionRequest.patch_getCaptionTrack() instanceof PreferredCaptionLanguagePatch.CaptionTrackInterface track
-                    // Auto-translated vss ids are "t" + source vss id + "." + language code.
-                    && track.patch_getVssId().startsWith("t");
-        } catch (RuntimeException | LinkageError ignored) {
-            // An unrecognized native request must preserve the original caption pens.
-        } finally {
-            // Never carry the previous translation into this request after an error.
-            isAutoTranslatedTrack.set(translated);
+        Scope(Object request, boolean translated) {
+            this.request = request;
+            this.translated = translated;
         }
+    }
+
+    private static final ThreadLocal<ArrayDeque<Scope>> scopes = new ThreadLocal<>();
+
+    /** Enter exactly one cached or network caption decoder invocation. */
+    public static void beginCaption(@Nullable Object request) {
+        boolean translated = false;
+        if (request instanceof CaptionRequestInterface captionRequest) {
+            try {
+                Object track = captionRequest.patch_getCaptionTrack();
+                translated = track instanceof AutoTranslateCaptionsPatch.CaptionTrackInterface caption
+                        && AutoTranslateCaptionsPatch.translationSourceIdentity(caption) != null;
+            } catch (RuntimeException | LinkageError ignored) {
+                // Unknown native layouts must not modify the original pen styling.
+            }
+        }
+        ArrayDeque<Scope> current = scopes.get();
+        if (current == null) {
+            current = new ArrayDeque<>();
+            scopes.set(current);
+        }
+        current.push(new Scope(request, translated));
+    }
+
+    /** Idempotent, identity-checked cleanup, also called from native exception handlers. */
+    public static void endCaption(@Nullable Object request) {
+        ArrayDeque<Scope> current = scopes.get();
+        if (current == null || current.isEmpty() || current.peek().request != request) return;
+        current.pop();
+        if (current.isEmpty()) scopes.remove();
     }
 
     /**
@@ -72,8 +86,8 @@ public class TranslatedCaptionPensPatch {
      * @return The pen id to use.
      */
     public static int getPenId(int penId) {
-        return Boolean.TRUE.equals(isAutoTranslatedTrack.get())
-                ? DEFAULT_PEN_ID
-                : penId;
+        ArrayDeque<Scope> current = scopes.get();
+        return current != null && !current.isEmpty() && current.peek().translated
+                ? DEFAULT_PEN_ID : penId;
     }
 }

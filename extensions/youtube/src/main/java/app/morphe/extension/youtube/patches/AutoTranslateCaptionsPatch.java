@@ -287,7 +287,7 @@ public final class AutoTranslateCaptionsPatch {
     }
 
     /** Reject target-specific source mixes even if their language labels match. */
-    private static String translationSourceIdentity(CaptionTrackInterface track) {
+    static String translationSourceIdentity(CaptionTrackInterface track) {
         if (track == null) return null;
         String code = track.patch_getLanguageCode();
         String vss = track.patch_getVssId();
