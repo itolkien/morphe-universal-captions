@@ -451,99 +451,60 @@ public class AutoTranslateCaptionsPatchTest {
         find(restored, "tr");
     }
 
-    @Test public void nativeCatalogWithOnlySourceNeverForcesMenu() {
+    @Test public void usableSourceRestoresWebTargetsWithoutAndroidTargetCatalog() {
         Track english = new Track("en",
                 "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");
-        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(
-                0, List.of(english), english, List.of("en")));
-        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(
-                0, List.of(english), english, java.util.Arrays.asList("invalid token", "en", null)));
-        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
-                0, List.of(english), english, List.of()));
-        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
-                0, List.of(english), english, null));
-        assertEquals(2, AutoTranslateCaptionsPatch.restoredMenuCount(
-                2, List.of(english), english, List.of("en")));
-        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(
-                0, List.of(english), english, List.of("en", "tr")));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(0, List.of(english), english));
+        assertEquals(1, AutoTranslateCaptionsPatch.restoredMenuCount(0, List.of(english), null));
+        assertEquals(0, AutoTranslateCaptionsPatch.restoredMenuCount(0, List.of(), english));
+        assertEquals(2, AutoTranslateCaptionsPatch.restoredMenuCount(2, List.of(), null));
+        var created = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                List.of(), List.of(english), english, Locale.ENGLISH);
+        assertEquals(155, created.size());
+        find(created, "tr");
+        find(created, "pt-PT");
+        assertFalse(created.stream().anyMatch(c -> "en".equals(c.patch_getLanguageCode())));
     }
 
-    @Test public void existingNativeMenuDoesNotReadManagerMetadata() {
-        AutoTranslateCaptionsPatch.CaptionManagerInterface broken =
-                new AutoTranslateCaptionsPatch.CaptionManagerInterface() {
-                    @Override public List<String> patch_getNativeTargetLanguages() {
-                        throw new AssertionError("Unexpected catalog read");
-                    }
-                    @Override public PreferredCaptionLanguagePatch.CaptionTrackInterface
-                            patch_getActiveTranslationSource() {
-                        throw new AssertionError("Unexpected source read");
-                    }
-                };
+    @Test public void existingNativeMenuDoesNotReadManagerSource() {
+        AutoTranslateCaptionsPatch.CaptionManagerInterface broken = () -> {
+            throw new AssertionError("Unexpected source read");
+        };
         assertEquals(3, AutoTranslateCaptionsPatch.getTranslationCount(3, List.of(), broken));
     }
 
-    @Test public void managerAccessorsFailClosedAndKeepPerVideoCatalog() {
+    @Test public void brokenSourceGetterFailsClosedWithoutDroppingNativeTracks() {
         Track english = new Track("en",
-                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en",
-                ".en", "English");
-        List<CaptionTrackInterface> original = List.of();
-        AutoTranslateCaptionsPatch.CaptionManagerInterface broken =
-                new AutoTranslateCaptionsPatch.CaptionManagerInterface() {
-                    @Override public List<String> patch_getNativeTargetLanguages() {
-                        throw new NoSuchMethodError("Native catalog getter changed");
-                    }
-                    @Override public PreferredCaptionLanguagePatch.CaptionTrackInterface
-                            patch_getActiveTranslationSource() { return english; }
-                };
-        assertSame(original, AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
-                original, List.of(english), broken, Locale.ENGLISH));
-        assertSame(original, AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
-                original, List.of(english), manager(english, List.of("en")), Locale.ENGLISH));
-        var result = AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
-                original, List.of(english), manager(english, List.of("en", "tr")), Locale.ENGLISH);
-        assertEquals("tr", find(result, "tr").patch_getLanguageCode());
+                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");
+        List<CaptionTrackInterface> empty = List.of();
+        AutoTranslateCaptionsPatch.CaptionManagerInterface broken = () -> {
+            throw new NoSuchMethodError("Native source getter changed");
+        };
+        assertSame(empty, AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
+                empty, List.of(english), broken, Locale.ENGLISH));
+        assertEquals(0, AutoTranslateCaptionsPatch.getTranslationCount(0, List.of(english), broken));
+        List<CaptionTrackInterface> nativeTracks = List.of(new Track("de", "German"));
+        assertSame(nativeTracks, AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
+                nativeTracks, List.of(english), broken, Locale.ENGLISH));
+        var restored = AutoTranslateCaptionsPatch.restoreTranslationTracksFromManager(
+                empty, List.of(english), manager(english), Locale.ENGLISH);
+        find(restored, "tr");
+        find(restored, "fr");
     }
 
     private static AutoTranslateCaptionsPatch.CaptionManagerInterface manager(
-            PreferredCaptionLanguagePatch.CaptionTrackInterface source, List<String> targets) {
-        return new AutoTranslateCaptionsPatch.CaptionManagerInterface() {
-            @Override public List<String> patch_getNativeTargetLanguages() { return targets; }
-            @Override public PreferredCaptionLanguagePatch.CaptionTrackInterface
-                    patch_getActiveTranslationSource() { return source; }
-        };
+            PreferredCaptionLanguagePatch.CaptionTrackInterface source) {
+        return () -> source;
     }
 
-    @Test public void nativeCatalogTargetsPrecedeSnapshotAndKeepUnknownNativeCodes() {
-        List<String> codes = AutoTranslateCaptionsPatch.effectiveTargets(
-                List.of("xxyy", "tr", "en", "tr", "???"), "en");
-        assertEquals("xxyy", codes.get(0));
-        assertEquals("tr", codes.get(1));
-        assertEquals("en", codes.get(2));
-        assertEquals(1, codes.stream().filter("tr"::equals).count());
-        org.junit.Assert.assertTrue(codes.size() > 150);
-        assertEquals(List.of("en"), AutoTranslateCaptionsPatch.effectiveTargets(
-                List.of("en", "??", "en"), "en"));
-    }
-
-    @Test public void nativeCatalogCannotGenerateFakeTranslationOptions() {
-        Track original = new Track("en",
-                "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en",
-                ".en", "English");
-        List<CaptionTrackInterface> nativeEmpty = List.of();
-        assertSame(nativeEmpty, AutoTranslateCaptionsPatch.restoreTranslationTracks(
-                nativeEmpty, List.of(original), original, Locale.ENGLISH, List.of("en")));
-        List<CaptionTrackInterface> restored = AutoTranslateCaptionsPatch.restoreTranslationTracks(
-                nativeEmpty, List.of(original), original, Locale.ENGLISH, List.of("en", "tr"));
+    @Test public void unlistedNativeTargetIsKeptAlongsideWebCatalog() {
+        Track unusual = new Track("xxyy", "Native only");
+        List<CaptionTrackInterface> restored =
+                AutoTranslateCaptionsPatch.addTranslationLanguages(List.of(unusual), Locale.ENGLISH);
+        assertSame(unusual, find(restored, "xxyy"));
         find(restored, "tr");
-        find(restored, "fr"); // Extra snapshot targets are still best-effort.
-        Track german = new Track("de", "German");
-        var normalNative = AutoTranslateCaptionsPatch.addTranslationLanguages(
-                List.of(german), Locale.ENGLISH, List.of("en"));
-        assertEquals(1, normalNative.size());
-        var extended = AutoTranslateCaptionsPatch.addTranslationLanguages(
-                List.of(german), Locale.ENGLISH, List.of("en", "tr"));
-        find(extended, "tr");
-        find(extended, "pt-PT");
+        find(restored, "pt-PT");
+        assertFalse(restored.stream().anyMatch(c -> "en".equals(c.patch_getLanguageCode())));
     }
 
     @Test public void autoTranslateRowUsesActiveAudioSourceWithoutGuessing() {
@@ -577,9 +538,9 @@ public class AutoTranslateCaptionsPatchTest {
             }
         };
         assertEquals(0, AutoTranslateCaptionsPatch.getTranslationCount(
-                0, List.of(incompatible), manager(incompatible, List.of("en", "tr"))));
+                0, List.of(incompatible), manager(incompatible)));
         assertEquals(3, AutoTranslateCaptionsPatch.getTranslationCount(
-                3, List.of(incompatible), manager(incompatible, List.of("en", "tr"))));
+                3, List.of(incompatible), manager(incompatible)));
     }
 
     @Test public void switchingVideosNeverReusesCaptionSources() {

@@ -15,7 +15,6 @@ import java.net.URLDecoder;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -45,9 +44,8 @@ public final class AutoTranslateCaptionsPatch {
                                                     String vssId, CharSequence label);
     }
 
-    /** Manager-level accessors supplied by the pinned Morphe caption fingerprint. */
+    /** Native translation source for the currently active audio track. */
     public interface CaptionManagerInterface {
-        List<String> patch_getNativeTargetLanguages();
         PreferredCaptionLanguagePatch.CaptionTrackInterface patch_getActiveTranslationSource();
     }
 
@@ -76,50 +74,9 @@ public final class AutoTranslateCaptionsPatch {
             "zh-Hans", "zh-Hant", "zu"
     };
 
-    /** Native target codes take priority; extend them only when a valid translation exists. */
-    static List<String> effectiveTargets(List<String> nativeTargets, String sourceLanguage) {
-        Map<String, String> available = new LinkedHashMap<>();
-        String source = exactTargetKey(sourceLanguage);
-        boolean alternative = false;
-        if (nativeTargets != null) {
-            for (String code : nativeTargets) {
-                if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()) {
-                    String key = exactTargetKey(code);
-                    available.putIfAbsent(key, code);
-                    alternative |= !key.equals(source);
-                }
-            }
-        }
-        // A non-empty, source-only native catalog must not invent translations.
-        if (nativeTargets == null || nativeTargets.isEmpty() || alternative) {
-            for (String code : TRANSLATION_LANGUAGES) {
-                available.putIfAbsent(exactTargetKey(code), code);
-            }
-        }
-        return new ArrayList<>(available.values());
-    }
-
-    /** The menu gate checks native target eligibility without allocating 156 track choices. */
-    static boolean hasTranslationTarget(List<String> nativeTargets, String sourceLanguage) {
-        // The fallback snapshot contains 156 languages: a valid original always
-        // has an alternative. No need to scan the snapshot to prove it.
-        if (nativeTargets == null || nativeTargets.isEmpty()) return true;
-        String source = exactTargetKey(sourceLanguage);
-        for (String code : nativeTargets) {
-            if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()
-                    && !exactTargetKey(code).equals(source)) return true;
-        }
-        return false;
-    }
-
     /** Extend the native list only when its translated tracks share one verified source. */
     static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks,
                                                                Locale locale) {
-        return addTranslationLanguages(tracks, locale, null);
-    }
-
-    static List<CaptionTrackInterface> addTranslationLanguages(List<CaptionTrackInterface> tracks,
-                                                               Locale locale, List<String> nativeTargets) {
         if (tracks == null || tracks.isEmpty() || locale == null) return tracks;
         CaptionTrackInterface template = tracks.get(0);
         String templateCode = template.patch_getLanguageCode();
@@ -144,7 +101,7 @@ public final class AutoTranslateCaptionsPatch {
         }
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
         String sourceKey = exactTargetKey(sourceLanguage);
-        for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
+        for (String code : TRANSLATION_LANGUAGES) {
             String key = exactTargetKey(code);
             if (key.equals(sourceKey) || existing.contains(key)) continue;
             CaptionTrackInterface translated = copyTranslation(template, code,
@@ -167,7 +124,7 @@ public final class AutoTranslateCaptionsPatch {
         return result;
     }
 
-    /** Preserve native menu rules, including YouTube's real per-video target catalog. */
+    /** Restore a missing Auto-translate row only for a verified source. */
     public static int getTranslationCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             CaptionManagerInterface manager) {
@@ -176,8 +133,7 @@ public final class AutoTranslateCaptionsPatch {
             if (nativeCount != 0 || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
                     || manager == null) return nativeCount;
             return restoredMenuCount(0, directTracks,
-                    manager.patch_getActiveTranslationSource(),
-                    manager.patch_getNativeTargetLanguages());
+                    manager.patch_getActiveTranslationSource());
         } catch (RuntimeException | LinkageError ignored) {
             return nativeCount;
         }
@@ -186,17 +142,8 @@ public final class AutoTranslateCaptionsPatch {
     static int restoredMenuCount(int nativeCount,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
-        return restoredMenuCount(nativeCount, directTracks, audioSource, null);
-    }
-
-    static int restoredMenuCount(int nativeCount,
-            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource,
-            List<String> nativeTargets) {
         if (nativeCount != 0) return nativeCount;
-        CaptionTrackInterface source = findFallbackSource(directTracks, audioSource);
-        return source != null && hasTranslationTarget(nativeTargets, source.patch_getLanguageCode())
-                ? 1 : 0;
+        return findFallbackSource(directTracks, audioSource) == null ? 0 : 1;
     }
 
     /** Run all added native manager getters inside the Java exception boundary. */
@@ -222,8 +169,7 @@ public final class AutoTranslateCaptionsPatch {
         if (tracks == null || manager == null || locale == null) return tracks;
         try {
             return restoreTranslationTracks(tracks, directTracks,
-                    manager.patch_getActiveTranslationSource(), locale,
-                    manager.patch_getNativeTargetLanguages());
+                    manager.patch_getActiveTranslationSource(), locale);
         } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
@@ -232,18 +178,11 @@ public final class AutoTranslateCaptionsPatch {
     static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource, Locale locale) {
-        return restoreTranslationTracks(tracks, directTracks, defaultSource, locale, null);
-    }
-
-    static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
-            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource, Locale locale,
-            List<String> nativeTargets) {
         if (tracks == null || locale == null) return tracks;
         CaptionTrackInterface source = findFallbackSource(directTracks, defaultSource);
         // A native list with a consistent source is still extensible even without
         // a verified original, but never mix native targets from distinct sources.
-        if (source == null) return addTranslationLanguages(tracks, locale, nativeTargets);
+        if (source == null) return addTranslationLanguages(tracks, locale);
         String video = originalVideoId(source);
         // Existing target-specific native tracks are authoritative. Add only
         // missing choices from the source YouTube chose for the current audio.
@@ -265,7 +204,7 @@ public final class AutoTranslateCaptionsPatch {
         String vssPrefix = "t" + source.patch_getVssId() + ".";
         String sourceKey = exactTargetKey(sourceLanguage);
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
-        for (String language : effectiveTargets(nativeTargets, sourceLanguage)) {
+        for (String language : TRANSLATION_LANGUAGES) {
             String key = exactTargetKey(language);
             if (key.equals(sourceKey) || represented.contains(key)) continue;
             CaptionTrackInterface translated = copyTranslation(source, language,
