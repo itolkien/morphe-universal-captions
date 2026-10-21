@@ -52,8 +52,13 @@ public class TranslatedCaptionPensPatch {
         if (request instanceof CaptionRequestInterface captionRequest) {
             try {
                 Object track = captionRequest.patch_getCaptionTrack();
-                translated = track instanceof AutoTranslateCaptionsPatch.CaptionTrackInterface caption
-                        && AutoTranslateCaptionsPatch.translatedCaptionStyles(caption);
+                // Pen rendering depends on the native translated track, not whether
+                // its URL is suitable for cloning into an additional language.
+                // YouTube may supply translated tracks without a canonical timedtext URL.
+                if (track instanceof PreferredCaptionLanguagePatch.CaptionTrackInterface caption) {
+                    String vss = caption.patch_getVssId();
+                    translated = vss != null && vss.startsWith("t");
+                }
             } catch (RuntimeException | LinkageError ignored) {
                 // Unknown native layouts must not modify the original pen styling.
             }

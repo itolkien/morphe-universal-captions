@@ -35,6 +35,14 @@ public class TranslatedCaptionPensPatchTest {
         }
     }
 
+    /** A real native translated track need not implement the translation-cloning API. */
+    private static final class NativeTrack implements PreferredCaptionLanguagePatch.CaptionTrackInterface {
+        final String vss;
+        NativeTrack(String vss) { this.vss = vss; }
+        @Override public String patch_getLanguageCode() { return "tr"; }
+        @Override public String patch_getVssId() { return vss; }
+    }
+
     private static final class Request implements TranslatedCaptionPensPatch.CaptionRequestInterface {
         final Object track;
         Request(Object track) { this.track = track; }
@@ -73,15 +81,27 @@ public class TranslatedCaptionPensPatchTest {
         assertEquals(7, TranslatedCaptionPensPatch.getPenId(7));
     }
 
-    @Test public void malformedOrUnsafeTargetDoesNotAlterOriginalPens() {
-        for (String badUrl : List.of(ORIGINAL + "&tlang=tr&tlang=de",
+    @Test public void nativeTranslatedPensAreIndependentOfCloneSafeUrls() {
+        // The original #3837 style fix worked on actual translated tracks.
+        // Strict URL validation belongs to cloning new tracks, not rendering existing ones.
+        for (String url : List.of(ORIGINAL + "&tlang=tr&tlang=de",
                 ORIGINAL + "&%74lang=tr", ORIGINAL + "&tlang=tr&%74lang=fr",
                 ORIGINAL + "&tlang=tr%26lang%3Dfr",
                 "https://youtube.com.evil.example/api/timedtext?v=abcdefghijk&lang=en&tlang=tr")) {
-            within(new Request(new Track("tr", "t.en.tr", badUrl)),
-                    () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
+            within(new Request(new Track("tr", "t.en.tr", url)),
+                    () -> assertEquals(DEFAULT_PEN, TranslatedCaptionPensPatch.getPenId(7)));
         }
-        within(new Request(new Track("tr", "t.en.fr", ORIGINAL + "&tlang=tr")),
+        within(new Request(new Track("tr", ".en", ORIGINAL + "&tlang=tr")),
+                () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
+    }
+
+    @Test public void nativeOnlyCaptionInterfaceStillGetsThePenFix() {
+        // A native caption track is not guaranteed to expose our URL/copy interface.
+        for (String vss : List.of("t.en.tr", "ta.en.tr", "t.en.uploaded.tr")) {
+            within(new Request(new NativeTrack(vss)),
+                    () -> assertEquals(DEFAULT_PEN, TranslatedCaptionPensPatch.getPenId(7)));
+        }
+        within(new Request(new NativeTrack(".tr")),
                 () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
     }
 
