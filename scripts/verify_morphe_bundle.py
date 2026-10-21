@@ -25,7 +25,9 @@ def verify(root: Path, version: str) -> None:
     assert "beginCaption(" in runtime and "endCaption(" in runtime
     assert "setParsedRequest(" not in runtime, "Old unscoped parser state unexpectedly restored"
     patch = (root / "patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt").read_text()
-    assert "resolveNativeTargets(" in patch and "patch_getNativeTargetLanguages" in patch
+    # Use the full Web language snapshot; the Android native-target catalog ABI is deliberately absent.
+    assert "resolveNativeTargets(" not in patch and "patch_getNativeTargetLanguages" not in patch, \
+        "Removed native target-language resolver was reintroduced"
     assert "patch_getActiveTranslationSource" in patch
     assert "getTranslationCount(ILjava/util/List;$CAPTION_MANAGER_INTERFACE)I" in patch
     assert "findInstructionIndicesReversedOrThrow" not in patch, "Old duplicate native hook reintroduced"
