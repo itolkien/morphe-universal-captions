@@ -1,109 +1,135 @@
-name: Build maintained Universal Captions source with Morphe
+name: Validate upstream Morphe captions
+
 on:
   push:
     branches: [refactor/morphe-native-source]
+  pull_request:
+    branches: [refactor/morphe-native-source]
   workflow_dispatch:
+    inputs:
+      morphe_ref:
+        description: Morphe branch, tag or commit to validate
+        type: string
+        default: dev
+        required: true
+      build_mpp:
+        description: Build official Morphe MPP for manual APK testing
+        type: boolean
+        default: false
+        required: false
+
 concurrency:
-  group: universal-captions-${{ github.ref }}
+  group: captions-upstream-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read
   packages: read
+
 jobs:
-  stable_reference:
+  captions:
+    name: Test official Morphe captions
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout immutable 3.0.1 reference sources
+      - name: Checkout Universal Captions test sources
         uses: actions/checkout@v4
         with:
-          ref: v3.0.1
-          path: reference
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.0.0'
-      - name: Run original 3.0.1 runtime and structural regression tests
-        run: gradle -p reference/tests/fingerprints test --no-daemon
-  build:
-    runs-on: ubuntu-latest
-    env:
-      MORPHE_BASE: 74de25927da7e159db2501886a50b09964c425ca
-      TEST_VERSION: 3.1.0
-    steps:
-      - name: Checkout original Universal Captions sources
+          path: captions
+          persist-credentials: false
+
+      - name: Checkout official Morphe (no fork or source overrides)
         uses: actions/checkout@v4
         with:
-          path: addon
-      - name: Checkout audited Morphe adapter dependencies
-        uses: actions/checkout@v4
-        with:
-          repository: itolkien/morphe-patches
-          ref: 74de25927da7e159db2501886a50b09964c425ca
+          repository: MorpheApp/morphe-patches
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.morphe_ref || 'dev' }}
           path: morphe
-      - name: Install the actual maintained caption sources and regression tests
+          persist-credentials: false
+
+      - name: Record the exact upstream revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C morphe rev-parse HEAD)" = "$MORPHE_BASE"
-          for file in \
-            patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt \
-            patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/TranslatedCaptionPensPatch.kt \
-            extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java \
-            extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java \
-            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatchTest.java \
-            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatchTest.java \
-            extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/PreferredCaptionRoutingTest.java
-          do
-            test -s "addon/$file"
-            cp "addon/$file" "morphe/$file"
-            cmp "addon/$file" "morphe/$file"
-          done
-          sed -i "s/^version = .*/version = $TEST_VERSION/" morphe/gradle.properties
-      - uses: actions/setup-java@v4
+          sha="$(git -C morphe rev-parse HEAD)"
+          echo "MORPHE_SHA=$sha" >> "$GITHUB_ENV"
+          printf '%s\n' "$sha" > morphe-commit.txt
+          {
+            echo '### Official Morphe captions'
+            echo
+            echo "Tested Morphe revision: $sha"
+            echo
+            echo 'Only an additional caption test file is copied into the checkout.'
+            echo 'No Morphe Java/Kotlin production source is replaced.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Add caption regressions (test-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="captions/tests/upstream/MorpheCaptionUpstreamRegressionTest.java"
+          destination="morphe/extensions/youtube/src/test/java/app/morphe/extension/youtube/patches/MorpheCaptionUpstreamRegressionTest.java"
+          test -s "$source"
+          test -d "$(dirname "$destination")"
+          test ! -e "$destination"
+          test -f morphe/extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java
+          test -f morphe/extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java
+          cp "$source" "$destination"
+          cmp "$source" "$destination"
+          git -C morphe diff --exit-code --quiet
+          echo 'Supplemental tests installed; upstream production sources are untouched.'
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - name: Test Kotlin adapter and owned Java caption implementation
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test upstream Kotlin/Java and extra caption regressions
         working-directory: morphe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :patches:test :extensions:youtube:testDebugUnitTest --no-daemon
-      - name: Generate complete Morphe patch metadata
+
+      - name: Build official MPP (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mpp }}
         working-directory: morphe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:generatePatchesList --no-daemon
-      - name: Build test-only Android MPP last
-        working-directory: morphe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid --no-daemon
-      - name: Verify extension, metadata and Morphe attribution
+        run: ./gradlew :patches:generatePatchesList :patches:buildAndroid --no-daemon
+
+      - name: Verify optional official Morphe MPP
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mpp }}
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os
+          import json
           from pathlib import Path
           from zipfile import ZipFile
-          package = Path("morphe/patches/build/libs") / f"patches-{os.environ['TEST_VERSION']}.mpp"
-          notice = Path("morphe/NOTICE").read_bytes()
-          with ZipFile(package, "a") as archive:
-              if "NOTICE" in archive.namelist():
-                  assert archive.read("NOTICE") == notice
-              else:
-                  archive.writestr("NOTICE", notice)
+
+          root = Path('morphe')
+          packages = sorted((root / 'patches/build/libs').glob('*.mpp'))
+          assert len(packages) == 1, f'Expected one Morphe MPP, found {packages}'
+          with ZipFile(packages[0]) as bundle:
+              names = bundle.namelist()
+              assert bundle.testzip() is None, 'Corrupt MPP'
+              assert 'classes.dex' in names, 'Missing patch bytecode'
+              assert any(n.startswith('extensions/') and n.endswith('.mpe') for n in names), 'Missing extension'
+          manifest = json.loads((root / 'patches-list.json').read_text())
+          assert any(p['name'] == 'Captions' for p in manifest['patches']), 'Missing Captions patch'
+          print(f'Official Morphe bundle checked: {packages[0]}')
           PY
-          python3 addon/scripts/verify_morphe_bundle.py morphe "$TEST_VERSION"
-      - name: Save integration build for manual Android compatibility testing
+
+      - name: Upload manual Morphe MPP test artifact
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mpp }}
         uses: actions/upload-artifact@v4
         with:
-          name: universal-captions-owned-code-test-build
+          name: official-morphe-captions-${{ github.run_id }}
           path: |
-            morphe/patches/build/libs/patches-${{ env.TEST_VERSION }}.mpp
+            morphe/patches/build/libs/*.mpp
             morphe/patches-list.json
+            morphe-commit.txt
           if-no-files-found: error
           retention-days: 14
