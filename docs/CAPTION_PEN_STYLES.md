@@ -1,5 +1,12 @@
 # Translated caption pen handling
 
+> **Historical 3.1.0 experimental analysis.** The design and release checks
+> below describe retained experimental code, **not** the current official
+> Morphe runtime. Since [PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+> was merged, the maintained workflow tests official Morphe without
+> replacing its production sources. See [upstream validation](UPSTREAM_VALIDATION.md).
+
+
 Some translated srv3 documents inherit creator-defined pens that make
 the text invisible. Universal Captions handles this in the parser instead
 of trying to infer the selected track from the latest network request.
@@ -15,9 +22,10 @@ caption request: a network callback and the file-cache parser.
 The patch resolves these structurally and uses their actual request,
 rather than the latest dispatched URL.
 
-- `beginCaption(request)` checks the original track, VSS suffix and
-  exact signed YouTube `tlang` parameter. It pushes a nested scope in
-  a `ThreadLocal` for the current decoder thread.
+- `beginCaption(request)` checks the native translated-track VSS identity
+  (`t.<source>.<target>` or `ta.<source>.<target>`) and its language.
+  URL cloning rules are deliberately not used for subtitle rendering.
+  A linked `ThreadLocal` scope isolates nested decoders without a deque.
 - `getPenId()` uses the default pen for translated documents. It
   leaves original caption styling unchanged.
 - `endCaption(request)` only pops the scope associated with that
@@ -39,10 +47,7 @@ JVM tests cover original/translated documents, malformed caption URLs,
 nested and overlapping parsers, reused worker threads, exception exits
 and unmatched cleanup calls. Android bundle CI checks packaged hooks.
 
-The 3.0 dev.7 code was tested manually on both declared YouTube versions.
-The 3.0.1 request-matched cleanup still needs itemized device checks:
-creator-styled translations, original styling, cached captions, rapid
-video/language changes, alternate audio and Off/On.
+The historical 3.0 dev.7 build was tested manually on both advertised YouTube versions. The 3.1.0 candidate passed CI and received one positive but unversioned device smoke test; both versions still need itemized checks for styled originals/translations, cached captions, rapid video/audio switching and CC Off/On.
 
 The default pen is a readability workaround, not full Web styling
 parity. Some colors or highlights intentionally revert to defaults.

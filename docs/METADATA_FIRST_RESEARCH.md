@@ -1,5 +1,11 @@
 # Metadata-first feasibility: Universal Captions 3.0
 
+> **Historical research (2026-10-20).** References below to a "current"
+> native target-language ABI and standalone metadata gate reflect an
+> earlier experiment. The 3.1.0 Morphe-dependent branch removed target
+> catalog resolution while preserving current-audio source discovery.
+> See [current architecture](ARCHITECTURE.md).
+
 Research updated 2026-10-20. This is a source-code / public-schema audit,
 **not an APK or device test**. The standalone repository remains the development
 source of truth; Morphe's old runtime will be replaced only after validation.
@@ -25,7 +31,7 @@ that no native Android playback component can ever receive target-language
 metadata. Our Kotlin `CaptionMetadataAbi` already finds a native runtime
 list of target-language codes in the Android caption manager.
 
-## Current Android native bridge: verified from source
+## Android native bridge at the time of research
 
 | Field / behavior | Current bridge | Confidence |
 | --- | --- | --- |

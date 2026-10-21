@@ -1,51 +1,28 @@
-# Compatibility and validation
+# Morphe and YouTube compatibility
 
-## Supported versions
+[Universal Captions PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+is merged. The integrated captions implementation now lives in
+[Morphe's official `dev` source](https://github.com/MorpheApp/morphe-patches/tree/dev).
 
-- Universal Captions **3.0.1** (maintenance release candidate).
-- YouTube **21.20.405** and **21.41.525**.
-- Android package: `com.google.android.youtube`.
+Normal CI runs Morphe's original Java/Kotlin tests plus our **additional
+caption-only tests**. Its optional, manually dispatched MPP is a
+complete official **Morphe test bundle**, not an addon to stack with
+another Morphe MPP.
 
-The owner tested the 3.0 development builds on both declared YouTube
-versions, including expanded menus and translated text. A 21.20.405
-video previously stuck at 17 choices displayed 156. The dev.7 build,
-including parser-scoped styling, was also reported working.
+Supported YouTube versions depend on the exact tested Morphe commit.
+Consult that build's patch metadata; don't assume the version targets
+from our earlier experimental 3.1.0 build remain fixed.
 
-Those are functional tests, not a guarantee for every video, subtitle
-source, target language or Android version. The request-specific parser
-cleanup added in 3.0.1 still needs a separate device smoke matrix.
-Do not combine the standalone addon with Morphe's older auto-translate
-or translated-pen hooks.
+A successful JVM test or MPP build is not proof of compatibility with
+an actual APK, the YouTube translation server or device playback.
+For the minimum and maximum advertised versions, test clean-APK patching,
+installation, native and missing translation menus, real translated
+text, multiple audio tracks, manual and CC-off selections, cached
+documents and original/translated subtitle styling.
 
-## Automated tests
+[3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1)
+remains the published standalone reference. No second standalone 3.1.0
+release is needed now that the main changes are upstream.
 
-`scripts/test-core.sh` runs the Java menu tests and Kotlin resolver tests
-(JDK 17, Gradle 9.0.0). The MPP workflow builds the extension against
-a pinned official template, verifies Android DEX integrity and compares
-the generated metadata with the checked-in version.
-
-Extra APK-specific checks run locally only if these environment variables
-point to real files:
-
-| Environment variable | Check |
-| --- | --- |
-| `YOUTUBE_CAPTIONS_APK` | ABI resolution against a clean supported YouTube APK |
-| `CAPTIONS_BASELINE_APK` and `CAPTIONS_PATCHED_APK` | Caption policy isolation |
-| `CAPTIONS_COMBINED_APK` | Native coexistence wiring |
-| `CAPTIONS_FALLBACK_APK` and `YOUTUBE_CAPTIONS_APK` | Native fallback wiring |
-
-Hosted CI skips the APK-dependent checks because no proprietary YouTube
-APK is distributed here. A green CI result is not equivalent to testing
-a fully patched APK on a device.
-
-## Remaining limits
-
-YouTube may return an empty translation despite listing the language.
-The active audio's eligible caption source and a manually chosen subtitle
-are not always the same. The patch does not override CC Off/On, preferred
-languages or the player's selection decisions. Creator styling on
-translated captions uses a default pen for legibility.
-
-See [architecture](ARCHITECTURE.md) and the
-[Web behavior audit](WEB_PARITY_AUDIT.md). Historical 2.x validation
-remains available in the release tags.
+See [Upstream validation](UPSTREAM_VALIDATION.md) and the
+[historical experimental checklist](PARITY_VALIDATION.md).

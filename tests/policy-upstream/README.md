@@ -1,1 +1,0 @@
-Unmodified Morphe PreferredCaptionLanguagePatch.java, test-only, from MorpheApp/morphe-patches dev commit 93501dd4b31a103c37509b1c26f7644ca9082aff. Tests compile this policy against platform stubs and real addon runtime; it is never bundled in the addon.

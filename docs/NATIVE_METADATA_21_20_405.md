@@ -1,5 +1,10 @@
 # YouTube 21.20.405 — native caption metadata (verified source mapping)
 
+> **Historical DEX analysis.** The 3.1.0 candidate does **not** ship the
+> native target-language catalog resolver described here. It retains
+> Morphe's native active-audio translation-source bridge. For today's
+> implementation see [current architecture](ARCHITECTURE.md).
+
 This mapping was derived from the developer-supplied JADX output of the
 original, unpatched APK: `apdk.java` and `apdi.java` in `classes2.dex`,
 and `bfuf.java`, `bfud.java`, `bfue.java`, `bfug.java` in
