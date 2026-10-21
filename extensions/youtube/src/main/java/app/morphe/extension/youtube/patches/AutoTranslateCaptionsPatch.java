@@ -262,9 +262,13 @@ public final class AutoTranslateCaptionsPatch {
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
         for (String language : effectiveTargets(nativeTargets, sourceLanguage)) {
             String key = exactTargetKey(language);
-            if (key.equals(sourceKey) || !represented.add(key)) continue;
-            result.add(copyTranslation(source, language, urlPrefix + language + urlSuffix,
-                    vssPrefix + language, locale));
+            if (key.equals(sourceKey) || represented.contains(key)) continue;
+            CaptionTrackInterface translated = copyTranslation(source, language,
+                    urlPrefix + language + urlSuffix, vssPrefix + language, locale);
+            if (translated != null) {
+                represented.add(key);
+                result.add(translated);
+            }
         }
         return result.size() == tracks.size() ? tracks : sortTranslationTracks(result, locale);
     }

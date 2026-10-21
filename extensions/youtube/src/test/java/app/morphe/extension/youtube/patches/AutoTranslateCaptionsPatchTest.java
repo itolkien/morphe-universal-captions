@@ -411,6 +411,26 @@ public class AutoTranslateCaptionsPatchTest {
                 vssReads.get() < 10);
     }
 
+    @Test public void oneUnavailableCloneDoesNotDiscardOtherLanguages() {
+        CaptionTrackInterface original = new CaptionTrackInterface() {
+            @Override public String patch_getLanguageCode() { return "en"; }
+            @Override public String patch_getVssId() { return ".en"; }
+            @Override public String patch_getUrl() {
+                return "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=x";
+            }
+            @Override public CaptionTrackInterface patch_copyTranslation(
+                    String code, String url, String vss, CharSequence label) {
+                return "fr".equals(code) ? null : new Track(code, url, vss, label.toString());
+            }
+        };
+        List<CaptionTrackInterface> restored = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                List.of(), List.of(original), original, Locale.ENGLISH);
+        org.junit.Assert.assertTrue(restored.size() >= 150);
+        org.junit.Assert.assertFalse(restored.stream().anyMatch(
+                track -> "fr".equals(track.patch_getLanguageCode())));
+        find(restored, "tr");
+    }
+
     @Test public void nativeCatalogWithOnlySourceNeverForcesMenu() {
         Track english = new Track("en",
                 "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");
