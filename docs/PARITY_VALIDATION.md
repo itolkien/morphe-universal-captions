@@ -19,6 +19,11 @@ itself is not a quality metric.
 - Avoid stale caption styling on nested, cached, exceptional or concurrent
   native decoder calls.
 - Fail closed on broken native accessors instead of crashing YouTube.
+  The DEX adapter passes the manager to Java rather than eagerly invoking
+  obfuscated source/catalog getters. Existing native menu rows avoid these
+  reads entirely.
+- Recognize native translated pens from VSS identity independently of
+  translation URL-cloning rules, using linked decoder scopes without a deque.
 - Run video switching and multiple app-locale stress tests; preserve explicit
   source, VSS and signed URL identity.
 - Keep GitHub Actions on the latest development commit; older queued builds

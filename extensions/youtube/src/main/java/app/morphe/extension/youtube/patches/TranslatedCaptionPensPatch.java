@@ -10,7 +10,6 @@ package app.morphe.extension.youtube.patches;
 
 import androidx.annotation.Nullable;
 
-import java.util.ArrayDeque;
 
 @SuppressWarnings("unused")
 public class TranslatedCaptionPensPatch {
@@ -34,17 +33,20 @@ public class TranslatedCaptionPensPatch {
      */
     private static final int DEFAULT_PEN_ID = Integer.MIN_VALUE;
 
+    /** A linked scope needs one allocation per decoder, with no separate deque. */
     private static final class Scope {
         final Object request;
         final boolean translated;
+        final Scope previous;
 
-        Scope(Object request, boolean translated) {
+        Scope(Object request, boolean translated, Scope previous) {
             this.request = request;
             this.translated = translated;
+            this.previous = previous;
         }
     }
 
-    private static final ThreadLocal<ArrayDeque<Scope>> scopes = new ThreadLocal<>();
+    private static final ThreadLocal<Scope> scopes = new ThreadLocal<>();
 
     /** Enter exactly one cached or network caption decoder invocation. */
     public static void beginCaption(@Nullable Object request) {
@@ -57,26 +59,24 @@ public class TranslatedCaptionPensPatch {
                 // YouTube may supply translated tracks without a canonical timedtext URL.
                 if (track instanceof PreferredCaptionLanguagePatch.CaptionTrackInterface caption) {
                     String vss = caption.patch_getVssId();
-                    translated = vss != null && vss.startsWith("t");
+                    String language = caption.patch_getLanguageCode();
+                    translated = vss != null && language != null
+                            && (vss.startsWith("t.") || vss.startsWith("ta."))
+                            && vss.endsWith("." + language);
                 }
             } catch (RuntimeException | LinkageError ignored) {
                 // Unknown native layouts must not modify the original pen styling.
             }
         }
-        ArrayDeque<Scope> current = scopes.get();
-        if (current == null) {
-            current = new ArrayDeque<>();
-            scopes.set(current);
-        }
-        current.push(new Scope(request, translated));
+        scopes.set(new Scope(request, translated, scopes.get()));
     }
 
-    /** Idempotent, identity-checked cleanup, also called from native exception handlers. */
+    /** Identity-checked cleanup, including native exception handlers. */
     public static void endCaption(@Nullable Object request) {
-        ArrayDeque<Scope> current = scopes.get();
-        if (current == null || current.isEmpty() || current.peek().request != request) return;
-        current.pop();
-        if (current.isEmpty()) scopes.remove();
+        Scope current = scopes.get();
+        if (current == null || current.request != request) return;
+        if (current.previous == null) scopes.remove();
+        else scopes.set(current.previous);
     }
 
     /**
@@ -91,8 +91,8 @@ public class TranslatedCaptionPensPatch {
      * @return The pen id to use.
      */
     public static int getPenId(int penId) {
-        ArrayDeque<Scope> current = scopes.get();
-        return current != null && !current.isEmpty() && current.peek().translated
+        Scope current = scopes.get();
+        return current != null && current.translated
                 ? DEFAULT_PEN_ID : penId;
     }
 }

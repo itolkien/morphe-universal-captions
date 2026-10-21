@@ -101,8 +101,10 @@ public class TranslatedCaptionPensPatchTest {
             within(new Request(new NativeTrack(vss)),
                     () -> assertEquals(DEFAULT_PEN, TranslatedCaptionPensPatch.getPenId(7)));
         }
-        within(new Request(new NativeTrack(".tr")),
-                () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
+        for (String originalOrMismatch : List.of(".tr", "a.en", "test.tr", "t.en.fr", "ta.en.fr")) {
+            within(new Request(new NativeTrack(originalOrMismatch)),
+                    () -> assertEquals(7, TranslatedCaptionPensPatch.getPenId(7)));
+        }
     }
 
     @Test public void translatedPenRecognitionMatchesNativeTargetEvenWhenSourceCannotClone() {

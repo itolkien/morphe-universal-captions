@@ -15,9 +15,10 @@ caption request: a network callback and the file-cache parser.
 The patch resolves these structurally and uses their actual request,
 rather than the latest dispatched URL.
 
-- `beginCaption(request)` checks the original track, VSS suffix and
-  exact signed YouTube `tlang` parameter. It pushes a nested scope in
-  a `ThreadLocal` for the current decoder thread.
+- `beginCaption(request)` checks the native translated-track VSS identity
+  (`t.<source>.<target>` or `ta.<source>.<target>`) and its language.
+  URL cloning rules are deliberately not used for subtitle rendering.
+  A linked `ThreadLocal` scope isolates nested decoders without a deque.
 - `getPenId()` uses the default pen for translated documents. It
   leaves original caption styling unchanged.
 - `endCaption(request)` only pops the scope associated with that
