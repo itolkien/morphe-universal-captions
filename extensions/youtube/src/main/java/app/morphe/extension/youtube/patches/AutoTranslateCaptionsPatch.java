@@ -175,8 +175,10 @@ public final class AutoTranslateCaptionsPatch {
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             CaptionManagerInterface manager) {
         try {
-            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return nativeCount;
-            return safeRestoredMenuCount(nativeCount, directTracks,
+            // Native menu exists: avoid expensive or fragile metadata access.
+            if (nativeCount != 0 || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
+                    || manager == null) return nativeCount;
+            return safeRestoredMenuCount(0, directTracks,
                     manager.patch_getActiveTranslationSource(),
                     manager.patch_getNativeTargetLanguages());
         } catch (RuntimeException | LinkageError ignored) {
@@ -217,19 +219,32 @@ public final class AutoTranslateCaptionsPatch {
                 ? 1 : 0;
     }
 
-    /** Called by the manager adapter without recursively invoking native getters. */
+    /** Run all added native manager getters inside the Java exception boundary. */
     public static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource,
-            List<String> nativeTargets) {
+            CaptionManagerInterface manager) {
         try {
-            if (!Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
-            return restoreTranslationTracks(tracks, directTracks, defaultSource,
-                    Requester.getAppLocale(), nativeTargets);
+            if (tracks == null || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()) return tracks;
+            return restoreTranslationTracksFromManager(tracks, directTracks, manager,
+                    Requester.getAppLocale());
         } catch (RuntimeException ex) {
             Logger.printException(() -> "restoreTranslationTracks failure", ex);
             return tracks;
         } catch (LinkageError ignored) {
+            return tracks;
+        }
+    }
+
+    static List<CaptionTrackInterface> restoreTranslationTracksFromManager(
+            List<CaptionTrackInterface> tracks,
+            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
+            CaptionManagerInterface manager, Locale locale) {
+        if (tracks == null || manager == null || locale == null) return tracks;
+        try {
+            return restoreTranslationTracks(tracks, directTracks,
+                    manager.patch_getActiveTranslationSource(), locale,
+                    manager.patch_getNativeTargetLanguages());
+        } catch (RuntimeException | LinkageError ignored) {
             return tracks;
         }
     }

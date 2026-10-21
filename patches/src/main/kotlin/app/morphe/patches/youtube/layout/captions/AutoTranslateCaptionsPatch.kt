@@ -171,7 +171,6 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
             setLanguageCodeMethod,
         )
         val manager = CaptionTracksManagerDirectTracksFingerprint.classDef
-        val targetsGetter = "${directTracks.definingClass}->patch_getNativeTargetLanguages()Ljava/util/List;"
         manager.interfaces.add(CAPTION_MANAGER_INTERFACE)
         manager.addHelperMethod(
             "patch_getNativeTargetLanguages", "Ljava/util/List;", freeRegisters = 4,
@@ -207,20 +206,15 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
                 return-object v0
             """
         )
-        // The adapter applies the catalog once, to native and empty lists alike.
-        // It does not intercept the original getter or risk an overwritten p0.
+        // Do not read volatile native source/catalog fields outside the Java guard.
         manager.addHelperMethod(
-            "patch_getAutoTranslateTracks", "Ljava/util/List;", freeRegisters = 4,
+            "patch_getAutoTranslateTracks", "Ljava/util/List;", freeRegisters = 2,
             smali = """
                 invoke-virtual { p0 }, $autoTracks
                 move-result-object v0
                 invoke-virtual { p0 }, $directTracks
                 move-result-object v1
-                invoke-virtual { p0 }, $translationSource
-                move-result-object v2
-                invoke-virtual { p0 }, $targetsGetter
-                move-result-object v3
-                invoke-static { v0, v1, v2, v3 }, $EXTENSION_CLASS->restoreTranslationTracks(Ljava/util/List;Ljava/util/List;${PREFERRED_CAPTION_TRACK_INTERFACE}Ljava/util/List;)Ljava/util/List;
+                invoke-static { v0, v1, p0 }, $EXTENSION_CLASS->restoreTranslationTracks(Ljava/util/List;Ljava/util/List;$CAPTION_MANAGER_INTERFACE)Ljava/util/List;
                 move-result-object v0
                 return-object v0
             """
