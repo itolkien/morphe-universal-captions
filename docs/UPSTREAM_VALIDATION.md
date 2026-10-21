@@ -39,5 +39,5 @@ For live validation, patch a clean APK compatible with the tested Morphe revisio
 ## Legacy source and future contributions
 
 - [`v3.0.1`](https://github.com/itolkien/universal-captions/tree/v3.0.1) preserves the historical standalone release, its tests and metadata.
-- [`archive/experimental-3.1.0/`](../archive/experimental-3.1.0/README.md) preserves the unmerged decoder-scope and source-selection prototype for reference.
+- [`experiments/3.1.0/`](../experiments/3.1.0/README.md) keeps our unmerged Java/Kotlin source-selection and decoder-scoping prototype visible for comparison and future improvements.
 - Reproduce new problems on upstream Morphe; write a failing upstream-compatible regression, implement a focused fix, verify older APKs as appropriate, then open a targeted Morphe PR. Do not maintain a parallel shipping implementation here.

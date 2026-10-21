@@ -10,8 +10,22 @@ The upstream integration provides additional auto-translate choices from a revie
 
 - **Caption regressions:** [additional upstream-compatible tests](tests/upstream/MorpheCaptionUpstreamRegressionTest.java) alongside Morphe's own Java/Kotlin test suite.
 - **Research and contributions:** source selection, audio-track routing, regional language codes, signed timedtext URLs and caption styling.
-- **Historical experiments:** the unmerged 3.1.0 Java/Kotlin prototype and its tests live under [`archive/experimental-3.1.0/`](archive/experimental-3.1.0/README.md). These files are **not part of the current CI/runtime**.
+- **Experimental development:** our own 3.1.0 Java/Kotlin prototype and its tests are available under [`experiments/3.1.0/`](experiments/3.1.0/README.md). They are research implementations, **not the active Morphe runtime or CI source**.
 - **Previous standalone releases:** [v3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1) is preserved with all its original source at the immutable [`v3.0.1` tag](https://github.com/itolkien/universal-captions/tree/v3.0.1). It is historical, not the recommended installation path.
+
+## Browse the code
+
+Our Java/Kotlin work is accessible directly, without copying the whole Morphe repository:
+
+| Area | Code |
+| --- | --- |
+| Native translation source selection and missing language targets | [AutoTranslateCaptionsPatch.java](experiments/3.1.0/extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java) |
+| Caption styling, nested decoder scopes | [TranslatedCaptionPensPatch.java](experiments/3.1.0/extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java) |
+| Bytecode integration | [Translation Kotlin hooks](experiments/3.1.0/patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt) · [Styling Kotlin hooks](experiments/3.1.0/patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/TranslatedCaptionPensPatch.kt) |
+| Experimental tests | [3.1.0 test suite](experiments/3.1.0/README.md#experimental-tests) |
+| Current Morphe regression tests | [MorpheCaptionUpstreamRegressionTest.java](tests/upstream/MorpheCaptionUpstreamRegressionTest.java) |
+
+See [Experiments](experiments/README.md) for status and upstream differences. The shipped implementation remains in [official Morphe](https://github.com/MorpheApp/morphe-patches/tree/dev).
 
 ## CI: validate the official implementation
 
