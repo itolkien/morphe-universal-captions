@@ -27,17 +27,19 @@ Our Java/Kotlin work is accessible directly, without copying the whole Morphe re
 
 See [Experiments](experiments/README.md) for status and upstream differences. The shipped implementation remains in [official Morphe](https://github.com/MorpheApp/morphe-patches/tree/dev).
 
-## CI: validate the official implementation
+## CI: test official Morphe or a development branch
 
-[GitHub Actions](.github/workflows/ci.yml) temporarily checks out `MorpheApp/morphe-patches` at the current `dev` commit, records its SHA and copies in **one supplemental caption test file only**. Normal `main` pushes and pull requests run upstream tests plus our **8 extra caption regressions**.
+[GitHub Actions](.github/workflows/ci.yml) checks out official `MorpheApp/morphe-patches` `dev` on every `main` push or pull request, then runs Morphe's tests plus our **8 additional caption regressions**. Only one supplemental Java **test file** is added; no Morphe production code is overwritten.
 
-**No Morphe production file is overwritten. No MPP is built on ordinary pushes.** Morphe's own commits do not trigger our CI automatically; run the workflow manually to recheck the latest upstream revision.
+To validate a new caption fix before opening a PR, open [Validate upstream Morphe captions](https://github.com/itolkien/universal-captions/actions/workflows/ci.yml) → **Run workflow** on `main`:
 
-## Manual Android test MPP
+1. Set **Morphe source** to `itolkien/morphe-patches`.
+2. Enter your **branch name or commit SHA** (e.g. `fix/caption-fallback`).
+3. Leave **Build MPP** off for a quick test, or turn it on for Android testing.
 
-For a device compatibility check, open [GitHub Actions](https://github.com/itolkien/universal-captions/actions), choose **Validate upstream Morphe captions → Run workflow**, select `main` and start the run. A manually dispatched run first executes the same tests, then builds and uploads a complete **official Morphe** MPP artifact with the tested upstream commit ID.
+Manual runs record the selected repository and exact resolved commit. The optional MPP is a complete bundle of the **chosen Morphe revision**, not an additional Universal Captions patch. No MPP is built or released on normal pushes; upstream-only changes do not trigger an automatic run here.
 
-This is an optional **test build**, not a separate Universal Captions patch source or an APK download. Do not combine it with another Morphe MPP. A successful JVM test or MPP build does not prove compatibility with every YouTube APK or that translations are available from YouTube's backend.
+See [Upstream validation](docs/UPSTREAM_VALIDATION.md) for inputs, safeguards and device test guidance. Passing unit tests does not prove APK or backend translation compatibility.
 
 ## Documentation
 
