@@ -32,6 +32,8 @@ itself is not a quality metric.
   A regression test bounds source getter calls independently of target count.
 - Reuse one translated-track label constructor across native-list extension,
   source fallback and the independent preferred-language fallback.
+- Remove the duplicate menu error-catching wrapper; test the public guarded
+  manager entry point directly for broken native track accessors.
 - Keep GitHub Actions on the latest development commit; older queued builds
   cannot obscure which version passed.
 

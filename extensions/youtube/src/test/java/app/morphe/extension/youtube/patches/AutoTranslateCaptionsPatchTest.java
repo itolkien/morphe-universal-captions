@@ -536,10 +536,10 @@ public class AutoTranslateCaptionsPatchTest {
                 return this;
             }
         };
-        assertEquals(0, AutoTranslateCaptionsPatch.safeRestoredMenuCount(
-                0, List.of(incompatible), incompatible));
-        assertEquals(3, AutoTranslateCaptionsPatch.safeRestoredMenuCount(
-                3, List.of(incompatible), incompatible));
+        assertEquals(0, AutoTranslateCaptionsPatch.getTranslationCount(
+                0, List.of(incompatible), manager(incompatible, List.of("en", "tr"))));
+        assertEquals(3, AutoTranslateCaptionsPatch.getTranslationCount(
+                3, List.of(incompatible), manager(incompatible, List.of("en", "tr"))));
     }
 
     @Test public void switchingVideosNeverReusesCaptionSources() {

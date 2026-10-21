@@ -170,26 +170,9 @@ public final class AutoTranslateCaptionsPatch {
             // Native menu exists: avoid expensive or fragile metadata access.
             if (nativeCount != 0 || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
                     || manager == null) return nativeCount;
-            return safeRestoredMenuCount(0, directTracks,
+            return restoredMenuCount(0, directTracks,
                     manager.patch_getActiveTranslationSource(),
                     manager.patch_getNativeTargetLanguages());
-        } catch (RuntimeException | LinkageError ignored) {
-            return nativeCount;
-        }
-    }
-
-    static int safeRestoredMenuCount(int nativeCount,
-            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource) {
-        return safeRestoredMenuCount(nativeCount, directTracks, audioSource, null);
-    }
-
-    static int safeRestoredMenuCount(int nativeCount,
-            List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
-            PreferredCaptionLanguagePatch.CaptionTrackInterface audioSource,
-            List<String> nativeTargets) {
-        try {
-            return restoredMenuCount(nativeCount, directTracks, audioSource, nativeTargets);
         } catch (RuntimeException | LinkageError ignored) {
             return nativeCount;
         }
