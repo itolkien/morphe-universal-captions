@@ -1,5 +1,12 @@
 # Release quality and regression validation
 
+> **Historical 3.1.0 experimental analysis.** The design and release checks
+> below describe retained experimental code, **not** the current official
+> Morphe runtime. Since [PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+> was merged, the maintained workflow tests official Morphe without
+> replacing its production sources. See [upstream validation](UPSTREAM_VALIDATION.md).
+
+
 The next version must be **better than 3.0.1**, not merely equivalent. The
 release gates prioritize reliable caption discovery, fewer false menus or
 incorrect sources, faster recovery after video changes, safe failure modes,

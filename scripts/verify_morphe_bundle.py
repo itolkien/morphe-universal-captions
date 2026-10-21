@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect an experimental Morphe integration bundle; never treats CI as device validation."""
+"""Historical 3.1.0 overlay verifier. Not used by upstream-caption CI."""
 import json
 import sys
 from pathlib import Path

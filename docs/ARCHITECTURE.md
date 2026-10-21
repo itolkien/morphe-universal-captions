@@ -1,39 +1,50 @@
-# Architecture: Morphe-dependent caption implementation
+# Architecture: Universal Captions after Morphe integration
 
-The experimental branch tracks caption runtime and hook sources under
-`extensions/youtube/src/main` and `patches/src/main`.
+## Responsibility split
 
-**Platform support:** a pinned Morphe patch fork supplies caption fingerprints,
-preferred-language routing, extension injection, settings, dependencies and
-native Android packaging. The adapter and other non-caption classes are
-not reimplemented here.
+Universal Captions is **not a Morphe fork**. Since
+[PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891),
+Morphe maintains the integrated YouTube captions implementation.
 
-| Component | Maintained in this repository |
+| Responsibility | Source of truth |
 | --- | --- |
-| Translation list, source fallback, URL handling | `AutoTranslateCaptionsPatch.java` |
-| Translated caption pen selection | `TranslatedCaptionPensPatch.java` |
-| Native translation hooks | `AutoTranslateCaptionsPatch.kt` |
-| Caption parser hooks | `TranslatedCaptionPensPatch.kt` |
-| Behavior contracts | three Java test files copied into the platform build |
+| Shipped caption Java/Kotlin patches, native fingerprints and preferences | Official Morphe `dev` |
+| Supplemental subtitle-focused regression tests | `tests/upstream/` in this repository |
+| Historical stable standalone v3.0.1 | Unchanged `main` and immutable `v3.0.1` tag |
+| Experimental translation/decoder variants | Retained sources in this branch |
 
-Unlike an alias-only experiment, these exact sources overwrite their Morphe
-integration counterparts before Gradle compiles and tests the combined
-implementation. The CI build is intentionally pinned to an audited fork commit;
-changes to Morphe's caption infrastructure require an explicit update.
+[Current CI](../.github/workflows/ci.yml) downloads Morphe's official
+`dev` tree and copies in **only a supplementary Java test file**.
+The regular job runs tests without replacing a single tracked Morphe
+production source or building an MPP. Optional manual MPP generation
+uses the same official Morphe checkout, not our experimental classes.
+See [Upstream validation](UPSTREAM_VALIDATION.md).
 
-## Current 3.1.0 runtime
+## Retained experimental 3.1.0 implementation
 
-1. The pinned Morphe preferred-caption patch resolves the original translation source eligible for the **active audio**. The Kotlin adapter exposes `patch_getActiveTranslationSource()` under Java's error guard. It does **not** resolve Android's native target-language catalog.
-2. `AutoTranslateCaptionsPatch.java` validates original language, video ID, VSS and signed YouTube timedtext URL. Existing native translations remain intact; missing choices are created using the fixed 156-code Web snapshot, excluding the original language and duplicates. If the original is ambiguous, only a consistent native translated list can supply a template.
-3. The native Auto-translate menu count remains unchanged when nonzero. A missing row is restored only if a valid original source exists. Offered target codes do not guarantee a successful translation response.
-4. `TranslatedCaptionPensPatch.java/.kt` apply a linked `ThreadLocal` scope per network/cache decoder invocation. Original styles remain untouched; translated captions use the default pen for readability.
+These source files remain available for research but are no longer
+automatically installed or built by this repository's CI:
 
-Java guards native source access against runtime/linkage failures; Kotlin relies on pinned Morphe structural fingerprints, not hardcoded obfuscated class names. No Web player fetch or external translator is used.
+| Research area | Retained file |
+| --- | --- |
+| Translation language expansion and verified source selection | `extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java` |
+| Linked request-scoped caption pen lifecycle | `extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/TranslatedCaptionPensPatch.java` |
+| Native translation adapters | `patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/AutoTranslateCaptionsPatch.kt` |
+| Network/cache decoder hooks | `patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/TranslatedCaptionPensPatch.kt` |
 
-**Preferred Caption Language:** Morphe's pinned preferred-language handler reuses tracks first, but can also call the shared `AutoTranslateCaptionsPatch.createTranslation()` for a missing preferred target. It is not purely selection-only. Manual selections and CC-off remain protected by the host policy.
+The experimental approach uses a guarded active-audio manager bridge
+and `beginCaption/endCaption` decoder scopes. The merged Morphe code
+uses simpler fingerprint-based hooks and per-thread caption styling
+state, while incorporating core source identity and URL safeguards.
 
-The candidate is still experimental. Successful JVM/MPP builds do not prove
-DEX compatibility or rendering behavior on either supported APK.
+The more intrusive experimental decoder handler hooks were not merged
+because older YouTube DEX compatibility needs separate evidence.
+Both architectures are retained for comparison; only actual
+reproducible bugs should justify upstream changes.
 
-The stable pre-migration architecture and studies are recorded in
-[the v3.0.1 documentation](https://github.com/itolkien/universal-captions/blob/v3.0.1/docs/ARCHITECTURE.md).
+The larger experimental test files under
+`extensions/youtube/src/test` likewise remain reference material.
+Upstream-compatible additional tests are in [`tests/upstream/`](../tests/upstream/).
+
+The [v3.0.1 architecture](https://github.com/itolkien/universal-captions/blob/v3.0.1/docs/ARCHITECTURE.md)
+documents the earlier standalone code.

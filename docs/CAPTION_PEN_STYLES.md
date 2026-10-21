@@ -1,5 +1,12 @@
 # Translated caption pen handling
 
+> **Historical 3.1.0 experimental analysis.** The design and release checks
+> below describe retained experimental code, **not** the current official
+> Morphe runtime. Since [PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+> was merged, the maintained workflow tests official Morphe without
+> replacing its production sources. See [upstream validation](UPSTREAM_VALIDATION.md).
+
+
 Some translated srv3 documents inherit creator-defined pens that make
 the text invisible. Universal Captions handles this in the parser instead
 of trying to infer the selected track from the latest network request.

@@ -1,21 +1,28 @@
-# Compatibility — Universal Captions 3.1.0 test candidate
+# Morphe and YouTube compatibility
 
-The experimental `refactor/morphe-native-source` branch produces a **full
-replacement Morphe MPP**. Do not stack it with the official Morphe MPP.
-Use a clean YouTube APK and one selected source.
+[Universal Captions PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+is merged. The integrated captions implementation now lives in
+[Morphe's official `dev` source](https://github.com/MorpheApp/morphe-patches/tree/dev).
 
-The pinned Morphe fork advertises YouTube `21.20.405` and `21.41.525`.
-[Candidate CI](https://github.com/itolkien/universal-captions/actions/runs/39544149551)
-passed baseline/candidate tests, Android packaging and bundle verification.
-One user smoke test reported no visible problems, but the exact tested
-YouTube version and complete scenario matrix were not recorded. Neither
-advertised version is fully accepted on that evidence alone.
+Normal CI runs Morphe's original Java/Kotlin tests plus our **additional
+caption-only tests**. Its optional, manually dispatched MPP is a
+complete official **Morphe test bundle**, not an addon to stack with
+another Morphe MPP.
 
-Missing language options are taken from a fixed 156-code Web snapshot, not
-Android's native target-language list. Only verified original sources or
-consistent native translated templates can be extended; YouTube's backend
-determines which targets actually return subtitles.
+Supported YouTube versions depend on the exact tested Morphe commit.
+Consult that build's patch metadata; don't assume the version targets
+from our earlier experimental 3.1.0 build remain fixed.
 
-The current published standalone release is
-[Universal Captions 3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1)
-on `main`. See the [3.1.0 release checklist](PARITY_VALIDATION.md).
+A successful JVM test or MPP build is not proof of compatibility with
+an actual APK, the YouTube translation server or device playback.
+For the minimum and maximum advertised versions, test clean-APK patching,
+installation, native and missing translation menus, real translated
+text, multiple audio tracks, manual and CC-off selections, cached
+documents and original/translated subtitle styling.
+
+[3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1)
+remains the published standalone reference. No second standalone 3.1.0
+release is needed now that the main changes are upstream.
+
+See [Upstream validation](UPSTREAM_VALIDATION.md) and the
+[historical experimental checklist](PARITY_VALIDATION.md).

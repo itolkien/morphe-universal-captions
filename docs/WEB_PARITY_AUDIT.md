@@ -1,5 +1,12 @@
 # YouTube Web behavior audit — Universal Captions 3.1.0 candidate
 
+> **Historical 3.1.0 experimental analysis.** The design and release checks
+> below describe retained experimental code, **not** the current official
+> Morphe runtime. Since [PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891)
+> was merged, the maintained workflow tests official Morphe without
+> replacing its production sources. See [upstream validation](UPSTREAM_VALIDATION.md).
+
+
 This compares the experimental 3.1.0 Morphe-based runtime with YouTube Web. Historical 3.0 builds had device tests; the current MPP received one positive but unversioned smoke test. Full two-APK coverage or server-side Web parity is not claimed.
 
 ## Evidence for the comparison

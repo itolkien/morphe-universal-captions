@@ -1,35 +1,42 @@
 # Universal Captions
 
-Caption translation enhancements for YouTube on Android, built with Morphe.
+YouTube caption translation research, regressions and upstream contributions for [Morphe](https://github.com/MorpheApp/morphe-patches). **This repository is not a Morphe fork.**
 
-## Features
+The core Universal Captions improvements were integrated into [Morphe `dev` via PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891). Morphe now maintains the integrated auto-translate, native caption-source and translated-caption styling patches.
 
-- Restore the Auto-translate menu when YouTube exposes a usable original caption source.
-- Preserve existing native translated tracks and add missing choices from a reviewed 156-code YouTube Web snapshot. Android's native target-language catalog is no longer read or used as a translation allowlist.
-- Use a validated original caption source associated with the active audio, not an arbitrary first track.
-- Keep signed timedtext URLs and regional language distinctions intact.
-- Restore readable translated subtitles without changing original caption styling or overriding explicit CC-off/manual choices.
+## What stays here
 
-## How 3.1.0 works
+- **Upstream caption quality:** research and additional regression tests focused exclusively on YouTube subtitles and translation.
+- **Experimental sources:** our previous Java/Kotlin 3.1.0 implementation and its tests are kept on `refactor/morphe-native-source` for reference. **Normal CI never substitutes them into Morphe.**
+- **Historical standalone release:** [Universal Captions 3.0.1](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1) and its `main` sources are untouched.
 
-1. Identify and validate YouTube's active-audio caption source (video ID, language, VSS identity and signed `/api/timedtext` URL).
-2. Preserve original/native translated caption objects. Offer only missing targets from the fixed **156-code Web-language snapshot** recorded on 2026-10-16; never translate into the original source language.
-3. Preserve signatures and script/region distinctions. An ambiguous original does not justify guessing; consistent native translated tracks may provide a safe template.
-4. YouTube's own timedtext service supplies actual translations. The patch does not fetch the Web player response, call an external translator or promise 156 working targets per video.
+The integrated work includes 156 candidate auto-translate language codes, native translated track preservation, signed timedtext URL and caption-source checks, Preferred Caption Language integration and readable translated subtitle styling. A language in the menu does not guarantee a successful translation response from YouTube's backend.
 
-## Versions
+## CI: official Morphe, caption tests only
 
-- **3.0.1:** [stable standalone release](https://github.com/itolkien/universal-captions/releases/tag/v3.0.1), with its source and tests on `main`.
-- **3.1.0 test candidate (unreleased):** `refactor/morphe-native-source`. Owned Java/Kotlin hooks and tests live here; fingerprints, settings and preferred-caption routing come from the Morphe fork pinned in [CI](.github/workflows/ci.yml). [Morphe PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891) still contains the earlier port.
+[GitHub Actions](.github/workflows/ci.yml) checks out **official `MorpheApp/morphe-patches` `dev`**, records the exact upstream commit and installs only our [supplementary caption regression test](tests/upstream/MorpheCaptionUpstreamRegressionTest.java) in its temporary **test directory**.
 
-The experimental build produces a **full replacement Morphe MPP**, not an additional source to stack with the official Morphe patch bundle. Use a clean supported YouTube APK and only one Morphe source during patching.
+Normal runs execute Morphe's own Kotlin/Java tests plus our additional caption regressions. **No upstream production file is replaced and no MPP is generated or published during normal CI.**
 
-## Tests and release status
+A push or pull request targeting this experimental branch triggers a run. You can also start one manually. **Upstream Morphe commits alone do not trigger this workflow**; use *Run workflow* to check newer upstream revisions. See [Upstream validation](docs/UPSTREAM_VALIDATION.md).
 
-[GitHub Actions](https://github.com/itolkien/universal-captions/actions) runs the immutable 3.0.1 reference tests, the candidate's regression tests, patch metadata generation and Android MPP packaging. The build artifact is for testing only.
+## Optional manual MPP
 
-**3.1.0 is not released.** The [last confirmed CI](https://github.com/itolkien/universal-captions/actions/runs/39544149551) passed Java/Kotlin tests, Android MPP build and bundle verification. A user smoke test found no visible problems, but its APK version and full scenario coverage were not recorded. Both `21.20.405` and `21.41.525` need independent testing of actual translations, audio switching, native/empty menus, manual/CC-off choices and cached/styled captions. See [release validation](docs/PARITY_VALIDATION.md).
+When actual Android testing is needed:
+
+1. Open [GitHub Actions](https://github.com/itolkien/universal-captions/actions), select **Validate upstream Morphe captions** and click **Run workflow**.
+2. Select branch `refactor/morphe-native-source` and click **Run workflow**. A manual run tests current Morphe `dev` and automatically builds the MPP after the tests pass.
+3. Download the `official-morphe-captions-<run-id>` artifact. It includes Morphe's MPP and the exact tested upstream commit.
+
+That optional MPP contains **unmodified official Morphe production code**, not the experiment retained here. It is a test artifact, not a separate Universal Captions release; patch a clean compatible YouTube APK using only one Morphe bundle. No patched YouTube APK is distributed.
+
+## Documentation
+
+- [Upstream CI, manual MPP and regression scope](docs/UPSTREAM_VALIDATION.md)
+- [Architecture and retained experimental code](docs/ARCHITECTURE.md)
+- [Compatibility and real-device checks](docs/COMPATIBILITY.md)
+- [Historical 3.1.0 parity and release investigation](docs/PARITY_VALIDATION.md)
 
 ## License
 
-Source headers and the corresponding Morphe NOTICE are preserved. No patched YouTube APK is distributed.
+Original authorship and attribution headers are preserved. See the included [LICENSE](LICENSE) and [NOTICE](NOTICE). Official Morphe sources are only checked out temporarily by CI.
