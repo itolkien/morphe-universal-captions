@@ -110,7 +110,7 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
                 return-object v0
             """
         )
-        // Do not read volatile native source/catalog fields outside the Java guard.
+        // Resolve the native active-audio source inside Java's error boundary.
         manager.addHelperMethod(
             "patch_getAutoTranslateTracks", "Ljava/util/List;", freeRegisters = 2,
             smali = """
@@ -131,7 +131,7 @@ internal val autoTranslateCaptionsPatch = bytecodePatch(
             replaceInstruction(index, "invoke-virtual/range { v$register .. v$register }, $adapter")
         }
 
-        // Keep YouTube's native row factory but check its real target catalog.
+        // Keep the native row factory; restore a missing row only for a validated source.
         CaptionTracksManagerTranslationCountFingerprint.apply {
             val countMatch = instructionMatches[1]
             val count = countMatch.getInstruction<OneRegisterInstruction>().registerA

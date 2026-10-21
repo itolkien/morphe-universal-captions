@@ -129,7 +129,7 @@ public final class AutoTranslateCaptionsPatch {
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             CaptionManagerInterface manager) {
         try {
-            // Native menu exists: avoid expensive or fragile metadata access.
+            // Preserve existing native menu counts without reading the source getter.
             if (nativeCount != 0 || !Settings.AUTO_TRANSLATE_ADDITIONAL_LANGUAGES.get()
                     || manager == null) return nativeCount;
             return restoredMenuCount(0, directTracks,
@@ -146,7 +146,7 @@ public final class AutoTranslateCaptionsPatch {
         return findFallbackSource(directTracks, audioSource) == null ? 0 : 1;
     }
 
-    /** Run all added native manager getters inside the Java exception boundary. */
+    /** Keep native active-audio source access inside Java's error boundary. */
     public static List<CaptionTrackInterface> restoreTranslationTracks(List<CaptionTrackInterface> tracks,
             List<? extends PreferredCaptionLanguagePatch.CaptionTrackInterface> directTracks,
             CaptionManagerInterface manager) {
@@ -180,8 +180,8 @@ public final class AutoTranslateCaptionsPatch {
             PreferredCaptionLanguagePatch.CaptionTrackInterface defaultSource, Locale locale) {
         if (tracks == null || locale == null) return tracks;
         CaptionTrackInterface source = findFallbackSource(directTracks, defaultSource);
-        // A native list with a consistent source is still extensible even without
-        // a verified original, but never mix native targets from distinct sources.
+        // A consistent native translated list can supply a template even without
+        // a verified original; never clone mixed translation-source identities.
         if (source == null) return addTranslationLanguages(tracks, locale);
         String video = originalVideoId(source);
         // Existing target-specific native tracks are authoritative. Add only

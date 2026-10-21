@@ -8,10 +8,7 @@ itself is not a quality metric.
 
 ## Improvements in the current experimental implementation
 
-- Read the video-specific native translation target list from the caption
-  metadata using validated field relationships rather than obfuscated names.
-  A source-only catalog does not force an Auto-translate row; native targets
-  are retained before adding snapshot choices.
+- Fill missing targets from the fixed 156-code Web snapshot. Android's native target-language metadata is neither read nor used to restrict choices; existing native translated objects are retained.
 - Use the native active-audio source for menu eligibility, including when
   several original caption tracks exist (new Kotlin hook and menu tests).
 - Reject ambiguous source identities or cross-video native translations
@@ -19,16 +16,12 @@ itself is not a quality metric.
 - Avoid stale caption styling on nested, cached, exceptional or concurrent
   native decoder calls.
 - Fail closed on broken native accessors instead of crashing YouTube.
-  The DEX adapter passes the manager to Java rather than eagerly invoking
-  obfuscated source/catalog getters. Existing native menu rows avoid these
-  reads entirely.
+  The DEX adapter passes the manager into Java rather than eagerly invoking the native source getter. Existing native menu rows skip that lookup.
 - Recognize native translated pens from VSS identity independently of
   translation URL-cloning rules, using linked decoder scopes without a deque.
 - Run video switching and multiple app-locale stress tests; preserve explicit
   source, VSS and signed URL identity.
-- Build synthetic translations from a once-validated original source:
-  cache the signed URL prefix, fragment and source VSS for the full target
-  catalog, instead of parsing the same native URL up to 156 times.
+- Build synthetic translations from a once-validated original source: cache URL prefix, fragment and VSS for the 156-code Web snapshot rather than reparsing the source URL for each language.
   A regression test bounds source getter calls independently of target count.
 - Reuse one translated-track label constructor across native-list extension,
   source fallback and the independent preferred-language fallback.
@@ -39,12 +32,14 @@ itself is not a quality metric.
 
 These improvements are supported by source-level tests. They are **not**
 benchmarked speed improvements or proof of successful APK patching.
+[The 3.1.0 CI](https://github.com/itolkien/universal-captions/actions/runs/39544149551)
+passed Java/Kotlin tests and Android MPP packaging. One user reported
+no visible issue in a device smoke test; its exact APK version and
+complete test scenarios were not recorded.
 
 ## Remaining release blockers
 
-- Confirm the native target-list field resolver against real DEX layouts in
-  both supported YouTube versions. Unit tests validate target decisions but
-  cannot prove the metadata field mapping or JNI bytecode bindings.
+- Verify the active-audio source bridge and caption fingerprints on real DEX layouts in both supported YouTube versions; JVM tests do not establish injected-bytecode compatibility.
 - Verify that the new native menu-count hook and scoped pen decoder hook
   work against real DEX layouts in both supported YouTube versions.
 - Perform regression comparisons on actual patched APKs, not just pure
@@ -75,7 +70,7 @@ before testing, metadata generation and Android MPP packaging.
 | Missing Auto-translate list | Restore targets from a validated source when YouTube returns an empty native translated list |
 | Existing translated label sorting | Locale-aware collation; stable native objects preserved |
 | Caption styles | Scope per native parser invocation, including network/cache decoding, exception cleanup, nested parses, concurrent threads and bad native metadata |
-| Manual language / CC-off | Morphe's preferred-language implementation is not replaced by these caption source hooks; the platform's own routing tests run in the candidate suite |
+| Manual language / CC-off | Morphe's preferred-language routing remains host-owned and can synthesize one missing target through the shared Java helper; its routing tests run in the candidate suite |
 
 ## Limits — NOT verified as identical
 
@@ -84,11 +79,7 @@ before testing, metadata generation and Android MPP packaging.
    21.20.405 and 21.41.525 APKs. Neither version has been patch-tested on a
    device as part of this parity exercise. Request/catch handler hooks require
    those actual DEX layouts to be tested.
-2. **Native catalog field access:** the experimental adapter now resolves
-   YouTube's target-list metadata and passes it into both the translation menu
-   gate and list expansion. The JVM tests verify source-only, missing,
-   unsupported and mixed native-target lists. The actual obfuscated DEX field
-   bindings remain **unverified on device** and must be checked on both APKs.
+2. **Target availability:** the Android native target-language list is not consulted. The dated 156-code Web snapshot is a list of candidate choices, not proof every target returns text; empty-menu and source-only metadata cases still need device checks.
 3. **Audio routing in the native menu-count gate:** the candidate
    now passes the active-audio translation source into the menu count hook,
    including ambiguous native lists. The Kotlin/Java build and JVM tests do
@@ -122,7 +113,6 @@ For **each** of YouTube 21.20.405 and 21.41.525:
 - Confirm no crashes or subtitle style leakage after a failed caption
   request, interrupted network response or decoder error.
 
-**Release criterion:** keep the branch experimental until both APKs pass
-and the remaining native-catalog field resolution and DEX hook questions are resolved.
+**Release criterion:** keep the branch experimental until both APKs pass, active-audio/menu-count/parser DEX hooks are verified and [Morphe PR #3891](https://github.com/MorpheApp/morphe-patches/pull/3891) is synchronized and reviewed.
 Do not claim performance, feature superiority or reliable Android compatibility
 based only on lines of code, JVM tests or a successful MPP build.

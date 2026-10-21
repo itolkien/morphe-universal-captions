@@ -40,10 +40,7 @@ JVM tests cover original/translated documents, malformed caption URLs,
 nested and overlapping parsers, reused worker threads, exception exits
 and unmatched cleanup calls. Android bundle CI checks packaged hooks.
 
-The 3.0 dev.7 code was tested manually on both declared YouTube versions.
-The 3.0.1 request-matched cleanup still needs itemized device checks:
-creator-styled translations, original styling, cached captions, rapid
-video/language changes, alternate audio and Off/On.
+The historical 3.0 dev.7 build was tested manually on both advertised YouTube versions. The 3.1.0 candidate passed CI and received one positive but unversioned device smoke test; both versions still need itemized checks for styled originals/translations, cached captions, rapid video/audio switching and CC Off/On.
 
 The default pen is a readability workaround, not full Web styling
 parity. Some colors or highlights intentionally revert to defaults.
