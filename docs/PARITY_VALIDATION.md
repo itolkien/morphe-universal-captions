@@ -26,6 +26,12 @@ itself is not a quality metric.
   translation URL-cloning rules, using linked decoder scopes without a deque.
 - Run video switching and multiple app-locale stress tests; preserve explicit
   source, VSS and signed URL identity.
+- Build synthetic translations from a once-validated original source:
+  cache the signed URL prefix, fragment and source VSS for the full target
+  catalog, instead of parsing the same native URL up to 156 times.
+  A regression test bounds source getter calls independently of target count.
+- Reuse one translated-track label constructor across native-list extension,
+  source fallback and the independent preferred-language fallback.
 - Keep GitHub Actions on the latest development commit; older queued builds
   cannot obscure which version passed.
 

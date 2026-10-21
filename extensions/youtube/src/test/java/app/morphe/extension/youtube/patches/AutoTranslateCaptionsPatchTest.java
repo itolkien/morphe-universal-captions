@@ -380,6 +380,37 @@ public class AutoTranslateCaptionsPatchTest {
                 new Track("AUTO_TRANSLATE_CAPTIONS_OPTION", "", "", "Auto-translate")), source));
     }
 
+    @Test public void fallbackDoesNotReparseSignedSourceForEveryLanguage() {
+        // A native getter can be expensive. 156 targets must not cause
+        // 156 repeated URL/VSS reads and URI validation of one source.
+        java.util.concurrent.atomic.AtomicInteger urls = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger vssReads = new java.util.concurrent.atomic.AtomicInteger();
+        CaptionTrackInterface original = new CaptionTrackInterface() {
+            @Override public String patch_getLanguageCode() { return "en"; }
+            @Override public String patch_getUrl() {
+                urls.incrementAndGet();
+                return "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=x%2By#opaque";
+            }
+            @Override public String patch_getVssId() {
+                vssReads.incrementAndGet();
+                return ".en";
+            }
+            @Override public CaptionTrackInterface patch_copyTranslation(
+                    String code, String url, String vss, CharSequence label) {
+                return new Track(code, url, vss, label.toString());
+            }
+        };
+        var targets = AutoTranslateCaptionsPatch.restoreTranslationTracks(
+                List.of(), List.of(original), original, Locale.ENGLISH);
+        org.junit.Assert.assertTrue(targets.size() >= 150);
+        assertEquals("https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&sig=x%2By&tlang=tr#opaque",
+                find(targets, "tr").patch_getUrl());
+        org.junit.Assert.assertTrue("Source URL getters should not scale with target count",
+                urls.get() < 10);
+        org.junit.Assert.assertTrue("Source VSS getters should not scale with target count",
+                vssReads.get() < 10);
+    }
+
     @Test public void nativeCatalogWithOnlySourceNeverForcesMenu() {
         Track english = new Track("en",
                 "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en", ".en", "English");

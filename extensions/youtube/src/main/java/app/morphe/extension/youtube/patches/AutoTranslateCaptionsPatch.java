@@ -79,19 +79,19 @@ public final class AutoTranslateCaptionsPatch {
     /** Native target codes take priority; extend them only when a valid translation exists. */
     static List<String> effectiveTargets(List<String> nativeTargets, String sourceLanguage) {
         Map<String, String> available = new LinkedHashMap<>();
+        String source = exactTargetKey(sourceLanguage);
+        boolean alternative = false;
         if (nativeTargets != null) {
             for (String code : nativeTargets) {
                 if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()) {
-                    available.putIfAbsent(exactTargetKey(code), code);
+                    String key = exactTargetKey(code);
+                    available.putIfAbsent(key, code);
+                    alternative |= !key.equals(source);
                 }
             }
         }
-        String source = exactTargetKey(sourceLanguage);
-        // A non-empty native catalog without another valid language is authoritative.
-        // An absent/empty catalog has no such evidence, so use the fallback snapshot.
-        boolean known = nativeTargets != null && !nativeTargets.isEmpty();
-        boolean alternative = available.keySet().stream().anyMatch(key -> !key.equals(source));
-        if (!known || alternative) {
+        // A non-empty, source-only native catalog must not invent translations.
+        if (nativeTargets == null || nativeTargets.isEmpty() || alternative) {
             for (String code : TRANSLATION_LANGUAGES) {
                 available.putIfAbsent(exactTargetKey(code), code);
             }
@@ -101,19 +101,13 @@ public final class AutoTranslateCaptionsPatch {
 
     /** The menu gate checks native target eligibility without allocating 156 track choices. */
     static boolean hasTranslationTarget(List<String> nativeTargets, String sourceLanguage) {
+        // The fallback snapshot contains 156 languages: a valid original always
+        // has an alternative. No need to scan the snapshot to prove it.
+        if (nativeTargets == null || nativeTargets.isEmpty()) return true;
         String source = exactTargetKey(sourceLanguage);
-        String[] codes;
-        if (nativeTargets == null || nativeTargets.isEmpty()) {
-            codes = TRANSLATION_LANGUAGES;
-        } else {
-            for (String code : nativeTargets) {
-                if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()
-                        && !exactTargetKey(code).equals(source)) return true;
-            }
-            return false;
-        }
-        for (String code : codes) {
-            if (!exactTargetKey(code).equals(source)) return true;
+        for (String code : nativeTargets) {
+            if (code != null && LANGUAGE_CODE_PATTERN.matcher(code).matches()
+                    && !exactTargetKey(code).equals(source)) return true;
         }
         return false;
     }
@@ -152,10 +146,8 @@ public final class AutoTranslateCaptionsPatch {
         for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
             String key = exactTargetKey(code);
             if (key.equals(exactTargetKey(sourceLanguage)) || !existing.add(key)) continue;
-            String name = Locale.forLanguageTag(code).getDisplayName(locale);
-            result.add(template.patch_copyTranslation(
-                    code, urlPrefix + code + urlSuffix, vssIdPrefix + code,
-                    name.isEmpty() ? code : name));
+            result.add(copyTranslation(template, code, urlPrefix + code + urlSuffix,
+                    vssIdPrefix + code, locale));
         }
         return result.size() == tracks.size() ? tracks : sortTranslationTracks(result, locale);
     }
@@ -275,14 +267,21 @@ public final class AutoTranslateCaptionsPatch {
                 return tracks;
             represented.add(exactTargetKey(track.patch_getLanguageCode()));
         }
+        // Validate the signed source once, not again for every one of 156 targets.
+        String sourceLanguage = source.patch_getLanguageCode();
+        String sourceUrl = source.patch_getUrl();
+        int fragment = sourceUrl.indexOf('#');
+        if (fragment < 0) fragment = sourceUrl.length();
+        String urlPrefix = sourceUrl.substring(0, fragment) + "&tlang=";
+        String urlSuffix = sourceUrl.substring(fragment);
+        String vssPrefix = "t" + source.patch_getVssId() + ".";
+        String sourceKey = exactTargetKey(sourceLanguage);
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
-        for (String language : effectiveTargets(nativeTargets, source.patch_getLanguageCode())) {
-            if (represented.contains(exactTargetKey(language))) continue;
-            CaptionTrackInterface translated = createTranslation(source, language, locale);
-            if (translated != null) {
-                represented.add(exactTargetKey(language));
-                result.add(translated);
-            }
+        for (String language : effectiveTargets(nativeTargets, sourceLanguage)) {
+            String key = exactTargetKey(language);
+            if (key.equals(sourceKey) || !represented.add(key)) continue;
+            result.add(copyTranslation(source, language, urlPrefix + language + urlSuffix,
+                    vssPrefix + language, locale));
         }
         return result.size() == tracks.size() ? tracks : sortTranslationTracks(result, locale);
     }
@@ -335,10 +334,16 @@ public final class AutoTranslateCaptionsPatch {
         String url = source.patch_getUrl();
         int fragment = url.indexOf('#');
         if (fragment < 0) fragment = url.length();
-        String name = Locale.forLanguageTag(language).getDisplayName(locale);
-        return source.patch_copyTranslation(language,
+        return copyTranslation(source, language,
                 url.substring(0, fragment) + "&tlang=" + language + url.substring(fragment),
-                "t" + source.patch_getVssId() + "." + language, name.isEmpty() ? language : name);
+                "t" + source.patch_getVssId() + "." + language, locale);
+    }
+
+    /** The only place that creates a native translated track and its localized label. */
+    private static CaptionTrackInterface copyTranslation(CaptionTrackInterface source,
+            String language, String url, String vss, Locale locale) {
+        String name = Locale.forLanguageTag(language).getDisplayName(locale);
+        return source.patch_copyTranslation(language, url, vss, name.isEmpty() ? language : name);
     }
 
     /** Shared validation for original and translated caption URLs. */
