@@ -116,6 +116,26 @@ public class AutoTranslateCaptionsPatchTest {
         }
     }
 
+    @Test public void invalidNativeCloneDoesNotDiscardValidNativeExtensions() {
+        CaptionTrackInterface template = new CaptionTrackInterface() {
+            @Override public String patch_getLanguageCode() { return "de"; }
+            @Override public String patch_getVssId() { return "ta.en.de"; }
+            @Override public String patch_getUrl() {
+                return "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&tlang=de&sig=x";
+            }
+            @Override public CaptionTrackInterface patch_copyTranslation(
+                    String code, String url, String vss, CharSequence label) {
+                return "fr".equals(code) ? null : new Track(code, url, vss, label.toString());
+            }
+        };
+        List<CaptionTrackInterface> result = AutoTranslateCaptionsPatch.addTranslationLanguages(
+                List.of(template), Locale.ENGLISH);
+        assertSame(template, find(result, "de"));
+        find(result, "tr");
+        org.junit.Assert.assertFalse(result.contains(null));
+        org.junit.Assert.assertFalse(result.stream().anyMatch(t -> "fr".equals(t.patch_getLanguageCode())));
+    }
+
     @Test public void nativeTracksFromDifferentSourcesAreNotClonedFromTheFirst() {
         Track german = new Track("de", URL + "&tlang=de", "ta.en.de", "German");
         Track french = new Track("fr", URL.replace("lang=en", "lang=es")

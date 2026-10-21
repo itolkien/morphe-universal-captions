@@ -143,11 +143,16 @@ public final class AutoTranslateCaptionsPatch {
             existing.add(exactTargetKey(track.patch_getLanguageCode()));
         }
         List<CaptionTrackInterface> result = new ArrayList<>(tracks);
+        String sourceKey = exactTargetKey(sourceLanguage);
         for (String code : effectiveTargets(nativeTargets, sourceLanguage)) {
             String key = exactTargetKey(code);
-            if (key.equals(exactTargetKey(sourceLanguage)) || !existing.add(key)) continue;
-            result.add(copyTranslation(template, code, urlPrefix + code + urlSuffix,
-                    vssIdPrefix + code, locale));
+            if (key.equals(sourceKey) || existing.contains(key)) continue;
+            CaptionTrackInterface translated = copyTranslation(template, code,
+                    urlPrefix + code + urlSuffix, vssIdPrefix + code, locale);
+            if (translated != null) {
+                existing.add(key);
+                result.add(translated);
+            }
         }
         return result.size() == tracks.size() ? tracks : sortTranslationTracks(result, locale);
     }
